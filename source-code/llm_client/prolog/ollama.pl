@@ -20,7 +20,7 @@ ollama_generate(Prompt, Response, Options) :-
     Payload = json([
         model=Model,
         prompt=Prompt,
-        stream= @false
+        stream= @(false)
     ]),
     http_post(URL, json(Payload), Result, [json_object(dict)]),
     Response = Result.response.
