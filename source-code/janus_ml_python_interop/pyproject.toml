@@ -1,5 +1,5 @@
 [project]
-name = "janus-ml"
+name = "janus-ml-python-interop"
 version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = [

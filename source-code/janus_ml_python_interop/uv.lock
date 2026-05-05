@@ -8,11 +8,11 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-01T20:00:31.921877Z"
+exclude-newer = "2026-05-01T20:13:19.264949Z"
 exclude-newer-span = "P4D"
 
 [[package]]
-name = "janus-ml"
+name = "janus-ml-python-interop"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

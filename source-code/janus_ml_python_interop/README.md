@@ -4,11 +4,10 @@ Call Python's scikit-learn from Prolog via the Janus bridge. Companion code for 
 
 ## Running Examples
 
-First, initialize the Python environment and install dependencies using `uv`:
+First, initialize the Python environment and install dependencies using `uv`. Note: you must specify the Python version that matches the one SWI-Prolog's Janus bridge was compiled against (e.g., Python 3.9):
 
 ```shell
-uv init --bare
-uv add scikit-learn numpy
+uv sync --python 3.9
 ```
 
 Then run the examples using `uv run` to ensure the virtual environment is used:
