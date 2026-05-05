@@ -4,7 +4,7 @@
 
 :- begin_tests(farmer).
 
-test(farmer_has_solution) :-
+test(farmer_has_solution, [nondet]) :-
     solve_farmer(Moves),
     is_list(Moves),
     length(Moves, N),

@@ -4,7 +4,7 @@
 
 :- begin_tests(forward_chain).
 
-test(derives_new_fact, [setup(reset_facts), cleanup(reset_facts)]) :-
+test(derives_new_fact, [nondet, setup(reset_facts), cleanup(reset_facts)]) :-
     add_fact(raining),
     add_rule([raining], wet_ground),
     forward_chain,

@@ -4,7 +4,7 @@
 
 :- begin_tests(strips_planner).
 
-test(simple_plan) :-
+test(simple_plan, [nondet]) :-
     InitState = [on_table(a), clear(a), hand_empty],
     GoalState = [holding(a)],
     plan(InitState, GoalState, Plan),

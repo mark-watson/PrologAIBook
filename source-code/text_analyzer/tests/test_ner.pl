@@ -4,7 +4,7 @@
 
 :- begin_tests(ner).
 
-test(find_person) :-
+test(find_person, [nondet]) :-
     find_entities(['John', walks, in, 'London'], Entities),
     member(entity(person, 'John'), Entities).
 

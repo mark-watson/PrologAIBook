@@ -7,12 +7,12 @@
 test(direct_relation) :-
     relation(mark, uses, prolog).
 
-test(multi_hop_path) :-
+test(multi_hop_path, [nondet]) :-
     path(mark, swi, Path),
     length(Path, N),
     N >= 2.
 
-test(connected_entities) :-
+test(connected_entities, [nondet]) :-
     connected(mark, swi).
 
 :- end_tests(kg_reason).

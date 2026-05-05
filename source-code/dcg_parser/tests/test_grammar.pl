@@ -4,15 +4,15 @@
 
 :- begin_tests(grammar).
 
-test(simple_sentence) :-
+test(simple_sentence, [nondet]) :-
     parse_sentence([the, dog, chases, the, cat], Tree),
     Tree = s(np(det(the), n(dog)), vp(v(chases), np(det(the), n(cat)))).
 
-test(proper_noun_subject) :-
+test(proper_noun_subject, [nondet]) :-
     parse_sentence([john, runs], Tree),
     Tree = s(np(name(john)), vp(v(runs))).
 
-test(with_prep_phrase) :-
+test(with_prep_phrase, [nondet]) :-
     parse_sentence([the, man, walks, in, the, park], _Tree).
 
 test(invalid_sentence, [fail]) :-

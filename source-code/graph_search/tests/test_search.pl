@@ -5,13 +5,13 @@
 
 :- begin_tests(search).
 
-test(dfs_finds_path) :-
+test(dfs_finds_path, [nondet]) :-
     dfs(a, e, Path),
     is_list(Path),
     Path = [a|_],
     last(Path, e).
 
-test(bfs_finds_path) :-
+test(bfs_finds_path, [nondet]) :-
     bfs(a, e, Path),
     is_list(Path),
     Path = [a|_],

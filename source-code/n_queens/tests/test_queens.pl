@@ -4,11 +4,11 @@
 
 :- begin_tests(queens).
 
-test(four_queens) :-
+test(four_queens, [nondet]) :-
     n_queens(4, Queens),
     length(Queens, 4).
 
-test(eight_queens) :-
+test(eight_queens, [nondet]) :-
     n_queens(8, Queens),
     length(Queens, 8).
 

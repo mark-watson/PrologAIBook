@@ -7,13 +7,13 @@
 test(parent_direct) :-
     parent(tom, bob).
 
-test(grandparent) :-
+test(grandparent, [nondet]) :-
     grandparent(tom, ann).
 
 test(sibling) :-
     sibling(ann, pat).
 
-test(ancestor) :-
+test(ancestor, [nondet]) :-
     ancestor(tom, ann).
 
 test(find_all_children, set(C == [bob, liz])) :-
