@@ -20,6 +20,11 @@ Requires SWI-Prolog with Janus support and Python with spaCy installed.
 swipl -g "['tests/test_pipeline.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Hybrid AI pipeline bridging Python spaCy NER with Prolog reasoning via Janus](FIG_hybrid_pipeline.jpg)
+
 ## Description
 
 A full hybrid AI pipeline: Python/spaCy performs named entity recognition on input text, the extracted entities are asserted as Prolog facts, and Prolog rules classify them (e.g., persons as `important_person`, locations as `location`). This demonstrates the architecture where Python handles statistical NLP and Prolog handles symbolic reasoning — each language used for what it does best.

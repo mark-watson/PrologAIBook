@@ -20,6 +20,11 @@ swipl -s load.pl
 swipl -g "['tests/test_meta.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Vanilla and bounded-depth meta-interpreters for Prolog self-interpretation](FIG_meta_interp.jpg)
+
 ## Description
 
 Meta-interpreters are uniquely Prolog — a program that interprets Prolog programs within Prolog itself. The `vanilla.pl` module implements the classic three-clause meta-interpreter and a variant that builds proof trees. The `bounded.pl` module adds a depth limit to prevent infinite recursion, which is essential for reasoning over potentially cyclic knowledge bases. These patterns are the foundation for building custom search strategies, explanation facilities, and debugging tools.

@@ -19,6 +19,11 @@ swipl -s load.pl
 swipl -g "['tests/test_json_facts.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![JSON-to-Prolog structured output conversion pipeline](FIG_structured_output.jpg)
+
 ## Description
 
 Bridges the gap between LLM text output and Prolog's structured reasoning. The `json_to_facts.pl` module parses JSON containing entities and relations arrays, asserting them as `extracted_entity/2` and `extracted_relation/3` facts. This enables a workflow where an LLM extracts structured information from text and Prolog reasons over the results.

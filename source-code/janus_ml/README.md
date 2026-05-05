@@ -21,6 +21,11 @@ Requires SWI-Prolog compiled with Janus support and Python with scikit-learn ins
 swipl -g "['tests/test_janus_ml.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Prolog-to-Python bridge for scikit-learn classification and clustering via Janus](FIG_janus_ml.jpg)
+
 ## Description
 
 Demonstrates the Janus Python bridge for calling scikit-learn's DecisionTreeClassifier and KMeans clusterer directly from Prolog. The `py_sklearn.pl` module provides Prolog predicates that delegate to `python/sklearn_bridge.py` via `py_call/2`. This pattern lets you use Python's mature ML ecosystem while keeping Prolog as the orchestration and reasoning layer.

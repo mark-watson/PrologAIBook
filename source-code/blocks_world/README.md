@@ -20,6 +20,11 @@ swipl -s load.pl
 swipl -g "['tests/test_blocks.plt'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Blocks World planner architecture with backtracking search and cycle detection](FIG_blocks_world.jpg)
+
 ## Description
 
 A dedicated blocks world planner that models moving blocks between stacks and the table. States are lists of `on(X, Y)` and `on_table(X)` atoms. The planner uses `blocks_move/3` to generate legal moves (respecting the "clear" constraint — only top blocks can be moved), cycle detection via `blocks_plan_visited/1`, and backtracking search. This classic AI domain illustrates how planning problems map naturally to Prolog's search-and-backtrack paradigm.

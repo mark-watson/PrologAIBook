@@ -22,6 +22,11 @@ swipl -s load.pl
 swipl -g "['tests/test_rdf.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![RDF data loader and query interface using SWI-Prolog semweb libraries](FIG_rdf_explorer.jpg)
+
 ## Description
 
 Uses SWI-Prolog's built-in `library(semweb/rdf_db)` and `library(semweb/turtle)` to load RDF data from Turtle files and query it using Prolog's pattern matching. The `rdf_loader.pl` module provides convenience predicates for loading files, querying triples, listing all subjects, and describing individual resources. SWI-Prolog's semweb library is one of the most mature RDF implementations in any language, making Prolog a natural choice for semantic web applications that require both data access and logical reasoning.

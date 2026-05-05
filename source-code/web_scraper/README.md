@@ -18,6 +18,11 @@ swipl -s load.pl
 swipl -g "['tests/test_scraper.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Web scraper pipeline from URL fetch through DOM parsing to XPath extraction](FIG_web_scraper.jpg)
+
 ## Description
 
 Combines SWI-Prolog's HTTP client with `library(sgml)` and `library(xpath)` to fetch web pages, parse HTML into DOM trees, and extract links and text content using XPath expressions.

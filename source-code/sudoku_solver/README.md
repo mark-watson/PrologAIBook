@@ -28,6 +28,11 @@ swipl -s load.pl
 swipl -g "['tests/test_sudoku.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Sudoku solver using CLP(FD) row, column, and 3x3 block constraints](FIG_sudoku_solver.jpg)
+
 ## Description
 
 A showcase of CLP(FD)'s power — the entire Sudoku solver is under 25 lines. It constrains each cell to 1–9, enforces `all_distinct` on each row, column, and 3×3 block, then calls `label/1` to find the solution. This is one of the most compelling examples of how constraint programming in Prolog can express complex combinatorial problems declaratively, letting the constraint solver do the heavy lifting instead of writing procedural search code.

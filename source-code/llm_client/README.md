@@ -21,6 +21,11 @@ Requires `GOOGLE_API_KEY` env var for Gemini, and a running Ollama server for lo
 swipl -g "['tests/test_llm.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Dual LLM client architecture for Google Gemini API and local Ollama server](FIG_llm_client.jpg)
+
 ## Description
 
 Provides Prolog HTTP clients for two LLM backends. The `gemini.pl` module calls the Google Generative Language API (gemini-2.5-flash) using the `GOOGLE_API_KEY` environment variable. The `ollama.pl` module calls a local Ollama instance for privacy-preserving inference. Both modules use SWI-Prolog's `library(http/http_json)` for JSON request/response handling and return plain text responses extracted from the API's JSON structure.

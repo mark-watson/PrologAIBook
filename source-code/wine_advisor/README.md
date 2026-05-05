@@ -21,6 +21,11 @@ swipl -s load.pl
 swipl -g "['tests/test_wine.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Wine recommendation expert system with meal pairing and preference matching](FIG_wine_advisor.jpg)
+
 ## Description
 
 A concrete expert system case study that recommends wines based on meal type and taste preference. The knowledge base contains wine facts (`wine/4` with name, color, body, and sweetness), meal pairing rules (`meal_pairs_with/2`), and preference matching rules. The system demonstrates how Prolog's unification naturally handles the multi-criteria matching required for recommendation engines — the query `recommend_wine(fish, light, Wine)` backtracks through all wines that satisfy both the meal-color and preference-body constraints.

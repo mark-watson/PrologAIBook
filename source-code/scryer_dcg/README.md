@@ -21,6 +21,11 @@ scryer-prolog prolog/text_dcg.pl
 scryer-prolog -g "use_module('tests/test_scryer_dcg'), run_tests, halt"
 ```
 
+
+## Architecture
+
+![Scryer Prolog DCG-based text parsers for CSV and key-value data](FIG_scryer_dcg.jpg)
+
 ## Description
 
 Demonstrates Scryer Prolog's advantage for text processing: its memory-efficient string representation (strings as lists of characters without copying) makes DCG-based parsing practical for large inputs. The `text_dcg.pl` module implements CSV line parsing, key-value pair extraction, and email extraction using pure DCG rules. These examples highlight when to choose Scryer over SWI-Prolog for text-heavy workloads.

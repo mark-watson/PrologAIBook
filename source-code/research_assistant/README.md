@@ -18,6 +18,11 @@ swipl -s load.pl
 swipl -g "['tests/test_assistant.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Research assistant pipeline combining web search, LLM, and Prolog reasoning](FIG_research_assistant.jpg)
+
 ## Description
 
 A practical agent case study that chains together web search (via REST APIs), LLM summarization (Gemini/Ollama), and Prolog knowledge storage and reasoning. The intended workflow: parse the question → search the web → summarize results via LLM → store structured knowledge as Prolog facts → reason over the knowledge base to produce an answer. Currently a skeleton awaiting integration with the `llm_client` and `http_client` projects.

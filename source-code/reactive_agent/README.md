@@ -20,6 +20,11 @@ swipl -s load.pl
 swipl -g "['tests/test_agent.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Goal-directed reactive agent with perception-reasoning-action loop](FIG_reactive_agent.jpg)
+
 ## Description
 
 Provides a reusable agent framework with a perceive→reason→act loop. Agents have goals, beliefs, and registered tools. The `run_agent/1` predicate runs the loop for a maximum number of steps, checking if the goal is achieved after each cycle. Actions are logged with timestamps. The framework is designed to be extended with domain-specific perception, action selection, and tool execution predicates.

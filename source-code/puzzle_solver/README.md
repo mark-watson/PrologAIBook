@@ -19,6 +19,11 @@ swipl -s load.pl
 swipl -g "['tests/test_farmer.pl'], run_tests, halt" -s load.pl
 ```
 
+
+## Architecture
+
+![Farmer, Fox, Chicken, Grain river crossing puzzle with state-space search](FIG_puzzle_solver.jpg)
+
 ## Description
 
 Models the farmer river crossing puzzle as a state-space search problem. Each state is a `state(Farmer, Fox, Chicken, Grain)` term tracking which bank each entity is on. The solver uses Prolog's backtracking to explore moves, applying safety constraints (fox can't be alone with chicken, chicken can't be alone with grain) to prune invalid states. Cycle detection via a visited list prevents infinite loops.
