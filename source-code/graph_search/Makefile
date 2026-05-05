@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running graph_search examples ==="
-	$(SWIPL) -g "dfs(a, e, P1), format('DFS path: ~w~n', [P1]), bfs(a, e, P2), format('BFS path: ~w~n', [P2]), halt" -s load.pl
+	$(SWIPL) -g "dfs(a, e, P1), format('DFS path: ~w~n', [P1]), bfs(a, e, P2), format('BFS path: ~w~n', [P2]), astar(a, e, 'distance_heuristic/2', PA), format('A* path: ~w~n', [PA]), halt" -s load.pl
 
 test:
 	@echo "=== Running graph_search tests ==="
