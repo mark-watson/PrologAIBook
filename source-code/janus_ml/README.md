@@ -4,8 +4,17 @@ Call Python's scikit-learn from Prolog via the Janus bridge. Companion code for 
 
 ## Running Examples
 
+First, initialize the Python environment and install dependencies using `uv`:
+
 ```shell
-swipl -s load.pl
+uv init --bare
+uv add scikit-learn numpy
+```
+
+Then run the examples using `uv run` to ensure the virtual environment is used:
+
+```shell
+uv run swipl -s load.pl
 ```
 
 ```prolog
@@ -13,12 +22,12 @@ swipl -s load.pl
 ?- py_cluster([[1,2],[3,4],[1,3],[5,6]], 2, Labels).
 ```
 
-Requires SWI-Prolog compiled with Janus support and Python with scikit-learn installed.
+Requires SWI-Prolog compiled with Janus support and `uv` installed for Python dependency management.
 
 ## Running Tests
 
 ```shell
-swipl -g "['tests/test_janus_ml.pl'], run_tests, halt" -s load.pl
+uv run swipl -g "['tests/test_janus_ml.pl'], run_tests, halt" -s load.pl
 ```
 
 

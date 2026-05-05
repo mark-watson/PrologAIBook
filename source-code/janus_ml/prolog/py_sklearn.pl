@@ -6,6 +6,8 @@
 
 :- use_module(library(janus)).
 
+:- initialization(py_add_lib_dir(python)).
+
 %% py_classify(+TrainData, +TestData, -Predictions)
 %% Uses scikit-learn's DecisionTreeClassifier via Janus
 py_classify(TrainData, TestData, Predictions) :-
