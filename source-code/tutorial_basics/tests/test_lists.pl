@@ -10,7 +10,7 @@ test(length_empty) :-
 test(length_three) :-
     my_length([a, b, c], 3).
 
-test(member_found) :-
+test(member_found, [nondet]) :-
     my_member(b, [a, b, c]).
 
 test(member_not_found, [fail]) :-
@@ -22,7 +22,7 @@ test(append_lists) :-
 test(reverse_list) :-
     my_reverse([1, 2, 3], [3, 2, 1]).
 
-test(last_element) :-
+test(last_element, [nondet]) :-
     my_last([a, b, c], c).
 
 :- end_tests(lists).

@@ -20,10 +20,10 @@ csv_field(Field) --> "\"", quoted_chars(Chars), "\"",
 csv_field(Field) --> unquoted_chars(Chars),
     { atom_chars(Field, Chars) }.
 
-quoted_chars([C|Cs]) --> [C], { C \= '"' }, quoted_chars(Cs).
+quoted_chars([C|Cs]) --> [C], { C \= ('"') }, quoted_chars(Cs).
 quoted_chars([]) --> [].
 
-unquoted_chars([C|Cs]) --> [C], { C \= ',', C \= '\n' }, unquoted_chars(Cs).
+unquoted_chars([C|Cs]) --> [C], { C \= (','), C \= ('\n') }, unquoted_chars(Cs).
 unquoted_chars([]) --> [].
 
 %% parse_key_value(+String, -Pair)
@@ -33,7 +33,7 @@ parse_key_value(String, Key-Value) :-
 kv_pair(Key, Value) --> word(KeyChars), "=", rest(ValChars),
     { atom_chars(Key, KeyChars), atom_chars(Value, ValChars) }.
 
-word([C|Cs]) --> [C], { C \= '=' }, word(Cs).
+word([C|Cs]) --> [C], { C \= ('=') }, word(Cs).
 word([]) --> [].
 
 rest([C|Cs]) --> [C], rest(Cs).

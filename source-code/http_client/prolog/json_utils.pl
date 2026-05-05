@@ -4,7 +4,7 @@
     json_to_prolog/2
 ]).
 
-:- use_module(library(http/json)).
+:- use_module(library(json)).
 
 %% parse_json_string(+JsonString, -PrologTerm)
 parse_json_string(JsonString, Term) :-

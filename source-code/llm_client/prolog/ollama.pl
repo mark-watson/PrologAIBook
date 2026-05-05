@@ -6,7 +6,7 @@
 
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_json)).
-:- use_module(library(http/json)).
+:- use_module(library(json)).
 
 %% ollama_generate(+Prompt, -Response)
 %% Uses default model and localhost:11434

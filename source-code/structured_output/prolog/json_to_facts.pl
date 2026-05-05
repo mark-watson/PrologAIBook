@@ -5,7 +5,7 @@
     extracted_relation/3
 ]).
 
-:- use_module(library(http/json)).
+:- use_module(library(json)).
 
 :- dynamic extracted_entity/2.    % extracted_entity(Name, Type)
 :- dynamic extracted_relation/3.  % extracted_relation(Subject, Predicate, Object)
