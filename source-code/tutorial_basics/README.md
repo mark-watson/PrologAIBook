@@ -21,7 +21,7 @@ Then try queries in the REPL:
 ## Running Tests
 
 ```shell
-swipl -g "load_test_files([]), run_tests, halt" -s load.pl
+swipl -g "['tests/test_family.pl', 'tests/test_lists.pl'], run_tests, halt" -s load.pl
 ```
 
 ## Description

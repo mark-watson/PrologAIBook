@@ -18,7 +18,7 @@ scryer-prolog prolog/scryer_constraints.pl
 ## Running Tests
 
 ```shell
-scryer-prolog -g "use_module(tests/test_scryer_clp), halt"
+scryer-prolog -g "use_module('tests/test_scryer_clp'), run_tests, halt"
 ```
 
 ## Description

@@ -18,7 +18,7 @@ scryer-prolog prolog/text_dcg.pl
 ## Running Tests
 
 ```shell
-scryer-prolog -g "use_module(tests/test_scryer_dcg), halt"
+scryer-prolog -g "use_module('tests/test_scryer_dcg'), run_tests, halt"
 ```
 
 ## Description

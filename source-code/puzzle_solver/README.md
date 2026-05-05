@@ -16,7 +16,7 @@ swipl -s load.pl
 ## Running Tests
 
 ```shell
-swipl -g "load_test_files([]), run_tests, halt" -s load.pl
+swipl -g "['tests/test_farmer.pl'], run_tests, halt" -s load.pl
 ```
 
 ## Description

@@ -18,7 +18,7 @@ Requires SWI-Prolog compiled with Janus support and Python with scikit-learn ins
 ## Running Tests
 
 ```shell
-swipl -g "load_test_files([]), run_tests, halt" -s load.pl
+swipl -g "['tests/test_janus_ml.pl'], run_tests, halt" -s load.pl
 ```
 
 ## Description

@@ -17,7 +17,7 @@ Requires SWI-Prolog with Janus support and Python with spaCy installed.
 ## Running Tests
 
 ```shell
-swipl -g "load_test_files([]), run_tests, halt" -s load.pl
+swipl -g "['tests/test_pipeline.pl'], run_tests, halt" -s load.pl
 ```
 
 ## Description
