@@ -16,19 +16,31 @@ blocks_plan(State, Goal, [Move|Moves]) :-
 
 :- dynamic blocks_plan_visited/1.
 
-blocks_move(State, move(X, From, To), NewState) :-
+blocks_move(State, move(X, table, To), NewState) :-
+    member(on_table(X), State),
     clear(X, State),
-    on_something(X, From, State),
+    block_in_state(To, State),
+    dif(X, To),
     clear(To, State),
-    X \= To,
+    select(on_table(X), State, S1),
+    NewState = [on(X, To)|S1].
+blocks_move(State, move(X, From, To), NewState) :-
+    member(on(X, From), State),
+    clear(X, State),
+    block_in_state(To, State),
+    dif(X, To),
+    clear(To, State),
     select(on(X, From), State, S1),
     NewState = [on(X, To)|S1].
 blocks_move(State, move_to_table(X, From), NewState) :-
+    member(on(X, From), State),
     clear(X, State),
-    on_something(X, From, State),
-    From \= table,
     select(on(X, From), State, S1),
     NewState = [on_table(X)|S1].
+
+block_in_state(B, State) :- member(on_table(B), State).
+block_in_state(B, State) :- member(on(B, _), State).
+block_in_state(B, State) :- member(on(_, B), State).
 
 clear(X, State) :- \+ member(on(_, X), State).
 clear(table, _).
