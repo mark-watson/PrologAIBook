@@ -1,7 +1,7 @@
 %% lists.pl - List processing examples
 %% Demonstrates: head/tail, recursion, list predicates
 
-:- module(lists, [
+:- module(my_lists, [
     my_length/2,
     my_member/2,
     my_append/3,

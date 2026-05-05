@@ -8,15 +8,17 @@
 %% Goal: all on the right bank
 
 solve_farmer(Moves) :-
-    solve(state(left, left, left, left), state(right, right, right, right), [], Moves).
+    InitState = state(left, left, left, left),
+    GoalState = state(right, right, right, right),
+    solve(InitState, GoalState, [InitState], RevMoves),
+    reverse(RevMoves, Moves).
 
-solve(Goal, Goal, Visited, Moves) :-
-    reverse(Visited, Moves).
-solve(State, Goal, Visited, Moves) :-
+solve(Goal, Goal, _Visited, []).
+solve(State, Goal, Visited, [Description|Moves]) :-
     move(State, NextState, Description),
     safe(NextState),
     \+ member(NextState, Visited),
-    solve(NextState, Goal, [Description-NextState|Visited], Moves).
+    solve(NextState, Goal, [NextState|Visited], Moves).
 
 %% Moves: farmer always crosses, optionally carrying one item
 move(state(left,F,C,G), state(right,F,C,G), farmer_alone).
@@ -29,7 +31,6 @@ move(state(left,F,C,left), state(right,F,C,right), farmer_grain).
 move(state(right,F,C,right), state(left,F,C,left), farmer_grain).
 
 %% Safety: fox cannot be alone with chicken, chicken cannot be alone with grain
-safe(state(Farmer, Fox, Chicken, _)) :-
-    (Fox == Chicken -> Farmer == Fox ; true).
-safe(state(Farmer, _, Chicken, Grain)) :-
+safe(state(Farmer, Fox, Chicken, Grain)) :-
+    (Fox == Chicken -> Farmer == Fox ; true),
     (Chicken == Grain -> Farmer == Chicken ; true).

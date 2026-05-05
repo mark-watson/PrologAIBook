@@ -7,7 +7,7 @@
 %% blocks_plan(+InitState, +GoalState, -Moves)
 %% State is a list of on(X,Y) and on_table(X) atoms
 blocks_plan(State, Goal, []) :-
-    subset(Goal, State).
+    subset(Goal, State), !.
 blocks_plan(State, Goal, [Move|Moves]) :-
     blocks_move(State, Move, NewState),
     \+ blocks_plan_visited(NewState),

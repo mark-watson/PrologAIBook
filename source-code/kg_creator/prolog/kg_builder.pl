@@ -8,10 +8,12 @@
 
 :- dynamic triple/3.  % triple(Subject, Predicate, Object)
 
-%% add_triple(+S, +P, +O)
+%% add_triple(+S, +P, +O) - Add a triple if not already present (always succeeds)
 add_triple(S, P, O) :-
-    \+ triple(S, P, O),
-    assert(triple(S, P, O)).
+    (   triple(S, P, O)
+    ->  true
+    ;   assert(triple(S, P, O))
+    ).
 
 %% query_triples(?S, ?P, ?O)
 query_triples(S, P, O) :- triple(S, P, O).

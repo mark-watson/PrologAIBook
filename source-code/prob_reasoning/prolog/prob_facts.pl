@@ -25,7 +25,7 @@ prob_query(Goal, Prob) :-
 mul(X, Acc, Result) :- Result is Acc * X.
 
 %% Example knowledge base
-:- prob_fact(cloudy, 0.5).
-:- prob_fact(windy, 0.3).
-:- prob_rule([cloudy], rain, 0.8).
-:- prob_rule([rain, windy], storm, 0.7).
+:- assert(prob_fact(cloudy, 0.5)).
+:- assert(prob_fact(windy, 0.3)).
+:- assert(prob_rule([cloudy], rain, 0.8)).
+:- assert(prob_rule([rain, windy], storm, 0.7)).
