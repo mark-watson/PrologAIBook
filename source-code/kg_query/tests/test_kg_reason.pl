@@ -13,13 +13,13 @@ test(direct_relation, [nondet]) :-
 test(reverse_relation, [nondet]) :-
     relation(prolog, implemented_by, swi).
 
-test(entity_type_person) :-
+test(entity_type_person, [nondet]) :-
     entity(mark, person).
 
-test(entity_type_language) :-
+test(entity_type_language, [nondet]) :-
     entity(prolog, language).
 
-test(entity_type_field) :-
+test(entity_type_field, [nondet]) :-
     entity(ai, field).
 
 test(multi_hop_path, [nondet]) :-
@@ -42,11 +42,11 @@ test(relation_count_uses_positive) :-
     relation_count(uses, Count),
     Count > 0.
 
-test(reachable_from_mark_includes_swi) :-
+test(reachable_from_mark_includes_swi, [nondet]) :-
     reachable(mark, Reachable),
     member(swi, Reachable).
 
-test(neighbors_of_mark_includes_ai) :-
+test(neighbors_of_mark_includes_ai, [nondet]) :-
     neighbors(mark, Neighbors, _),
     member(ai, Neighbors).
 
