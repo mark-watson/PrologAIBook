@@ -2,6 +2,15 @@
 
 Prolog is fundamentally a reasoning engine. In this chapter we explore how to use Prolog for various forms of logical reasoning that are central to AI.
 
+{width: "80%"}
+![Architecture diagram for the Inference Engine example](FIG_inference_engine.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Proof Trees example](FIG_proof_trees.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Medical Diagnosis example](FIG_medical_diagnosis.jpg)
+
 ## Propositional and First-Order Logic in Prolog
 
 TBD: Expressing propositional and first-order logic statements as Prolog clauses. Understanding the relationship between Horn clauses and full first-order logic.

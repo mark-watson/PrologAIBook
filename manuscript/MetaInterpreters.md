@@ -2,6 +2,9 @@
 
 Meta-interpreters are one of Prolog's most unique and powerful capabilities. A meta-interpreter is a Prolog program that interprets Prolog programs, allowing us to modify, extend, or instrument the reasoning process itself.
 
+{width: "80%"}
+![Architecture diagram for the Meta-Interpreter example](FIG_meta_interp.jpg)
+
 ## The Vanilla Meta-Interpreter
 
 TBD: The simplest meta-interpreter — a Prolog interpreter written in Prolog. Understanding `clause/2` and how the meta-interpreter mirrors Prolog's own execution.

@@ -2,6 +2,9 @@
 
 This chapter provides a hands-on introduction to Prolog for readers who are new to logic programming. We cover the essential concepts needed to understand the AI applications in later chapters.
 
+{width: "80%"}
+![Architecture diagram for the Tutorial Basics example](FIG_tutorial_basics.jpg)
+
 ## Facts, Rules, and Queries
 
 TBD: Defining facts, writing rules, and querying the knowledge base. The fundamental Prolog data model.

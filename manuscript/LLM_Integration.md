@@ -2,6 +2,18 @@
 
 Large Language Models are transforming AI, and Prolog can serve as a powerful orchestration layer — combining LLM-generated text with symbolic reasoning, structured knowledge, and explainable inference.
 
+{width: "80%"}
+![Architecture diagram for the LLM Client example](FIG_llm_client.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Structured Output example](FIG_structured_output.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Hybrid Pipeline example](FIG_hybrid_pipeline.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Research Assistant example](FIG_research_assistant.jpg)
+
 ## Calling LLM APIs from Prolog
 
 TBD: Making HTTP requests to LLM APIs. Handling API keys, rate limits, and streaming responses.

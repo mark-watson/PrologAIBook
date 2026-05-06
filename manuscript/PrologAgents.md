@@ -2,6 +2,9 @@
 
 AI agents that reason, plan, and act autonomously are a major focus of modern AI research. Prolog's built-in support for logical reasoning, backtracking search, and knowledge representation makes it an excellent foundation for building intelligent agents.
 
+{width: "80%"}
+![Architecture diagram for the Reactive Agent example](FIG_reactive_agent.jpg)
+
 ## What Is an AI Agent?
 
 TBD: Defining agents in the AI sense — perception, reasoning, planning, and action. The agent loop.

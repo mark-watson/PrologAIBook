@@ -2,6 +2,12 @@
 
 Planning — the automatic generation of action sequences to achieve goals — is a foundational AI problem, and Prolog is exceptionally well-suited for it. Prolog's backtracking search, unification, and declarative style make it natural to express planning domains and let the system find solutions.
 
+{width: "80%"}
+![Architecture diagram for the STRIPS Planner example](FIG_strips_planner.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Job Scheduler example](FIG_job_scheduler.jpg)
+
 ## Classical Planning in Prolog
 
 TBD: The STRIPS representation of actions (preconditions, add lists, delete lists). Implementing a simple STRIPS-style planner in Prolog.

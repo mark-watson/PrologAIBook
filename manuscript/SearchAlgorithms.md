@@ -2,6 +2,15 @@
 
 Prolog's backtracking mechanism is, at its core, a search engine. In this chapter we build on that foundation to implement classic AI search algorithms — taking advantage of Prolog's natural representation of graphs, states, and goals.
 
+{width: "80%"}
+![Architecture diagram for the Graph Search example](FIG_graph_search.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Puzzle Solver example](FIG_puzzle_solver.jpg)
+
+{width: "80%"}
+![Architecture diagram for the N-Queens example](FIG_n_queens.jpg)
+
 ## Depth-First and Breadth-First Search
 
 TBD: Implementing DFS and BFS over graphs in Prolog. Cycle detection. Comparing Prolog's built-in backtracking (which is DFS) with an explicit BFS using a queue.

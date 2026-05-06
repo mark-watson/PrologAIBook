@@ -2,6 +2,12 @@
 
 Expert systems were one of the earliest commercial successes of AI, and Prolog is an ideal language for building them. In this chapter we build a complete expert system shell and demonstrate it with practical examples.
 
+{width: "80%"}
+![Architecture diagram for the Expert Shell example](FIG_expert_shell.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Wine Advisor example](FIG_wine_advisor.jpg)
+
 ## What Is an Expert System?
 
 TBD: Brief history and architecture of expert systems — knowledge base, inference engine, explanation facility, and user interface.

@@ -2,6 +2,12 @@
 
 Definite Clause Grammars (DCGs) are one of Prolog's most powerful features for AI applications. DCGs allow us to write grammars directly as Prolog rules, making natural language processing and text parsing a natural fit for Prolog.
 
+{width: "80%"}
+![Architecture diagram for the DCG Parser example](FIG_dcg_parser.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Text Analyzer example](FIG_text_analyzer.jpg)
+
 ## DCG Fundamentals
 
 TBD: The `-->` notation, terminal and non-terminal symbols, and how DCGs desugar to difference lists. Building a simple English sentence parser.

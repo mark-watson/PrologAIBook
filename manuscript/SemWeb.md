@@ -2,6 +2,12 @@
 
 Prolog's logic-based foundation makes it a natural fit for working with Semantic Web technologies — RDF, RDFS, OWL, and SPARQL. SWI-Prolog provides mature libraries for all of these.
 
+{width: "80%"}
+![Architecture diagram for the RDF Explorer example](FIG_rdf_explorer.jpg)
+
+{width: "80%"}
+![Architecture diagram for the SPARQL Client example](FIG_sparql_client.jpg)
+
 ## Loading and Querying RDF Data
 
 TBD: Using SWI-Prolog's `library(semweb/rdf_db)` to load and query RDF data. The Turtle format.

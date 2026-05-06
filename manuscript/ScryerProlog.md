@@ -2,6 +2,12 @@
 
 Scryer Prolog is a modern Prolog implementation written in Rust that aims for strict ISO compliance and efficient memory usage. Its standout feature is an incredibly memory-efficient representation of strings, making Definite Clause Grammars highly practical for processing large volumes of text.
 
+{width: "80%"}
+![Architecture diagram for the Scryer DCG example](FIG_scryer_dcg.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Scryer CLP example](FIG_scryer_clp.jpg)
+
 ## Why Scryer Prolog?
 
 TBD: The design philosophy of Scryer Prolog. ISO compliance, memory efficiency, and the Rust foundation. When to choose Scryer over SWI-Prolog.

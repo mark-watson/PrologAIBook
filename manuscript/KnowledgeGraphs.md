@@ -2,6 +2,12 @@
 
 Knowledge representation is at the heart of symbolic AI, and Prolog's fact-and-rule database is itself a knowledge representation system. In this chapter we build tools for creating, querying, and reasoning over knowledge graphs — a topic the author has explored extensively in Common Lisp, Haskell, and other languages.
 
+{width: "80%"}
+![Architecture diagram for the Knowledge Graph Creator example](FIG_kg_creator.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Knowledge Graph Query example](FIG_kg_query.jpg)
+
 ## Representing Knowledge in Prolog
 
 TBD: Using Prolog's database as a knowledge base. Facts as triples (subject, predicate, object). Organizing knowledge with modules.

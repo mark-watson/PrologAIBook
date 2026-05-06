@@ -2,6 +2,12 @@
 
 SWI-Prolog includes comprehensive HTTP client libraries that make it straightforward to interact with REST APIs, parse JSON, and scrape web content — all from within Prolog.
 
+{width: "80%"}
+![Architecture diagram for the HTTP Client example](FIG_http_client.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Web Scraper example](FIG_web_scraper.jpg)
+
 ## HTTP GET and POST Requests
 
 TBD: Using `library(http/http_client)` for making HTTP requests. Headers, authentication, and error handling.

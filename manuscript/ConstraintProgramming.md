@@ -2,6 +2,12 @@
 
 Constraint Logic Programming (CLP) extends Prolog with the ability to reason about constraints over various domains — integers, reals, and finite domains. SWI-Prolog provides excellent CLP libraries that make it possible to solve complex combinatorial and optimization problems declaratively.
 
+{width: "80%"}
+![Architecture diagram for the Sudoku Solver example](FIG_sudoku_solver.jpg)
+
+{width: "80%"}
+![Architecture diagram for the Blocks World example](FIG_blocks_world.jpg)
+
 ## Introduction to CLP
 
 TBD: What constraints are, how they differ from ordinary Prolog goals, and why CLP is powerful for AI.

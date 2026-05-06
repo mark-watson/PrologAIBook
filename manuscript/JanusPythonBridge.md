@@ -2,6 +2,9 @@
 
 SWI-Prolog's Janus library provides seamless bidirectional interoperability between Prolog and Python. This opens up the entire Python data science ecosystem — NumPy, scikit-learn, spaCy, transformers — to Prolog programs.
 
+{width: "80%"}
+![Architecture diagram for the Janus ML Bridge example](FIG_janus_ml.jpg)
+
 ## Setting Up Janus
 
 TBD: Installing the Janus bridge. Configuring Python paths. Testing the connection.
