@@ -11,6 +11,9 @@ Prolog's backtracking mechanism is, at its core, a search engine. In this chapte
 {width: "80%"}
 ![Architecture diagram for the N-Queens example](FIG_n_queens.jpg)
 
+{width: "80%"}
+![Sample directed graph used in search examples — 20 city nodes from Albany (start) to Reno (goal)](graph_search_sample.jpg)
+
 ## Depth-First and Breadth-First Search
 
 TBD: Implementing DFS and BFS over graphs in Prolog. Cycle detection. Comparing Prolog's built-in backtracking (which is DFS) with an explicit BFS using a queue.

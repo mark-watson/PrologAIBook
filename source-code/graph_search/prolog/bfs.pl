@@ -3,7 +3,7 @@
     bfs/3
 ]).
 
-:- use_module(dfs, [edge/2]).
+:- use_module(read_graph, [edge/2]).
 
 %% bfs(+Start, +Goal, -Path)
 bfs(Start, Goal, Path) :-

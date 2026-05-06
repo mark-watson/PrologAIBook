@@ -1,16 +1,9 @@
 %% dfs.pl - Depth-First Search with cycle detection
 :- module(dfs, [
-    dfs/3,
-    edge/2
+    dfs/3
 ]).
 
-%% Example graph edges
-edge(a, b).
-edge(a, c).
-edge(b, d).
-edge(c, d).
-edge(d, e).
-edge(b, e).
+:- use_module(read_graph, [edge/2]).
 
 %% dfs(+Start, +Goal, -Path)
 dfs(Start, Goal, Path) :-

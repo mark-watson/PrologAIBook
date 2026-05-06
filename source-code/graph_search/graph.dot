@@ -1,0 +1,81 @@
+digraph sample_graph {
+    // Layout
+    rankdir=LR;
+    splines=true;
+    overlap=false;
+    nodesep=0.6;
+    ranksep=0.8;
+
+    // Global node style
+    node [
+        shape=circle,
+        style="filled",
+        fillcolor="#2d3748",
+        fontcolor="white",
+        fontname="Helvetica-Bold",
+        fontsize=11,
+        width=0.7,
+        penwidth=1.5,
+        color="#4a5568"
+    ];
+
+    // Global edge style
+    edge [
+        color="#718096",
+        penwidth=1.2,
+        arrowsize=0.7
+    ];
+
+    // Rank groupings for left-to-right layout
+    { rank=same; albany; }
+    { rank=same; boston; chicago; detroit; }
+    { rank=same; eton; fresno; gary; }
+    { rank=same; houston; irving; kent; }
+    { rank=same; jackson; lansing; }
+    { rank=same; memphis; naples; omaha; }
+    { rank=same; portland; quincy; }
+    { rank=same; reno; }
+
+    // Color start/end nodes
+    albany  [fillcolor="#2b6cb0", color="#2c5282", fontsize=12];
+    reno    [fillcolor="#276749", color="#22543d", fontsize=12];
+
+    // Edges
+    albany  -> boston;
+    albany  -> chicago;
+    albany  -> detroit;
+    boston   -> chicago;
+    boston   -> eton;
+    chicago -> detroit;
+    chicago -> fresno;
+    chicago -> gary;
+    detroit -> gary;
+    detroit -> houston;
+    eton    -> fresno;
+    eton    -> kent;
+    fresno  -> gary;
+    fresno  -> irving;
+    gary    -> houston;
+    gary    -> jackson;
+    houston -> irving;
+    houston -> jackson;
+    houston -> lansing;
+    irving  -> jackson;
+    irving  -> kent;
+    jackson -> kent;
+    jackson -> lansing;
+    jackson -> memphis;
+    kent    -> memphis;
+    kent    -> naples;
+    lansing -> memphis;
+    lansing -> omaha;
+    memphis -> naples;
+    memphis -> omaha;
+    naples  -> omaha;
+    naples  -> portland;
+    omaha   -> portland;
+    omaha   -> quincy;
+    portland -> quincy;
+    portland -> reno;
+    quincy  -> reno;
+}

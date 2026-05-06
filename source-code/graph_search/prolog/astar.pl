@@ -5,7 +5,7 @@
     zero_heuristic/2
 ]).
 
-:- use_module(dfs, [edge/2]).
+:- use_module(read_graph, [edge/2]).
 
 %% Safe call: if Heuristic(Node, Value) fails with existence error, return 0.
 safe_call(Callable, Node, Value) :-
@@ -39,10 +39,23 @@ astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Path) :-
 %% Useful as a baseline for testing A* correctness.
 zero_heuristic(_, 0).
 
-%% Example heuristic: estimated remaining distance to goal
-%% Admissible (never overestimates) for this uniform-weight graph.
-distance_heuristic(e, 0).
-distance_heuristic(d, 1).
-distance_heuristic(b, 1).
-distance_heuristic(c, 2).
-distance_heuristic(a, 2).
+%% Example heuristic: estimated remaining distance to goal (reno).
+%% Rough estimates for the sample_graph cities — admissible for uniform-weight graph.
+distance_heuristic(reno,      0).
+distance_heuristic(portland,  1).
+distance_heuristic(quincy,    1).
+distance_heuristic(omaha,     2).
+distance_heuristic(naples,    2).
+distance_heuristic(memphis,   3).
+distance_heuristic(lansing,   3).
+distance_heuristic(kent,      3).
+distance_heuristic(jackson,   4).
+distance_heuristic(irving,    4).
+distance_heuristic(houston,   4).
+distance_heuristic(gary,      5).
+distance_heuristic(fresno,    5).
+distance_heuristic(eton,      5).
+distance_heuristic(detroit,   5).
+distance_heuristic(chicago,   6).
+distance_heuristic(boston,     6).
+distance_heuristic(albany,    7).

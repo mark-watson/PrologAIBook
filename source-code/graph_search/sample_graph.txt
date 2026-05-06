@@ -1,0 +1,41 @@
+% sample_graph.txt - Directed graph edge list
+% Format: edge(Source, Destination).
+% A stylized city transportation network with 20 nodes.
+%
+edge(albany,     boston).
+edge(albany,     chicago).
+edge(albany,     detroit).
+edge(boston,      chicago).
+edge(boston,      eton).
+edge(chicago,    detroit).
+edge(chicago,    fresno).
+edge(chicago,    gary).
+edge(detroit,    gary).
+edge(detroit,    houston).
+edge(eton,       fresno).
+edge(eton,       kent).
+edge(fresno,     gary).
+edge(fresno,     irving).
+edge(gary,       houston).
+edge(gary,       jackson).
+edge(houston,    irving).
+edge(houston,    jackson).
+edge(houston,    lansing).
+edge(irving,     jackson).
+edge(irving,     kent).
+edge(jackson,    kent).
+edge(jackson,    lansing).
+edge(jackson,    memphis).
+edge(kent,       memphis).
+edge(kent,       naples).
+edge(lansing,    memphis).
+edge(lansing,    omaha).
+edge(memphis,    naples).
+edge(memphis,    omaha).
+edge(naples,     omaha).
+edge(naples,     portland).
+edge(omaha,      portland).
+edge(omaha,      quincy).
+edge(portland,   quincy).
+edge(quincy,     reno).
+edge(portland,   reno).
