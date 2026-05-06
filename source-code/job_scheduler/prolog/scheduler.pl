@@ -1,6 +1,7 @@
 %% scheduler.pl - Job scheduling with temporal constraints using CLP(FD)
 :- module(scheduler, [
-    schedule_jobs/2
+    schedule_jobs/2,
+    no_overlap/1
 ]).
 
 :- use_module(library(clpfd)).
