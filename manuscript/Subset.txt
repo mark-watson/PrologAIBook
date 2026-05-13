@@ -7,10 +7,13 @@ Reasoning.md
 ExpertSystems.md
 ConstraintProgramming.md
 ProbabilisticLogic.md
+anomaly_detection.md
 KnowledgeGraphs.md
 SemWeb.md
 WebClient.md
 LLM_Integration.md
+cache_engine.md
+daily_use.md
 JanusPythonBridge.md
 PrologAgents.md
 MetaInterpreters.md
