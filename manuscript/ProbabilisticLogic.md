@@ -1,6 +1,6 @@
 # Probabilistic Logic Programming
 
-Probabilistic logic programming combines the expressiveness of Prolog with the ability to reason under uncertainty. SWI-Prolog supports several probabilistic programming frameworks that are highly relevant for modern AI applications.
+Probabilistic logic programming combines the expressiveness of Prolog with the ability to reason under uncertainty. SWI-Prolog supports several probabilistic programming frameworks that are highly relevant for modern AI applications. We look at a simple example in this chapter and then take a more general look at probability in the next chapter.
 
 {width: "80%"}
 ![Architecture diagram for the Probabilistic Reasoning example](FIG_prob_reasoning.jpg)
