@@ -5,6 +5,7 @@ SearchAlgorithms.md
 NLP_DCG.md
 Reasoning.md
 ExpertSystems.md
+scasp_compliance.md
 ConstraintProgramming.md
 ProbabilisticLogic.md
 probability.md
@@ -12,13 +13,16 @@ anomaly_detection.md
 KnowledgeGraphs.md
 SemWeb.md
 WebClient.md
+prolog_wasm_web.md
 LLM_Integration.md
 cache_engine.md
+llm_logic_guardrails.md
 daily_use.md
 JanusPythonBridge.md
 PrologAgents.md
+agent_behavior_trees.md
 MetaInterpreters.md
 PlanningScheduling.md
+inductive_logic_popper.md
 ScryerProlog.md
 Wrapup.md
-

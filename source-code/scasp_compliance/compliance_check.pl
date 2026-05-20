@@ -4,6 +4,11 @@
 ]).
 
 :- use_module(library(scasp)).
+:- use_module(library(scasp/human)).
+
+:- discontiguous employee/1.
+:- discontiguous business_travel/1.
+:- discontiguous expense_amount/2.
 
 %% Policy Rules
 eligible_for_reimbursement(Person) :-
@@ -43,6 +48,6 @@ run_compliance_check(Person) :-
     (   scasp(eligible_for_reimbursement(Person), [tree(Tree)])
     ->  format('~w is eligible.~n~n', [Person]),
         writeln('Justification Tree:'),
-        scasp_portray_justification(Tree, [])
+        human_justification_tree(Tree, [])
     ;   format('~w is NOT eligible or compliance check failed.~n', [Person])
     ).
