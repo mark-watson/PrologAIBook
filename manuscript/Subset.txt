@@ -8,6 +8,7 @@ ExpertSystems.md
 scasp_compliance.md
 ConstraintProgramming.md
 ProbabilisticLogic.md
+probability.md
 anomaly_detection.md
 KnowledgeGraphs.md
 SemWeb.md
