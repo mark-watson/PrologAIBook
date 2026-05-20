@@ -1,0 +1,11 @@
+[project]
+name = "inductive-logic-popper"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "clingo>=5.8.0",
+    "popper",
+]
+
+[tool.uv.sources]
+popper = { git = "https://github.com/logic-and-learning-lab/Popper" }

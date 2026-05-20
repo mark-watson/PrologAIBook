@@ -1,0 +1,24 @@
+version = 1
+revision = 3
+requires-python = ">=3.14"
+
+[options]
+exclude-newer = "2026-05-16T00:36:02.444146Z"
+exclude-newer-span = "P4D"
+
+[[package]]
+name = "janus-swi"
+version = "1.5.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/3e/cb5f1d793c4f13627e57df04ac388de2b9b10797857dcbda749df8f11bfc/janus_swi-1.5.2.tar.gz", hash = "sha256:bfdea2e4933a35744412def927d6e748184a935076e2e51b1fdbbfbdf48d0e47", size = 89652, upload-time = "2025-01-11T13:10:26.861Z" }
+
+[[package]]
+name = "llm-logic-guardrails"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "janus-swi" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "janus-swi", specifier = ">=1.5.2" }]

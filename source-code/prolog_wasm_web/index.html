@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An interactive Wine Advisor Expert System powered by SWI-Prolog running entirely in the browser via WebAssembly.">
+    <title>SipLogic - Prolog WASM Wine Advisor</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Premium Stylesheet -->
+    <style>
+        :root {
+            --bg-base: #0b0f19;
+            --bg-surface: rgba(22, 29, 49, 0.7);
+            --bg-surface-border: rgba(255, 255, 255, 0.08);
+            --accent-primary: #8b5cf6; /* Vibrant purple */
+            --accent-primary-glow: rgba(139, 92, 246, 0.4);
+            --accent-secondary: #ec4899; /* Pink */
+            --accent-success: #10b981; /* Emerald */
+            --accent-success-glow: rgba(16, 185, 129, 0.3);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 40%);
+        }
+
+        header {
+            margin-top: 3rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-icon {
+            font-size: 2.25rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            background: linear-gradient(135deg, #ffffff 40%, #e2e8f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        /* Status Badge */
+        .status-badge-container {
+            margin-top: 1rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--bg-surface-border);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ef4444; /* red loading */
+            box-shadow: 0 0 8px #ef4444;
+            transition: all 0.5s ease;
+        }
+
+        .status-badge.online .status-dot {
+            background-color: var(--accent-success);
+            box-shadow: 0 0 10px var(--accent-success);
+        }
+
+        /* Main Dashboard Grid */
+        main {
+            width: 100%;
+            max-width: 1000px;
+            padding: 0 1.5rem 3rem 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Glass Cards */
+        .card {
+            background: var(--bg-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--bg-surface-border);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: border-color 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(139, 92, 246, 0.2);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid var(--bg-surface-border);
+            padding-bottom: 0.75rem;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Select controls */
+        select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--bg-surface-border);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.25rem;
+        }
+
+        select:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px var(--accent-primary-glow);
+        }
+
+        /* Results Display */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-height: 300px;
+        }
+
+        .wine-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--bg-surface-border);
+            border-radius: 15px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            animation: slideIn 0.4s ease forwards;
+            transition: all 0.3s ease;
+        }
+
+        .wine-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .wine-card.red::before {
+            background: linear-gradient(to bottom, #ef4444, #b91c1c);
+        }
+
+        .wine-card.white::before {
+            background: linear-gradient(to bottom, #fbbf24, #f59e0b);
+        }
+
+        .wine-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .wine-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wine-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+
+        .wine-type-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .wine-card.red .wine-type-badge {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .wine-card.white .wine-type-badge {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .wine-justification {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 2rem;
+            gap: 1rem;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            opacity: 0.5;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Loader inside Results */
+        .results-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(139, 92, 246, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--accent-primary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container">
+            <span class="logo-icon">🍷</span>
+            <h1>SipLogic</h1>
+        </div>
+        <p class="subtitle">Prolog WASM Wine Expert System</p>
+        <div class="status-badge-container">
+            <div id="statusBadge" class="status-badge">
+                <span class="status-dot"></span>
+                <span id="statusText">Prolog Loading...</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Control Panel Card -->
+        <section class="card">
+            <h2 class="card-title">🍷 Preferences</h2>
+            
+            <div class="form-group">
+                <label for="foodSelect">Pairing Food</label>
+                <select id="foodSelect" disabled>
+                    <option value="meat">Red Meat (Steak, Lamb)</option>
+                    <option value="cheese">Cheese Board</option>
+                    <option value="poultry">Poultry (Chicken, Turkey)</option>
+                    <option value="fish">Seafood & Fish</option>
+                    <option value="spicy_food">Spicy Dishes (Thai, Indian)</option>
+                    <option value="dessert">Sweet Desserts</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="bodySelect">Wine Body</label>
+                <select id="bodySelect" disabled>
+                    <option value="any">Any Body</option>
+                    <option value="full_body">Full Bodied</option>
+                    <option value="medium_body">Medium Bodied</option>
+                    <option value="light_body">Light Bodied</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="sweetnessSelect">Sweetness</label>
+                <select id="sweetnessSelect" disabled>
+                    <option value="any">Any Sweetness</option>
+                    <option value="dry">Dry</option>
+                    <option value="sweet">Sweet</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Recommendations Card -->
+        <section class="card">
+            <h2 class="card-title">💡 Recommended Pairings</h2>
+            
+            <div id="resultsContainer" class="results-container">
+                <div class="results-loader">
+                    <div class="spinner"></div>
+                    <p>Compiling SWI-Prolog Engine...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Load SWI-Prolog WASM loader from UNPKG -->
+    <script src="https://unpkg.com/swipl-wasm@0.1.0/dist/swipl-web.js"></script>
+    
+    <!-- Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>
