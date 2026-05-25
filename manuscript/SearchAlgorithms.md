@@ -2,18 +2,6 @@
 
 Prolog's backtracking mechanism is, at its core, a search engine. In this chapter we build on that foundation to implement classic AI search algorithms — taking advantage of Prolog's natural representation of graphs, states, and goals.
 
-{width: "80%"}
-![Architecture diagram for the Graph Search example](FIG_graph_search.jpg)
-
-{width: "80%"}
-![Architecture diagram for the Puzzle Solver example](FIG_puzzle_solver.jpg)
-
-{width: "80%"}
-![Architecture diagram for the N-Queens example](FIG_n_queens.jpg)
-
-{width: "80%"}
-![Sample directed graph used in search examples — 20 city nodes from Albany (start) to Reno (goal)](graph_search_sample.jpg)
-
 ## Loading Graph Data from a File
 
 Rather than hard-coding edges inside the search modules, we keep the graph in a separate data file, **graph_search/sample_graph.txt**, using standard Prolog term syntax:
@@ -70,6 +58,10 @@ read_edges(Stream) :-
 assert_edge(edge(From, To)) :-
 ```
 
+
+{width: "80%"}
+![Architecture diagram for the Graph Search example](FIG_graph_search.jpg)
+
 This design makes it easy to swap in different graphs without touching the search algorithms.
 
 ## Depth-First and Breadth-First Search
@@ -111,6 +103,11 @@ bfs_queue([[Current|Visited]|Rest], Goal, Path) :-
     append(Rest, Children, NewQueue),
     bfs_queue(NewQueue, Goal, Path).
 ```
+
+
+{width: "80%"}
+![Sample directed graph used in search examples — 20 city nodes from Albany (start) to Reno (goal)](graph_search_sample.jpg)
+
 
 Running these on our 20-node city graph:
 
@@ -210,6 +207,11 @@ The heuristic guides A* directly toward the goal, avoiding the unnecessary explo
 
 TBD: Modeling classic puzzles (e.g., the farmer-fox-chicken-grain problem, 8-puzzle) as state-space search problems in Prolog. Using Prolog's unification to match goal states.
 
+
+{width: "80%"}
+![Architecture diagram for the Puzzle Solver example](FIG_puzzle_solver.jpg)
+
+
 The **puzzle_solver** project implements the classic farmer-fox-chicken-grain river crossing puzzle. Here is the file **puzzle_solver/prolog/farmer.pl**:
 
 ```prolog
@@ -250,6 +252,71 @@ safe(state(Farmer, Fox, Chicken, Grain)) :-
     (Chicken == Grain -> Farmer == Chicken ; true).
 ```
 
-## Search with Tabling (Memoization)
 
-TBD: Using SWI-Prolog's tabling (`:- table predicate/arity.`) to memoize search results, avoid infinite loops in graph search, and dramatically improve performance on dynamic programming problems.
+## Constraint-Based Search: The N-Queens Problem
+
+A third powerful paradigm for search in Prolog is **Constraint Logic Programming**, specifically Constraint Logic Programming over Finite Domains (`CLP(FD)`). Instead of manually coding depth-first search or backtracking state transitions, you define variables, their domains, and the relationships (constraints) that must hold true. Prolog's constraint solver then automatically propagates these constraints to prune the search space and find valid assignments.
+
+To illustrate this, we can look at the classic **N-Queens problem**, which asks how to place $N$ queens on an $N \times N$ chessboard such that no two queens can attack each other. This means no two queens can share the same row, column, or diagonal.
+
+{width: "80%"}
+![Architecture diagram for the N-Queens example](FIG_n_queens.jpg)
+
+The companion project **n_queens** implements this solver. Here is the complete file **n_queens/prolog/queens.pl**:
+
+```prolog
+:- module(queens, [
+    n_queens/2
+]).
+
+:- use_module(library(clpfd)).
+
+%% n_queens(+N, -Queens)
+%% Queens is a list of column positions for queens in each row
+n_queens(N, Queens) :-
+    length(Queens, N),
+    Queens ins 1..N,
+    safe_queens(Queens),
+    label(Queens).
+
+safe_queens([]).
+safe_queens([Q|Qs]) :-
+    safe_queen(Q, Qs, 1),
+    safe_queens(Qs).
+
+safe_queen(_, [], _).
+safe_queen(Q, [Q1|Qs], D) :-
+    Q #\= Q1,
+    Q #\= Q1 + D,
+    Q #\= Q1 - D,
+    D1 #= D + 1,
+    safe_queen(Q, Qs, D1).
+```
+
+### How the CLP(FD) Search Works
+
+1. **Representation**: We represent the board as a list of length $N$ called `Queens`. The index of an element in the list represents the row number (1 to $N$), and the value at that index represents the column number of the queen in that row.
+2. **Domain**: `Queens ins 1..N` establishes that each variable in the `Queens` list must be an integer between $1$ and $N$.
+3. **Column Constraints**: Since each row has exactly one queen, we only need to ensure no two queens share a column. By using the list representation, the index ensures row uniqueness. The column constraint `Q #\= Q1` (in `safe_queen/3`) ensures that no two queens share the same column.
+4. **Diagonal Constraints**: Two queens at columns $Q$ and $Q_1$ separated by $D$ rows are on the same diagonal if $|Q - Q_1| = D$. This is elegantly modeled using two inequality constraints:
+   - `Q #\= Q1 + D` (upper-diagonal check)
+   - `Q #\= Q1 - D` (lower-diagonal check)
+5. **Labeling**: `label(Queens)` tells the constraint solver to perform the backtracking search to assign concrete values to the variables in the `Queens` list that satisfy all constraints.
+
+### Running the Solver
+
+You can run queries in the REPL to solve for a specific size $N$:
+
+```prolog
+?- n_queens(8, Queens).
+Queens = [1, 5, 8, 6, 3, 7, 2, 4] .
+```
+
+To count the total number of solutions for an 8x8 board:
+
+```prolog
+?- aggregate_all(count, n_queens(8, _), Count).
+Count = 92.
+```
+
+CLP(FD) propagation dramatically prunes the search space relative to a naive backtracking search, making the search for solutions extremely efficient even for larger board sizes.
