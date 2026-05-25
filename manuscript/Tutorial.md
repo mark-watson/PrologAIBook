@@ -12,7 +12,6 @@ TBD: Defining facts, writing rules, and querying the knowledge base. The fundame
 The companion project **tutorial_basics** demonstrates core Prolog concepts with a family relationships knowledge base. Here is the file **tutorial_basics/prolog/family.pl**:
 
 ```prolog
-%% family.pl - Facts, rules, and queries about family relationships
 :- module(family, [
     parent/2,
     grandparent/2,
@@ -38,8 +37,6 @@ sibling(X, Y) :-
 
 ancestor(X, Y) :- parent(X, Y).
 ancestor(X, Y) :-
-    parent(X, Z),
-    ancestor(Z, Y).
 ```
 
 ## Unification and Pattern Matching
@@ -57,7 +54,6 @@ TBD: Head/tail notation (`[H|T]`), `member/2`, `append/3`, `length/2`, and writi
 The **tutorial_basics** project includes hand-rolled list utilities that mirror the built-in predicates. Here is the file **tutorial_basics/prolog/lists.pl**:
 
 ```prolog
-%% lists.pl - List processing examples
 :- module(my_lists, [
     my_length/2,
     my_member/2,
@@ -90,7 +86,6 @@ my_reverse([H|T], Acc, Reversed) :-
 
 %% Last element
 my_last([X], X).
-my_last([_|T], X) :- my_last(T, X).
 ```
 
 ## Arithmetic and Comparison

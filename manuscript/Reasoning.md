@@ -22,9 +22,10 @@ TBD: Prolog's built-in backward chaining vs. implementing a forward-chaining inf
 The **inference_engine** project implements a forward-chaining engine that derives new facts from rules until a fixpoint is reached. Here is the file **inference_engine/prolog/forward_chain.pl**:
 
 ```prolog
-%% forward_chain.pl - Forward chaining inference engine
-:- module(forward_chain, [
-    forward_chain/0, add_rule/2, add_fact/1, derived_fact/1
+    forward_chain/0,
+    add_rule/2,
+    add_fact/1,
+    derived_fact/1
 ]).
 
 :- dynamic fact/1.
@@ -60,8 +61,9 @@ all_conditions_met([C|Rest]) :-
 And a backward-chaining engine with explanation traces. Here is the file **inference_engine/prolog/backward_chain.pl**:
 
 ```prolog
-%% backward_chain.pl - Backward chaining with explanation traces
-:- module(backward_chain, [prove/2]).
+:- module(backward_chain, [
+    prove/2
+]).
 
 :- dynamic bc_rule/2.
 :- dynamic bc_fact/1.
@@ -76,7 +78,6 @@ prove(Goal, rule(Goal, Proofs)) :-
 prove_all([], []).
 prove_all([C|Rest], [P|Proofs]) :-
     prove(C, P),
-    prove_all(Rest, Proofs).
 ```
 
 ## Reasoning with Uncertainty
@@ -98,8 +99,10 @@ TBD: A practical example combining multiple reasoning techniques to build a simp
 The **medical_diagnosis** project demonstrates rule-based diagnostic reasoning. Here is the file **medical_diagnosis/prolog/diagnosis.pl**:
 
 ```prolog
-%% diagnosis.pl - Simple medical diagnosis reasoner
-:- module(diagnosis, [diagnose/2, symptom/1]).
+:- module(diagnosis, [
+    diagnose/2,
+    symptom/1
+]).
 
 :- dynamic symptom/1.
 
@@ -115,14 +118,13 @@ diagnose(Symptoms, diagnosis(Disease, Explanation)) :-
 
 assert_symptom(S) :- assert(symptom(S)).
 retract_symptoms([]).
-retract_symptoms([S|Rest]) :-
-    retract(symptom(S)), retract_symptoms(Rest).
+retract_symptoms([S|Rest]) :- retract(symptom(S)),
+    retract_symptoms(Rest).
 
 %% Disease knowledge base
 disease(flu, [fever, cough, fatigue, body_aches]).
 disease(cold, [sneezing, runny_nose, sore_throat]).
 disease(allergy, [sneezing, itchy_eyes, runny_nose]).
-disease(bronchitis,
-    [cough, chest_pain, fatigue, shortness_of_breath]).
+disease(bronchitis, [cough, chest_pain, fatigue, shortness_of_breath]).
 disease(migraine, [headache, nausea, light_sensitivity]).
 ```

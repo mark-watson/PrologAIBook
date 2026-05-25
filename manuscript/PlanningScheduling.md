@@ -15,10 +15,12 @@ TBD: The STRIPS representation of actions (preconditions, add lists, delete list
 The **strips_planner** project implements a STRIPS-style planner. Here is the file **strips_planner/prolog/strips.pl**:
 
 ```prolog
-%% strips.pl - STRIPS-style planner
-:- module(strips, [plan/3]).
+:- module(strips, [
+    plan/3
+]).
 
 %% plan(+InitState, +GoalState, -Plan)
+%% InitState and GoalState are lists of ground atoms (fluents)
 plan(State, Goal, []) :-
     subset(Goal, State).
 plan(State, Goal, [Action|Plan]) :-
@@ -28,7 +30,8 @@ plan(State, Goal, [Action|Plan]) :-
     union(TempState, AddList, NewState),
     plan(NewState, Goal, Plan).
 
-%% Domain-specific actions (blocks world logistics)
+%% TBD: Define domain-specific actions
+%% Example: logistics domain
 action(
     pickup(X),
     [on_table(X), clear(X), hand_empty],
@@ -65,10 +68,13 @@ TBD: The classic AI planning domain. Implementing a blocks world planner that fi
 The **blocks_world** project implements a dedicated blocks world planner with cycle detection. Here is the file **blocks_world/prolog/blocks.pl**:
 
 ```prolog
-%% blocks.pl - Blocks World planner
-:- module(blocks, [blocks_plan/3, print_state/1]).
+:- module(blocks, [
+    blocks_plan/3,
+    print_state/1
+]).
 
 %% blocks_plan(+InitState, +GoalState, -Moves)
+%% State is a list of on(X,Y) and on_table(X) atoms
 blocks_plan(State, Goal, []) :-
     subset(Goal, State), !.
 blocks_plan(State, Goal, [Move|Moves]) :-
@@ -107,10 +113,7 @@ block_in_state(B, State) :- member(on(_, B), State).
 
 clear(X, State) :- \+ member(on(_, X), State).
 clear(table, _).
-
-%% print_state(+State)
-print_state(State) :-
-    format("State: ~w~n", [State]).
+on_something(X, Y, State) :- member(on(X, Y), State).
 ```
 
 ## Planning with Constraints

@@ -26,33 +26,34 @@ This three-clause structure is the template from which all other meta-interprete
 The **meta_interp** project provides both a vanilla and bounded meta-interpreter. Here is the file **meta_interp/prolog/vanilla.pl**:
 
 ```prolog
-%% vanilla.pl - Vanilla meta-interpreter and proof-tree variant
 :- module(vanilla, [
-    mi_solve/1, mi_solve/2,
-    mi_solve_proof/2, mi_solve_proof/3
+    mi_solve/1,
+    mi_solve/2,
+    mi_solve_proof/2,
+    mi_solve_proof/3
 ]).
 
 %% mi_solve(+Goal) - Vanilla meta-interpreter (user module context)
 mi_solve(Goal) :- mi_solve(user, Goal).
 
-%% mi_solve(+Module, +Goal) - With module context
+%% mi_solve(+Module, +Goal)
+%% Vanilla meta-interpreter with module context
 mi_solve(_, true) :- !.
 mi_solve(Mod, (A, B)) :- !, mi_solve(Mod, A), mi_solve(Mod, B).
 mi_solve(Mod, Goal) :-
     clause(Mod:Goal, Body),
     mi_solve(Mod, Body).
 
-%% mi_solve_proof(+Goal, -Proof) - With proof tree (user module)
+%% mi_solve_proof(+Goal, -Proof)
+%% Meta-interpreter with proof tree (user module)
 mi_solve_proof(Goal, Proof) :- mi_solve_proof(user, Goal, Proof).
 
-%% mi_solve_proof(+Module, +Goal, -Proof)
+%% mi_solve_proof(+Module, +Goal, -Proof) - With module context
 mi_solve_proof(_, true, true) :- !.
 mi_solve_proof(Mod, (A, B), (PA, PB)) :- !,
     mi_solve_proof(Mod, A, PA),
     mi_solve_proof(Mod, B, PB).
 mi_solve_proof(Mod, Goal, Goal-Proof) :-
-    clause(Mod:Goal, Body),
-    mi_solve_proof(Mod, Body, Proof).
 ```
 
 Notice the module-aware variants (`mi_solve/2` and `mi_solve_proof/3`). By qualifying the `clause/2` lookup with a module prefix (`Mod:Goal`), the meta-interpreter can operate over predicates defined in any module, not just the one it's loaded into. This is essential for building reusable reasoning tools that work across different knowledge bases. The proof-tree variant (`mi_solve_proof`) returns a nested term rather than just succeeding or failing — a preview of the explanation capabilities we'll explore next.
@@ -79,14 +80,14 @@ The **proof_trees** project provides a standalone proof tree builder with its ow
 Here is the updated **proof_trees/prolog/proof_tree.pl**:
 
 ```prolog
-%% proof_tree.pl - Build and display proof trees for explainable reasoning
 :- module(proof_tree, [
     prove_with_tree/2,
     print_proof/1,
     sample_data_loaded/0
 ]).
 
-%% Load sample data - try multiple paths for different working directories
+%% Load sample data - try multiple paths for
+%% different working directories
 sample_data_loaded :-
     (   exists_file('sample_data.pl')
     ->  consult('sample_data.pl')
@@ -125,9 +126,6 @@ print_proof(and(A, B), Indent) :-
     print_proof(A, Indent),
     print_proof(B, Indent).
 print_proof(node(Goal, Children), Indent) :-
-    tab(Indent), format("├─ ~w~n", [Goal]),
-    Indent1 is Indent + 3,
-    print_proof(Children, Indent1).
 ```
 
 ### Handling Built-in Predicates
@@ -258,13 +256,16 @@ The bounded meta-interpreter solves this by adding a depth counter that decremen
 Here is the file **meta_interp/prolog/bounded.pl**:
 
 ```prolog
-%% bounded.pl - Bounded depth meta-interpreter
-:- module(bounded, [mi_bounded/2, mi_bounded/3]).
+:- module(bounded, [
+    mi_bounded/2,
+    mi_bounded/3
+]).
 
 %% mi_bounded(+Goal, +MaxDepth) - Solve with depth limit (user module)
 mi_bounded(Goal, MaxDepth) :- mi_bounded(user, Goal, MaxDepth).
 
 %% mi_bounded(+Module, +Goal, +MaxDepth)
+%% Solve with depth limit and module context
 mi_bounded(_, true, _) :- !.
 mi_bounded(_, _, D) :- D =< 0, !, fail.
 mi_bounded(Mod, (A, B), D) :- !,
@@ -273,8 +274,6 @@ mi_bounded(Mod, (A, B), D) :- !,
 mi_bounded(Mod, Goal, D) :-
     D > 0,
     clause(Mod:Goal, Body),
-    D1 is D - 1,
-    mi_bounded(Mod, Body, D1).
 ```
 
 The depth limit operates on the *inference depth*, not the recursion depth of a single predicate. If a goal requires three levels of clause resolution to prove — say, `grandparent(X, Z)` → `parent(X, Y)` → `parent(Y, Z)` → `true` — that consumes three depth units. The same limit applies regardless of which predicates are involved: a shallow chain through many different predicates and a deep chain through a single recursive predicate are both bounded by the same `MaxDepth`.

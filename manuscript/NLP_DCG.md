@@ -19,14 +19,18 @@ TBD: Splitting text into word lists, handling punctuation, normalizing case. Usi
 The **dcg_parser** project includes a simple tokenizer that converts strings to word lists. Here is the file **dcg_parser/prolog/tokenizer.pl**:
 
 ```prolog
-%% tokenizer.pl - Convert text strings into word lists for parsing
-:- module(tokenizer, [tokenize/2]).
+:- module(tokenizer, [
+    tokenize/2
+]).
 
-%% tokenize(+Text, -Words)
-tokenize(Text, Words) :-
-    atom_chars(Text, Chars),
+%% tokenize(+String, -Words)
+%% Splits a string into a list of lowercase atoms
+tokenize(String, Words) :-
+    downcase_atom(String, Lower),
+    atom_chars(Lower, Chars),
     split_words(Chars, Words).
 
+split_words([], []).
 split_words(Chars, [Word|Rest]) :-
     skip_spaces(Chars, Chars1),
     Chars1 \= [],
@@ -42,8 +46,6 @@ skip_spaces(L, L).
 take_word([], [], []).
 take_word([' '|T], [], T) :- !.
 take_word([H|T], [H|W], Rest) :-
-    H \= ' ',
-    take_word(T, W, Rest).
 ```
 
 ## Parsing Natural Language Sentences
@@ -120,25 +122,19 @@ TBD: A simple "bag of words" text categorizer implemented in Prolog, inspired by
 The **text_analyzer** project includes a bag-of-words categorizer. Here is the file **text_analyzer/prolog/categorizer.pl**:
 
 ```prolog
-%% categorizer.pl - Simple bag-of-words text categorization
-:- module(categorizer, [categorize/2]).
-
-category_words(politics,
-    [president, congress, election, vote, senator]).
-category_words(sports,
-    [game, team, player, score, win, tournament]).
-category_words(technology,
-    [computer, software, algorithm, data, programming]).
-category_words(economy,
-    [market, stock, trade, bank, money, economy]).
+]).
 
 %% categorize(+WordList, -Categories)
+%% Returns list of category-score pairs, sorted by score descending
 categorize(Words, Categories) :-
-    findall(Score-Category,
+    findall(
+        Score-Category,
         (   category_words(Category, Keywords),
             score_category(Words, Keywords, Score),
-            Score > 0  ),
-        Pairs),
+            Score > 0
+        ),
+        Pairs
+    ),
     sort(1, @>=, Pairs, Categories).
 
 score_category(Words, Keywords, Score) :-

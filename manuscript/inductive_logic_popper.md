@@ -34,7 +34,6 @@ Here is the code in **source-code/inductive_logic_popper/bk.pl**:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
-%% bk.pl - Background Knowledge for Popper
 parent(pam, bob).
 parent(tom, bob).
 parent(tom, liz).
@@ -48,7 +47,6 @@ female(pat).
 female(ann).
 male(tom).
 male(bob).
-male(jim).
 ~~~~~~~~
 
 ### 2. Positive & Negative Examples
@@ -58,7 +56,6 @@ Here is the code in **source-code/inductive_logic_popper/exs.pl**:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
-%% exs.pl - Positive and Negative Examples for Popper
 pos(grandparent(pam, ann)).
 pos(grandparent(pam, pat)).
 pos(grandparent(tom, ann)).
@@ -69,7 +66,6 @@ neg(grandparent(pam, bob)).
 neg(grandparent(tom, liz)).
 neg(grandparent(bob, pat)).
 neg(grandparent(ann, jim)).
-neg(grandparent(jim, pam)).
 ~~~~~~~~
 
 ### 3. Search Bias Configuration
@@ -79,9 +75,7 @@ Here is the code in **source-code/inductive_logic_popper/bias.pl**:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
-%% bias.pl - Simplified bias configuration for Popper
 head_pred(grandparent, 2).
-body_pred(parent, 2).
 ~~~~~~~~
 
 ---

@@ -41,7 +41,8 @@ Here is the implementation in **source-code/agent_behavior_trees/prolog/behavior
 
 /** <module> Behavior Trees Engine
  *
- * A simple, lightweight, and elegant Behavior Tree implementation in Prolog.
+ * A simple, lightweight, and elegant
+ * Behavior Tree implementation in Prolog.
  * Supports:
  *   - sequence([Children])
  *   - selector([Children]) (fallback)
@@ -88,7 +89,9 @@ tick_node(condition(CondName), Status) :-
     ).
 
 % 4. Action Node: Executes a user-defined action predicate.
-%    - The action predicate must bind its status argument (success, failure, or running).
+%    - The action predicate must bind its
+%      status argument
+%      (success, failure, or running).
 tick_node(action(ActionName), Status) :-
     call_action(ActionName, Status).
 
@@ -113,6 +116,9 @@ tick_selector([Child|Rest], Status) :-
     ).
 
 % --- Interface to Hook Action & Condition Predicates ---
+% User-defined actions and conditions are
+% expected to be defined in user modules
+% or hooked into the following dynamic/multifile predicates:
 :- multifile user_condition/1.
 :- multifile user_action/2.
 
@@ -120,7 +126,6 @@ call_condition(CondName) :-
     user_condition(CondName).
 
 call_action(ActionName, Status) :-
-    user_action(ActionName, Status).
 ~~~~~~~~
 
 ---
@@ -171,7 +176,8 @@ behavior_trees:user_action(recharge, success) :-
     NewLevel is min(100, Level + 50),
     retractall(battery(_)),
     assertz(battery(NewLevel)),
-    format('[Action] Charging... Battery increased from ~w% to ~w%~n', [Level, NewLevel]).
+    format('[Action] Charging... Battery increased from ~w% to ~w%~n',
+        [Level, NewLevel]).
 
 % Clean Action
 behavior_trees:user_action(clean, success) :-
@@ -189,7 +195,8 @@ behavior_trees:user_action(patrol, success) :-
     NewLevel is max(0, Level - 15),
     retractall(battery(_)),
     assertz(battery(NewLevel)),
-    % Randomly generate new dust on patrol to keep the simulation interesting
+    % Randomly generate new dust on patrol to keep the simulation
+    % interesting
     maybe_generate_dust,
     format('[Action] Patrolling rooms... Battery at ~w%~n', [NewLevel]).
 

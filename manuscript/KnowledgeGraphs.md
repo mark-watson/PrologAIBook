@@ -28,7 +28,6 @@ The **kg_creator** project provides a minimal but complete knowledge graph build
 Here is the file **kg_creator/prolog/kg_builder.pl**:
 
 ```prolog
-%% kg_builder.pl - Build knowledge graphs from text and store as Prolog facts
 :- module(kg_builder, [
     add_triple/3,
     query_triples/3,
@@ -38,7 +37,8 @@ Here is the file **kg_creator/prolog/kg_builder.pl**:
 
 :- dynamic triple/3.  % triple(Subject, Predicate, Object)
 
-%% add_triple(+S, +P, +O) - Add a triple if not already present (always succeeds)
+%% add_triple(+S, +P, +O)
+%% Add a triple if not already present (always succeeds)
 add_triple(S, P, O) :-
     (   triple(S, P, O)
     ->  true
@@ -60,7 +60,8 @@ export_rdf(FileName) :-
         close(Stream)
     ).
 
-%% export_cypher(+FileName) - Export triples as Neo4j Cypher CREATE statements
+%% export_cypher(+FileName)
+%% Export triples as Neo4j Cypher CREATE statements
 export_cypher(FileName) :-
     setup_call_cleanup(
         open(FileName, write, Stream),
@@ -69,8 +70,6 @@ export_cypher(FileName) :-
                 format(Stream, 'CREATE (~w)-[:~w]->(~w)~n', [S, P, O])
             )
         ),
-        close(Stream)
-    ).
 ```
 
 ### Adding Triples with Deduplication
@@ -164,7 +163,6 @@ While `kg_creator` focuses on building and exporting knowledge graphs, the **kg_
 The **kg_query** project uses a richer schema with typed entities and named relations. The file **kg_query/prolog/kg_reason.pl** implements the reasoning engine:
 
 ```prolog
-%% kg_reason.pl - Multi-hop reasoning over knowledge graphs
 :- module(kg_reason, [
     entity/2,
     relation/3,
@@ -186,7 +184,6 @@ The **kg_query** project uses a richer schema with typed entities and named rela
 The core of the reasoning engine is `path/3`, which finds a chain of relations connecting two entities. It uses an accumulator to track visited nodes and prevent cycles:
 
 ```prolog
-%% path(+Start, +End, -Path) - Find multi-hop path between entities (cycle-free)
 path(Start, End, Path) :-
     path(Start, End, [Start], Path).
 
@@ -207,7 +204,6 @@ The public `path/3` delegates to an auxiliary `path/4` that tracks visited nodes
 The `connected/2` predicate checks whether any path exists between two entities, in either direction:
 
 ```prolog
-%% connected(+A, +B) - Are two entities connected by any path?
 connected(A, B) :- path(A, B, _).
 connected(A, B) :- path(B, A, _).
 ```
@@ -215,7 +211,6 @@ connected(A, B) :- path(B, A, _).
 The `reachable/2` predicate finds *all* entities reachable from a given starting point, using bidirectional breadth-first search — it expands forward along outgoing edges and backward along incoming edges:
 
 ```prolog
-%% reachable(+Entity, -Reachable) - Find all entities reachable (BFS, bidirectional)
 reachable(Entity, Reachable) :-
     reachable_fwd([Entity], [Entity], Fwd),
     reachable_bwd([Entity], [Entity], Bwd),
@@ -230,25 +225,17 @@ The BFS implementation uses a queue of nodes to visit, accumulating visited node
 The remaining predicates provide utility queries:
 
 ```prolog
-%% neighbors(+Entity, -Neighbors, -Predicates) - Find all direct neighbors
 neighbors(Entity, Neighbors, Predicates) :-
-    findall(Neighbor-Predicate, relation(Entity, Predicate, Neighbor), Pairs),
+    findall(Neighbor-Predicate, relation(Entity, Predicate, Neighbor),
+        Pairs),
     pairs_keys_values(Pairs, Neighbors, Predicates).
 
-%% path_length(+Start, +End, -Length) - Find length of a path between entities
+%% path_length(+Start, +End, -Length) - Find length of a path between
+%% entities
 path_length(Start, End, Length) :-
     path(Start, End, P),
     !,
     length(P, Length).
-
-%% all_paths(+Start, +End, -Paths) - Find all cycle-free paths between entities
-all_paths(Start, End, Paths) :-
-    findall(Path, path(Start, End, Path), Paths).
-
-%% relation_count(+Predicate, -Count) - Count relations with given predicate
-relation_count(Predicate, Count) :-
-    findall(_, relation(_, Predicate, _), List),
-    length(List, Count).
 ```
 
 Note the cut (`!`) in `path_length/3` — once a path is found, we commit to it rather than trying alternatives. This is appropriate when any shortest-or-longer path suffices, and the length of the first found path is returned. The `all_paths/3` predicate, by contrast, uses `findall/3` to collect every cycle-free path.

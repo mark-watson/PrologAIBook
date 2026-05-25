@@ -44,21 +44,50 @@ Stop words are declared as unit clauses — a natural Prolog idiom that makes lo
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
-stop_word(a). stop_word(an). stop_word(the). stop_word(is).
-stop_word(are). stop_word(was). stop_word(were). stop_word(be).
-stop_word(have). stop_word(has). stop_word(had). stop_word(do).
-stop_word(does). stop_word(did). stop_word(will). stop_word(would).
-stop_word(shall). stop_word(should). stop_word(may). stop_word(might).
-stop_word(must). stop_word(can). stop_word(could). stop_word(am).
-stop_word(it). stop_word(its). stop_word(in). stop_word(on).
-stop_word(at). stop_word(to). stop_word(for). stop_word(of).
-stop_word(with). stop_word(by). stop_word(from). stop_word(as).
-stop_word(and). stop_word(or). stop_word(but). stop_word(not).
-stop_word(no). stop_word(nor). stop_word(so). stop_word(yet).
+stop_word(a).
+stop_word(an).
+stop_word(the).
+stop_word(is).
+stop_word(are).
+stop_word(was).
+stop_word(were).
+stop_word(be).
+stop_word(been).
+stop_word(being).
+stop_word(have).
+stop_word(has).
+stop_word(had).
+stop_word(do).
+stop_word(does).
+stop_word(did).
+stop_word(will).
+stop_word(would).
+stop_word(shall).
+stop_word(should).
+stop_word(may).
+stop_word(might).
+stop_word(must).
+stop_word(can).
+stop_word(could).
+stop_word(am). stop_word(it). stop_word(its).
+stop_word(in).
+stop_word(on).
+stop_word(at).
+stop_word(to).
+stop_word(for).
+stop_word(of).
+stop_word(with).
+stop_word(by).
+stop_word(from).
+stop_word(as).
+stop_word(and).
+stop_word(or).
+stop_word(but).
+stop_word(not).
+stop_word(no).
+stop_word(nor). stop_word(so). stop_word(yet).
 stop_word(this). stop_word(that). stop_word(these). stop_word(those).
 stop_word(what). stop_word(which). stop_word(who). stop_word(whom).
-stop_word(how). stop_word(when). stop_word(where). stop_word(why).
-stop_word(if). stop_word(then). stop_word(than). stop_word(about).
 ~~~~~~~~
 
 The extraction pipeline downcases, splits, strips punctuation, and filters:
@@ -73,14 +102,15 @@ extract_keywords(Text, Keywords) :-
     include(meaningful_word, Cleaned, MeaningfulStrs),
     maplist(atom_string_conv, MeaningfulStrs, Keywords).
 
+%% strip_punctuation(+WordStr, -CleanStr)
 strip_punctuation(Word, Clean) :-
     string_chars(Word, Chars),
     include(non_punct, Chars, CleanChars),
     string_chars(Clean, CleanChars).
 
 non_punct(C) :-
-    \+ member(C, ['?','!','.',',',';',':','"','\'',
-                  '(',')','[',']','{','}']).
+    \+ member(C, ['?','!','.',',',';',':','"','\'','(',')','[',']','{',
+        '}']).
 
 meaningful_word(W) :-
     string_length(W, Len),
@@ -109,8 +139,13 @@ build_context_from_cache(Connection, Query, Context) :-
         ;
             format_context_items(Items, Formatted),
             format(atom(Context),
-                   "Use the following context from previous ~w\n\n~w\n---\n\n",
-                   ["conversations when answering:", Formatted])
+
+
+
+
+
+                                       "Use the following context from previous conversations when answering:\n\n~w\n---\n\n",
+                   [Formatted])
         )
     ).
 
@@ -132,13 +167,15 @@ call_gemini_api(Prompt, SearchP, Response) :-
     getenv('GOOGLE_API_KEY', ApiKey),
     model(Model),
     format(atom(URL),
-           'https://generativelanguage.googleapis.com/v1beta/~w~w',
-           ['models/', Model]),
-    format(atom(FullURL), '~w:generateContent?key=~w',
-           [URL, ApiKey]),
+
+
+
+
+
+                               'https://generativelanguage.googleapis.com/v1beta/models/~w:generateContent?key=~w',
+           [Model, ApiKey]),
     build_payload(Prompt, SearchP, Payload),
-    http_post(FullURL, json(Payload), Result,
-              [json_object(dict)]),
+    http_post(URL, json(Payload), Result, [json_object(dict)]),
     extract_text_response(Result, Response).
 ~~~~~~~~
 
@@ -180,7 +217,8 @@ repl_iteration :-
     flush_output,
     catch(
         read_line_to_string(current_input, RawInput),
-        _, ( format("~nGoodbye.~n"), ! )
+        _,
+        ( format("~nGoodbye.~n"), ! )
     ),
     ( RawInput == end_of_file ->
         format("~nGoodbye.~n")
@@ -195,12 +233,14 @@ Each command is a separate `process_input/1` clause. This is cleaner than the Co
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
-process_input('') :- !.
-process_input(q)    :- !, format("Goodbye.~n"), halt(0).
 process_input(quit) :- !, format("Goodbye.~n"), halt(0).
+process_input(exit) :- !, format("Goodbye.~n"), halt(0).
+
+% Help
 process_input(h)    :- !, print_help.
 process_input(help) :- !, print_help.
 
+% ">" — cache last answer
 process_input('>') :- !,
     ( last_answer(Ans) ->
         cache_connection(Conn),
@@ -211,14 +251,15 @@ process_input('>') :- !,
         format("  [No answer to cache yet]~n")
     ).
 
+% "!" alone — clear old cache entries
 process_input('!') :- !,
     cache_connection(Conn),
     cache_engine:cache_count(Conn, Before),
     cache_engine:cache_clear_older_one_week(Conn),
     cache_engine:cache_count(Conn, After),
     Cleared is Before - After,
-    format("  [Cleared ~w old entries. ~w items remain]~n",
-           [Cleared, After]).
+    format("  [Cleared ~w old entries. ~w items remain]~n", [Cleared,
+        After]).
 ~~~~~~~~
 
 ## Running the REPL

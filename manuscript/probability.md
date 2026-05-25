@@ -127,7 +127,7 @@ make_bayes_model(PriorPairs, Model) :-
     sumlist(Priors, Total),
     (   Total =:= 0
     ->  throw(error(all_priors_zero,
-             'All priors are zero — cannot normalise.'))
+        'All priors are zero — cannot normalise.'))
     ;   maplist(normalise_pair(Total), PriorPairs, Model)
     ).
 
@@ -147,16 +147,27 @@ The `update/4` predicate applies Bayes' Theorem. It uses Prolog's `meta_predicat
 ~~~~~~~~
 :- meta_predicate update(+, +, 2, -).
 
+%% update(+Model, +Evidence, :LikelihoodPred, -Updated)
+%% LikelihoodPred is a predicate of arity 2: LikelihoodPred(Hypothesis,
+%% P)
+%% that binds P to P(Evidence | Hypothesis) when called.
+%% Evidence is passed for documentation but not used directly.
+%% Example: update(Model, positive, my_lik, Updated)
+%%   where my_lik(disease, 0.99) and my_lik(healthy, 0.05) are defined.
 update(Model, _Evidence, LikelihoodPred, Updated) :-
-    maplist(unnormalised_posterior(LikelihoodPred),
-            Model, Unnormalised),
+    maplist(unnormalised_posterior(LikelihoodPred), Model,
+        Unnormalised),
     maplist(pair_value, Unnormalised, UnnormProbs),
     sumlist(UnnormProbs, Marginal),
     (   Marginal =:= 0.0
     ->  throw(error(zero_marginal,
-             'Marginal likelihood is zero.'))
-    ;   maplist(normalise_pair(Marginal),
-               Unnormalised, Updated)
+
+
+
+
+
+                                  'Marginal likelihood is zero — evidence impossible under all hypotheses.'))
+    ;   maplist(normalise_pair(Marginal), Unnormalised, Updated)
     ).
 
 unnormalised_posterior(LikelihoodPred, H-Prior, H-UPost) :-
@@ -200,19 +211,15 @@ The example also generates a synthetic population and computes the Pearson corre
 {lang="prolog",linenos=off}
 ~~~~~~~~
 generate_synthetic_population(N, Tests, Diagnoses) :-
-    prevalence(Prev), sensitivity(Sens),
-    false_positive_rate(FPR),
+    prevalence(Prev), sensitivity(Sens), false_positive_rate(FPR),
     length(Tests, N), length(Diagnoses, N),
-    maplist(simulate_individual(Prev, Sens, FPR),
-            Tests, Diagnoses).
+    maplist(simulate_individual(Prev, Sens, FPR), Tests, Diagnoses).
 
 simulate_individual(Prev, Sens, FPR, Test, Diag) :-
     random(R1),
     (   R1 < Prev
-    ->  Diag = 1.0, random(R2),
-        (R2 < Sens -> Test = 1.0 ; Test = 0.0)
-    ;   Diag = 0.0, random(R3),
-        (R3 < FPR  -> Test = 1.0 ; Test = 0.0)
+    ->  Diag = 1.0, random(R2), (R2 < Sens -> Test = 1.0 ; Test = 0.0)
+    ;   Diag = 0.0, random(R3), (R3 < FPR  -> Test = 1.0 ; Test = 0.0)
     ).
 ~~~~~~~~
 
@@ -225,9 +232,12 @@ The Pearson correlation coefficient measures linear association. The implementat
 {lang="prolog",linenos=off}
 ~~~~~~~~
 pearson_r(Xs, Ys, R) :-
-    length(Xs, N), length(Ys, N),
-    list_mean(Xs, MX), list_mean(Ys, MY),
-    list_std_dev(Xs, SX), list_std_dev(Ys, SY),
+    length(Xs, N),
+    length(Ys, N),   % assert equal length
+    list_mean(Xs, MX),
+    list_mean(Ys, MY),
+    list_std_dev(Xs, SX),
+    list_std_dev(Ys, SY),
     (   (SX =:= 0 ; SY =:= 0)
     ->  R = 0.0
     ;   maplist(cross_dev(MX, MY), Xs, Ys, Prods),
@@ -284,32 +294,39 @@ The normal CDF approximation is the most mathematically dense piece:
 ~~~~~~~~
 phi_approx(Z, CDF) :-
     P  = 0.2316419,
-    B1 = 0.319381530, B2 = -0.356563782,
-    B3 = 1.781477937, B4 = -1.821255978,
+    B1 = 0.319381530,
+    B2 = -0.356563782,
+    B3 = 1.781477937,
+    B4 = -1.821255978,
     B5 = 1.330274429,
     AZ is abs(Z),
     TVal is 1.0 / (1.0 + P * AZ),
     PDF is exp(-0.5 * AZ * AZ) / sqrt(2.0 * pi),
-    CDF0 is 1.0 - PDF * (B1*TVal + B2*TVal^2
-                        + B3*TVal^3 + B4*TVal^4
-                        + B5*TVal^5),
-    (Z >= 0.0 -> CDF = CDF0 ; CDF is 1.0 - CDF0).
+    CDF0 is 1.0 - PDF * (B1*TVal
+                         + B2*TVal^2
+                         + B3*TVal^3
+                         + B4*TVal^4
+                         + B5*TVal^5),
+    (   Z >= 0.0
+    ->  CDF = CDF0
+    ;   CDF is 1.0 - CDF0
+    ).
 ~~~~~~~~
 
 The Wilson score confidence interval is more accurate than the simple Wald interval for extreme proportions:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
-confidence_interval_proportion(Successes, N, Confidence,
-                               result(Lower, Upper)) :-
+confidence_interval_proportion(Successes, N, Confidence, result(Lower,
+    Upper)) :-
     NF is float(N),
     P  is float(Successes) / NF,
     z_critical(Confidence, ZC),
     Z2 is ZC * ZC,
     Denom is 1.0 + Z2 / NF,
     Centre is (P + Z2 / (2.0 * NF)) / Denom,
-    Margin is (ZC * sqrt(P * (1.0 - P) / NF
-              + Z2 / (4.0 * NF * NF))) / Denom,
+    Margin is (ZC * sqrt(P * (1.0 - P) / NF + Z2 / (4.0 * NF * NF))) /
+        Denom,
     Lower is max(0.0, Centre - Margin),
     Upper is min(1.0, Centre + Margin).
 ~~~~~~~~

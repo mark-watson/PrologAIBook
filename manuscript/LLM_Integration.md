@@ -21,14 +21,17 @@ TBD: Making HTTP requests to LLM APIs. Handling API keys, rate limits, and strea
 The **llm_client** project provides clients for Google Gemini and Ollama. Here is the file **llm_client/prolog/gemini.pl**:
 
 ```prolog
-%% gemini.pl - Google Gemini API client
-:- module(gemini, [gemini_generate/2, gemini_generate/3]).
+:- module(gemini, [
+    gemini_generate/2,
+    gemini_generate/3
+]).
 
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_json)).
-:- use_module(library(http/json)).
+:- use_module(library(json)).
 
 %% gemini_generate(+Prompt, -Response)
+%% Uses GOOGLE_API_KEY environment variable
 gemini_generate(Prompt, Response) :-
     gemini_generate(Prompt, Response, []).
 
@@ -58,14 +61,17 @@ extract_text_response(Result, Text) :-
 And a client for local Ollama models. Here is the file **llm_client/prolog/ollama.pl**:
 
 ```prolog
-%% ollama.pl - Ollama API client for local LLMs
-:- module(ollama, [ollama_generate/2, ollama_generate/3]).
+:- module(ollama, [
+    ollama_generate/2,
+    ollama_generate/3
+]).
 
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_json)).
-:- use_module(library(http/json)).
+:- use_module(library(json)).
 
 %% ollama_generate(+Prompt, -Response)
+%% Uses default model and localhost:11434
 ollama_generate(Prompt, Response) :-
     ollama_generate(Prompt, Response, [model('qwen3:1.7b')]).
 
@@ -89,19 +95,19 @@ TBD: Prompting LLMs for JSON output and converting it to Prolog facts.
 The **structured_output** project converts JSON LLM output into assertable Prolog facts. Here is the file **structured_output/prolog/json_to_facts.pl**:
 
 ```prolog
-%% json_to_facts.pl - Convert structured LLM JSON output into Prolog facts
-:- module(json_to_facts, [
     json_string_to_facts/1,
     extracted_entity/2,
     extracted_relation/3
 ]).
 
-:- use_module(library(http/json)).
+:- use_module(library(json)).
 
-:- dynamic extracted_entity/2.
-:- dynamic extracted_relation/3.
+:- dynamic extracted_entity/2.    % extracted_entity(Name, Type)
+:- dynamic extracted_relation/3.  % extracted_relation(Subject,
+                                  %            Predicate, Object)
 
 %% json_string_to_facts(+JsonString)
+%% Parses JSON with entities/relations arrays into Prolog facts
 json_string_to_facts(JsonString) :-
     atom_json_dict(JsonString, Dict, []),
     (   get_dict(entities, Dict, Entities)
@@ -114,14 +120,17 @@ json_string_to_facts(JsonString) :-
     ).
 
 assert_entity(E) :-
-    Name = E.name, Type = E.type,
+    Name = E.name,
+    Type = E.type,
     (   \+ extracted_entity(Name, Type)
     ->  assert(extracted_entity(Name, Type))
     ;   true
     ).
 
 assert_relation(R) :-
-    S = R.subject, P = R.predicate, O = R.object,
+    S = R.subject,
+    P = R.predicate,
+    O = R.object,
     (   \+ extracted_relation(S, P, O)
     ->  assert(extracted_relation(S, P, O))
     ;   true

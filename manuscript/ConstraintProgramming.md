@@ -23,12 +23,15 @@ TBD: A concise, elegant Sudoku solver demonstrating the power of constraint prop
 The **sudoku_solver** project provides a complete solver in under 30 lines of logic. Here is the file **sudoku_solver/prolog/sudoku.pl**:
 
 ```prolog
-%% sudoku.pl - Sudoku solver using CLP(FD) constraints
-:- module(sudoku, [sudoku/1, print_board/1]).
+:- module(sudoku, [
+    sudoku/1,
+    print_board/1
+]).
 
 :- use_module(library(clpfd)).
 
 %% sudoku(+Rows) - Solve a 9x9 Sudoku puzzle
+%% Rows is a list of 9 lists, each containing 9 elements (vars or 1-9)
 sudoku(Rows) :-
     length(Rows, 9),
     maplist(same_length(Rows), Rows),
@@ -50,8 +53,6 @@ blocks([N1,N2,N3|Ns1], [N4,N5,N6|Ns2], [N7,N8,N9|Ns3]) :-
 %% print_board(+Rows) - Pretty-print a solved board
 print_board([]).
 print_board([Row|Rows]) :-
-    format("~w~n", [Row]),
-    print_board(Rows).
 ```
 
 ## The N-Queens Problem
@@ -61,8 +62,8 @@ TBD: Solving N-Queens as a constraint satisfaction problem. Comparing a naive ba
 The **n_queens** project solves the problem using CLP(FD) diagonal constraints. Here is the file **n_queens/prolog/queens.pl**:
 
 ```prolog
-%% queens.pl - N-Queens solver using CLP(FD)
-:- module(queens, [n_queens/2]).
+    n_queens/2
+]).
 
 :- use_module(library(clpfd)).
 
@@ -95,8 +96,9 @@ TBD: Modeling real-world scheduling problems (e.g., job-shop scheduling, meeting
 The **job_scheduler** project models scheduling with temporal constraints. Here is the file **job_scheduler/prolog/scheduler.pl**:
 
 ```prolog
-%% scheduler.pl - Job scheduling with temporal constraints using CLP(FD)
-:- module(scheduler, [schedule_jobs/2]).
+    schedule_jobs/2,
+    no_overlap/1
+]).
 
 :- use_module(library(clpfd)).
 
@@ -110,13 +112,13 @@ schedule_jobs(Jobs, Schedule) :-
     no_overlap(Schedule),
     maplist(label_task, Schedule).
 
-create_task(job(Name, Duration, _Deadline),
-            scheduled(Name, Start, End), Start) :-
+create_task(job(Name, Duration, _Deadline), scheduled(Name, Start, End),
+    Start) :-
     Start in 0..100,
     End #= Start + Duration.
 
-deadline_constraint(job(Name, _Duration, Deadline),
-                    scheduled(Name, _Start, End)) :-
+deadline_constraint(job(Name, _Duration, Deadline), scheduled(Name,
+    _Start, End)) :-
     End #=< Deadline.
 
 no_overlap([]).

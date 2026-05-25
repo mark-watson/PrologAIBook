@@ -16,7 +16,6 @@ TBD: Introduction to ProbLog-style probabilistic programming in SWI-Prolog. Anno
 The **prob_reasoning** project implements a lightweight probabilistic reasoner with certainty factors. Here is the file **prob_reasoning/prolog/prob_facts.pl**:
 
 ```prolog
-%% prob_facts.pl - Probabilistic reasoning with certainty factors
 :- module(prob_facts, [
     prob_fact/2,
     prob_rule/3,
@@ -24,6 +23,10 @@ The **prob_reasoning** project implements a lightweight probabilistic reasoner w
 ]).
 
 :- dynamic prob_fact/2.  % prob_fact(Fact, Probability)
+
+%% prob_rule(+Conditions, +Conclusion, +CondProb)
+%% If all Conditions hold, conclude Conclusion with conditional
+%% probability
 :- dynamic prob_rule/3.
 
 %% prob_query(+Goal, -Probability)
@@ -38,7 +41,7 @@ prob_query(Goal, Prob) :-
 
 mul(X, Acc, Result) :- Result is Acc * X.
 
-%% Example knowledge base
+%% Example knowledge base (simple)
 :- assert(prob_fact(cloudy, 0.5)).
 :- assert(prob_fact(windy, 0.3)).
 :- assert(prob_rule([cloudy], rain, 0.8)).

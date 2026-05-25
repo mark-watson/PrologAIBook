@@ -16,9 +16,9 @@ TBD: Implementing a basic stimulus-response agent in Prolog. Modeling the enviro
 The **reactive_agent** project implements a goal-directed agent with a perception-reasoning-action loop. Here is the file **reactive_agent/prolog/agent.pl**:
 
 ```prolog
-%% agent.pl - Goal-directed agent with perception-reasoning-action loop
-:- module(agent, [
-    run_agent/1, define_goal/1, register_tool/2
+    run_agent/1,
+    define_goal/1,
+    register_tool/2
 ]).
 
 :- dynamic goal/1.
@@ -45,6 +45,7 @@ run_agent(N) :-
         run_agent(N1)
     ).
 
+%% TBD: Implement perceive, select_action, execute_action
 perceive :- true.
 
 select_action(idle) :-
@@ -76,14 +77,14 @@ TBD: A practical agent that uses web search, LLM summarization, and Prolog knowl
 The **research_assistant** project sketches this architecture. Here is the file **research_assistant/prolog/assistant.pl**:
 
 ```prolog
-%% assistant.pl - Research assistant agent
-%% Combines: web search -> LLM summarization -> Prolog KB -> reasoning
-:- module(assistant, [research/2]).
+:- module(assistant, [
+    research/2
+]).
 
 :- dynamic knowledge/3.  % knowledge(Topic, Fact, Source)
 
 %% research(+Question, -Answer)
-%% Pipeline:
+%% TBD: Full implementation combining:
 %% 1. Parse question to identify search terms
 %% 2. Web search via REST API (Brave Search / Tavily)
 %% 3. Summarize results via LLM (Gemini/Ollama)
@@ -91,5 +92,6 @@ The **research_assistant** project sketches this architecture. Here is the file 
 %% 5. Reason over knowledge base to produce answer
 research(Question, Answer) :-
     format("Researching: ~w~n", [Question]),
+    %% Placeholder: direct LLM query
     Answer = placeholder_answer(Question).
 ```

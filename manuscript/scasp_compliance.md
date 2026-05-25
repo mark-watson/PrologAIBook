@@ -72,12 +72,17 @@ personal_travel(charlie).
 expense_amount(charlie, 150).
 
 %% s(CASP) Explanations/Translations
-#pred eligible_for_reimbursement(Person) :: '@(Person) is eligible for travel reimbursement'.
+#pred eligible_for_reimbursement(Person) ::
+    '@(Person) is eligible for travel reimbursement'.
 #pred employee(Person) :: '@(Person) is a registered employee'.
-#pred business_travel(Person) :: '@(Person)\'s trip was for business purposes'.
-#pred personal_travel(Person) :: '@(Person)\'s trip was for personal reasons'.
-#pred travel_limit_exceeded(Person) :: '@(Person) has exceeded the travel expense limit of $500'.
-#pred expense_amount(Person, Amount) :: '@(Person)\'s travel expense amount is $ @(Amount)'.
+#pred business_travel(Person) :: '@(Person)\'s trip was for business
+    purposes'.
+#pred personal_travel(Person) :: '@(Person)\'s trip was for personal
+    reasons'.
+#pred travel_limit_exceeded(Person) ::
+    '@(Person) has exceeded the travel expense limit of $500'.
+#pred expense_amount(Person, Amount) :: '@(Person)\'s travel expense
+    amount is $ @(Amount)'.
 
 %% Helper to run and output the explanation
 run_compliance_check(Person) :-
@@ -85,7 +90,8 @@ run_compliance_check(Person) :-
     ->  format('~w is eligible.~n~n', [Person]),
         writeln('Justification Tree:'),
         human_justification_tree(Tree, [])
-    ;   format('~w is NOT eligible or compliance check failed.~n', [Person])
+    ;   format('~w is NOT eligible or compliance check failed.~n',
+        [Person])
     ).
 ~~~~~~~~
 

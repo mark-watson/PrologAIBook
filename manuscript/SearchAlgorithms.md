@@ -34,11 +34,15 @@ edge(quincy,   reno).
 The utility module **graph_search/prolog/read_graph.pl** reads this file and asserts each edge as a dynamic fact:
 
 ```prolog
-%% read_graph.pl - Utility to read graph data from sample_graph.txt
-:- module(read_graph, [load_graph/0, load_graph/1, edge/2]).
+:- module(read_graph, [
+    load_graph/0,
+    load_graph/1,
+    edge/2
+]).
 
 :- dynamic edge/2.
 
+%% load_graph/0 - Load graph from default file (sample_graph.txt)
 load_graph :-
     source_file(read_graph:_, SrcFile),
     file_directory_name(SrcFile, PrologDir),
@@ -46,6 +50,9 @@ load_graph :-
     atom_concat(ProjectDir, '/sample_graph.txt', DefaultFile),
     load_graph(DefaultFile).
 
+%% load_graph/1 - Load graph from a specified file
+%%   Reads lines of the form:  edge(Source, Destination).
+%%   Asserts each as an edge/2 fact.
 load_graph(File) :-
     retractall(edge(_, _)),
     open(File, read, Stream),
@@ -60,8 +67,7 @@ read_edges(Stream) :-
         read_edges(Stream)
     ).
 
-assert_edge(edge(From, To)) :- !, assertz(edge(From, To)).
-assert_edge(_).
+assert_edge(edge(From, To)) :-
 ```
 
 This design makes it easy to swap in different graphs without touching the search algorithms.
@@ -71,9 +77,6 @@ This design makes it easy to swap in different graphs without touching the searc
 With the graph loaded dynamically, the search modules simply import `edge/2` from `read_graph`. Depth-first search explores as deep as possible along each branch before backtracking, using a visited list for cycle detection. Here is **graph_search/prolog/dfs.pl**:
 
 ```prolog
-%% dfs.pl - Depth-First Search with cycle detection
-:- module(dfs, [dfs/3]).
-
 :- use_module(read_graph, [edge/2]).
 
 %% dfs(+Start, +Goal, -Path)
@@ -91,9 +94,6 @@ dfs(Current, Goal, Visited, Path) :-
 Breadth-first search instead explores all neighbors at the current depth before moving deeper, using an explicit queue of partial paths. Here is **graph_search/prolog/bfs.pl**:
 
 ```prolog
-%% bfs.pl - Breadth-First Search using a queue
-:- module(bfs, [bfs/3]).
-
 :- use_module(read_graph, [edge/2]).
 
 %% bfs(+Start, +Goal, -Path)
@@ -133,14 +133,21 @@ TBD: Combining the space efficiency of DFS with the completeness of BFS. SWI-Pro
 A* combines the actual path cost with a heuristic estimate of the remaining distance to the goal. By maintaining an open list sorted by f-cost (g + h), it explores the most promising paths first. Here is **graph_search/prolog/astar.pl**:
 
 ```prolog
-%% astar.pl - A* Heuristic Search
-:- module(astar, [astar/4, distance_heuristic/2, zero_heuristic/2]).
+:- module(astar, [
+    astar/4,
+    distance_heuristic/2,
+    zero_heuristic/2
+]).
 
 :- use_module(read_graph, [edge/2]).
 
+%% Safe call: if Heuristic(Node, Value) fails with existence error,
+%% return 0.
 safe_call(Callable, Node, Value) :-
     catch(call(Callable, Node, Value), _, Value = 0).
 
+%% A* search: accepts both string designators ('h/2') and callable terms
+%% (?(-N,-V)).
 astar(Start, Goal, Heuristic, Path) :-
     safe_call(Heuristic, Start, H0),
     H is H0 + 0,
@@ -151,34 +158,45 @@ astar_loop([node(_, _, [Goal|Rest])|_], Goal, _, Path) :-
 astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Path) :-
     findall(
         node(F1, G1, [Next, Current|Rest]),
-        (   edge(Current, Next),
-            \+ member(Next, [Current|Rest]),
+            (   edge(Current, Next),
+                \+ member(Next, [Current|Rest]),
             G1 is G + 1,
             safe_call(Heuristic, Next, H0),
             H is H0 + 0,
             F1 is G1 + H
-        ),
+            ),
         Children
-    ),
+       ),
     append(Open, Children, Unsorted),
     sort(1, @=<, Unsorted, Sorted),
     astar_loop(Sorted, Goal, Heuristic, Path).
 
-%% Admissible heuristic: estimated hops remaining to reno
-distance_heuristic(reno, 0).
-distance_heuristic(portland, 1).
-distance_heuristic(quincy, 1).
-distance_heuristic(omaha, 2).
-distance_heuristic(naples, 2).
-distance_heuristic(memphis, 3).
-distance_heuristic(kent, 3).
-distance_heuristic(jackson, 4).
-distance_heuristic(houston, 4).
-distance_heuristic(gary, 5).
-distance_heuristic(fresno, 5).
-distance_heuristic(chicago, 6).
-distance_heuristic(boston, 6).
-distance_heuristic(albany, 7).
+%% Zero heuristic: admissible for uniform-weight graphs (all edge
+%% weights = 1).
+%% Useful as a baseline for testing A* correctness.
+zero_heuristic(_, 0).
+
+%% Example heuristic: estimated remaining distance to goal (reno).
+%% Rough estimates for the sample_graph cities — admissible for
+%% uniform-weight graph.
+distance_heuristic(reno,      0).
+distance_heuristic(portland,  1).
+distance_heuristic(quincy,    1).
+distance_heuristic(omaha,     2).
+distance_heuristic(naples,    2).
+distance_heuristic(memphis,   3).
+distance_heuristic(lansing,   3).
+distance_heuristic(kent,      3).
+distance_heuristic(jackson,   4).
+distance_heuristic(irving,    4).
+distance_heuristic(houston,   4).
+distance_heuristic(gary,      5).
+distance_heuristic(fresno,    5).
+distance_heuristic(eton,      5).
+distance_heuristic(detroit,   5).
+distance_heuristic(chicago,   6).
+distance_heuristic(boston,     6).
+distance_heuristic(albany,    7).
 ```
 
 ```prolog
@@ -195,8 +213,12 @@ TBD: Modeling classic puzzles (e.g., the farmer-fox-chicken-grain problem, 8-puz
 The **puzzle_solver** project implements the classic farmer-fox-chicken-grain river crossing puzzle. Here is the file **puzzle_solver/prolog/farmer.pl**:
 
 ```prolog
-%% farmer.pl - Farmer, Fox, Chicken, Grain river crossing puzzle
-:- module(farmer, [solve_farmer/1]).
+    solve_farmer/1
+]).
+
+%% State: state(Farmer, Fox, Chicken, Grain) where each is 'left' or
+%% 'right'
+%% Goal: all on the right bank
 
 solve_farmer(Moves) :-
     InitState = state(left, left, left, left),
@@ -221,8 +243,8 @@ move(state(right,F,right,G), state(left,F,left,G), farmer_chicken).
 move(state(left,F,C,left), state(right,F,C,right), farmer_grain).
 move(state(right,F,C,right), state(left,F,C,left), farmer_grain).
 
-%% Safety: fox cannot be alone with chicken,
-%% chicken cannot be alone with grain
+%% Safety: fox cannot be alone with chicken, chicken cannot be alone
+%% with grain
 safe(state(Farmer, Fox, Chicken, Grain)) :-
     (Fox == Chicken -> Farmer == Fox ; true),
     (Chicken == Grain -> Farmer == Chicken ; true).

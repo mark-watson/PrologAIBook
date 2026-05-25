@@ -67,8 +67,8 @@ The Wisconsin cancer dataset has 648 rows with 10 columns: 9 integer features (c
 load_wisconsin_data(Rows) :-
     once(source_file(anomaly_detection:_, ThisFile)),
     file_directory_name(ThisFile, Dir),
-    atomic_list_concat(
-        [Dir, '/../data/cleaned_wisconsin_cancer_data.csv'], Path),
+    atomic_list_concat([Dir,
+        '/../data/cleaned_wisconsin_cancer_data.csv'], Path),
     csv_read_file(Path, CsvRows,
                   [separator(0',), convert(true), arity(10)]),
     maplist(row_to_list, CsvRows, AllRows),
@@ -100,19 +100,19 @@ The raw integer features (ranging 1–10) need to be transformed before Gaussian
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
-preprocess_row(Row, Out) :-
-    length(Features, 9),
-    append(Features, [Target], Row),
+preprocess_row([F1, F2, F3, F4, F5, F6, F7, F8, F9, Target], Out) :-
+    Features = [F1, F2, F3, F4, F5, F6, F7, F8, F9],
     maplist(scale01, Features, Scaled),
     maplist(log_transform, Scaled, Logged),
     min_list(Logged, Min), max_list(Logged, Max),
     Span is Max - Min,
     (   Span =:= 0
-    ->  maplist(=(0.0), Normed)
+    ->  maplist(=( 0.0), Normed)
     ;   maplist(normalise(Min, Span), Logged, Normed)
     ),
     TargetOut is (Target - 2) * 0.5,
-    append(Normed, [TargetOut], Out).
+    Normed = [N1, N2, N3, N4, N5, N6, N7, N8, N9],
+    Out = [N1, N2, N3, N4, N5, N6, N7, N8, N9, TargetOut].
 
 scale01(X, Y) :- Y is X * 0.1.
 log_transform(X, Y) :- Y is log(X + 1.2).
@@ -151,8 +151,8 @@ assign_row(Row, Tag-Row) :-
         ->  Tag = train
         ;   random(P2),
             (   P2 < 0.1
-            ->  Tag = train
-            ;   Tag = skip
+            ->  Tag = train   % leak ~10% anomalies into training
+            ;   Tag = skip    % discard anomaly from training
             )
         )
     ;   random(P3),
@@ -223,6 +223,8 @@ gaussian_prob(Row, Mu, SigmaSq, _NF, P) :-
     gaussian_sum(Row, Mu, SigmaSq, S2P, 0, 0.0, Sum),
     P is Sum / NC.
 
+%% gaussian_sum(+Row, +Mu, +SigmaSq, +S2P, +Idx, +Acc, -Sum)
+%  Walk the first 9 elements (skip target at position 10).
 gaussian_sum(_, _, _, _, 9, Acc, Acc) :- !.
 gaussian_sum([X|Xs], [M|Ms], [S2|Ss], S2P, I, Acc, Sum) :-
     (   S2 =:= 0
@@ -286,8 +288,7 @@ train_model(Rows, Model) :-
     preprocess(Rows, Processed),
     once(split_data(Processed, Train, CV, Test)),
     length(Train, NTrain), length(CV, NCV), length(Test, NTest),
-    format('Split: ~w train, ~w cv, ~w test~n',
-           [NTrain, NCV, NTest]),
+    format('Split: ~w train, ~w cv, ~w test~n', [NTrain, NCV, NTest]),
     num_input_features(NF),
     compute_mu(Train, NF, Mu),
     compute_sigma_sq(Train, NF, Mu, SigmaSq),

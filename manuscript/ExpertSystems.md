@@ -19,7 +19,6 @@ TBD: Implementing a reusable expert system shell that supports rules with confid
 The **expert_shell** project provides a domain-independent shell. Here is the file **expert_shell/prolog/shell.pl**:
 
 ```prolog
-%% shell.pl - Expert system shell with backward chaining and explanations
 :- module(shell, [
     consult_expert/1,
     explain/1,
@@ -50,7 +49,9 @@ ask_question(Attribute) :-
 hypothesis(unknown) :-
     format("Could not determine a conclusion from the given facts.~n").
 
-hypothesis_explanation(unknown, 'Insufficient data to reach a conclusion.').
+hypothesis_explanation(
+    unknown,
+    'Insufficient data to reach a conclusion.').
 ```
 
 ## Knowledge Acquisition and Rule Representation
@@ -68,8 +69,8 @@ TBD: A complete example expert system that recommends wines based on meal type, 
 The **wine_advisor** project implements a rule-based wine recommender. Here is the file **wine_advisor/prolog/wine_rules.pl**:
 
 ```prolog
-%% wine_rules.pl - Wine selection expert system
-:- module(wine_rules, [recommend_wine/3]).
+    recommend_wine/3
+]).
 
 %% recommend_wine(+MealType, +Preference, -Wine)
 recommend_wine(MealType, Preference, Wine) :-

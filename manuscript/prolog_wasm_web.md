@@ -35,10 +35,6 @@ Here is the code in **source-code/prolog_wasm_web/rules.pl**:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
-% rules.pl - Wine Recommendation Expert System for WASM
-
-% Database of Wines: wine(Name, Color, Body, Sweetness)
-wine(cabernet_sauvignon, red, full_body, dry).
 wine(merlot, red, medium_body, dry).
 wine(pinot_noir, red, light_body, dry).
 wine(chardonnay, white, full_body, dry).
@@ -57,9 +53,11 @@ pair(white, spicy_food).
 pair(white, dessert).
 pair(red, dessert).
 
-% Recommend a wine based on food, body preference, and sweetness preference.
+% Recommend a wine based on food, body preference, and sweetness
+% preference.
 % Returns Wine name, its Color, and a justification string.
-recommend(Food, PreferredBody, PreferredSweetness, Wine, Color, Explanation) :-
+recommend(Food, PreferredBody, PreferredSweetness, Wine, Color,
+    Explanation) :-
     wine(Wine, Color, Body, Sweetness),
     % Check food pairing compatibility
     pair(Color, Food),
@@ -67,12 +65,18 @@ recommend(Food, PreferredBody, PreferredSweetness, Wine, Color, Explanation) :-
     (PreferredBody == any ; Body == PreferredBody),
     (PreferredSweetness == any ; Sweetness == PreferredSweetness),
     % Generate a human-readable explanation
-    generate_explanation(Wine, Color, Body, Sweetness, Food, Explanation).
+    generate_explanation(Wine, Color, Body, Sweetness, Food,
+        Explanation).
 
 % Generate a beautiful explanation sentence
 generate_explanation(Wine, Color, Body, Sweetness, Food, Explanation) :-
     format(string(Explanation), 
-           "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.", 
+
+
+
+
+
+                               "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.",
            [Food, Color, Wine, Body, Sweetness, Color]).
 ~~~~~~~~
 
@@ -88,8 +92,6 @@ Here is the implementation in **source-code/prolog_wasm_web/app.js**:
 
 {lang="javascript",linenos=off}
 ~~~~~~~~
-// app.js - ShipLogic application to load SWI-Prolog WASM and query recommendations
-
 let prologEngine = null;
 
 // DOM Elements
@@ -182,6 +184,7 @@ function runRecommendation() {
         let result = query.next();
         while (result && !result.done) {
             // Unpack variables (Prolog bindings are returned as JS values)
+            // String values are decoded/retrieved
             const wine = formatPrologValue(result.value.Wine);
             const color = formatPrologValue(result.value.Color);
             const explanation = formatPrologValue(result.value.Explanation);
@@ -234,6 +237,7 @@ function runRecommendation() {
 // Convert Prolog terms to clean JS strings
 function formatPrologValue(val) {
     if (typeof val === 'string') return val;
+    // Handle atoms represented as objects or arrays of codes
     if (val && typeof val === 'object' && val.toString) {
         return val.toString();
     }
