@@ -17,7 +17,9 @@ noun_phrase(np(Name)) --> proper_noun(Name).
 verb_phrase(vp(V)) --> verb(V).
 verb_phrase(vp(V, NP)) --> verb(V), noun_phrase(NP).
 verb_phrase(vp(V, PP)) --> verb(V), prep_phrase(PP).
-verb_phrase(vp(V, NP, PP)) --> verb(V), noun_phrase(NP), prep_phrase(PP).
+verb_phrase(vp(V, NP, PP)) -->
+    verb(V), noun_phrase(NP),
+    prep_phrase(PP).
 
 prep_phrase(pp(P, NP)) --> preposition(P), noun_phrase(NP).
 

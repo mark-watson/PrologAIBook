@@ -1,5 +1,6 @@
 %% assistant.pl - Research assistant agent
-%% Combines: web search → LLM summarization → Prolog knowledge base → reasoning
+%% Combines: web search → LLM summarization → Prolog knowledge base →
+%% reasoning
 :- module(assistant, [
     research/2
 ]).

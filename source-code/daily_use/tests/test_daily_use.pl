@@ -11,8 +11,10 @@
 test(basic_extraction, [true(Keywords == [quick, brown, fox])]) :-
     daily_use:extract_keywords('the quick brown fox', Keywords).
 
-test(removes_stop_words, [true(Keywords == [prolog, programming, language])]) :-
-    daily_use:extract_keywords('Prolog is a programming language', Keywords).
+test(removes_stop_words, [true(Keywords == [prolog, programming,
+    language])]) :-
+    daily_use:extract_keywords('Prolog is a programming language',
+        Keywords).
 
 test(removes_short_words, [true(\+ member(is, Keywords))]) :-
     daily_use:extract_keywords('AI is great', Keywords).

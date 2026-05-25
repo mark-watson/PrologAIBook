@@ -12,8 +12,10 @@
 %
 % References:
 %   Q-learning:  https://en.wikipedia.org/wiki/Q-learning
-%   FrozenLake:  https://gymnasium.farama.org/environments/toy_text/frozen_lake/
-%   TD learning: https://en.wikipedia.org/wiki/Temporal_difference_learning
+%   FrozenLake:
+%   https://gymnasium.farama.org/environments/toy_text/frozen_lake/
+%   TD learning:
+%   https://en.wikipedia.org/wiki/Temporal_difference_learning
 %
 % Run with SWI-Prolog:
 %   swipl -g main -t halt frozen_lake_qlearning.pl
@@ -28,11 +30,24 @@
 % State: integer 0..15, row-major (row*4 + col)
 % ============================================================
 
-% Cell types: s=start, f=frozen (safe), h=hole (terminal, -1), g=goal (terminal, +1)
-cell_type(0,  s).  cell_type(1,  f).  cell_type(2,  f).  cell_type(3,  f).
-cell_type(4,  f).  cell_type(5,  h).  cell_type(6,  f).  cell_type(7,  h).
-cell_type(8,  f).  cell_type(9,  f).  cell_type(10, f).  cell_type(11, h).
-cell_type(12, h).  cell_type(13, f).  cell_type(14, f).  cell_type(15, g).
+% Cell types: s=start, f=frozen (safe), h=hole (terminal, -1), g=goal
+% (terminal, +1)
+cell_type(0,  s).
+cell_type(1,  f).
+cell_type(2,  f).
+cell_type(3,  f).
+cell_type(4,  f).
+cell_type(5,  h).
+cell_type(6,  f).
+cell_type(7,  h).
+cell_type(8,  f).
+cell_type(9,  f).
+cell_type(10, f).
+cell_type(11, h).
+cell_type(12, h).
+cell_type(13, f).
+cell_type(14, f).
+cell_type(15, g).
 
 % Is a state terminal (hole or goal)?
 terminal(S) :- cell_type(S, h).
@@ -49,7 +64,8 @@ action_delta(2,  0,  1).   % right
 action_delta(3, -1,  0).   % up
 
 % step(+State, +Action, -NextState)
-% Deterministic transition: bumping a wall keeps the agent in the same cell.
+% Deterministic transition: bumping a wall keeps the agent in the same
+% cell.
 step(S, A, NS) :-
     R is S // 4,
     C is S mod 4,
@@ -151,15 +167,22 @@ new_epsilon(Eps, Decay, MinEps, NewEps) :-
 
 % train(+Episodes, +Alpha, +Gamma, +Epsilon, +EpsDecay, +MinEps)
 train(Episodes, Alpha, Gamma, Epsilon, EpsDecay, MinEps) :-
-    train_loop(0, Episodes, Alpha, Gamma, Epsilon, EpsDecay, MinEps, 0, 0).
+    train_loop(0, Episodes, Alpha, Gamma, Epsilon, EpsDecay, MinEps, 0,
+        0).
 
 train_loop(Ep, Total, _, _, _, _, _, Successes, _) :-
     Ep >= Total,
-    format("  Training complete. Total successes in last window tracked above.~n"),
+
+
+
+
+
+                        format("  Training complete. Total successes in last window tracked above.~n"),
     format("  Total episodes run: ~w~n", [Total]),
     _ = Successes.
 
-train_loop(Ep, Total, Alpha, Gamma, Epsilon, EpsDecay, MinEps, WinSuccesses, WindowCount) :-
+train_loop(Ep, Total, Alpha, Gamma, Epsilon, EpsDecay, MinEps,
+    WinSuccesses, WindowCount) :-
     Ep < Total,
     run_episode(Alpha, Gamma, Epsilon, Result),
     new_epsilon(Epsilon, EpsDecay, MinEps, NewEps),
@@ -258,8 +281,10 @@ main :-
     EvalEps    = 500,
 
     format("~nHyperparameters:~n"),
-    format("  episodes=~w  alpha=~w  gamma=~w~n", [Episodes, Alpha, Gamma]),
-    format("  epsilon=~w  decay=~w  min_eps=~w~n", [Epsilon, EpsDecay, MinEps]),
+    format("  episodes=~w  alpha=~w  gamma=~w~n", [Episodes, Alpha,
+        Gamma]),
+    format("  epsilon=~w  decay=~w  min_eps=~w~n", [Epsilon, EpsDecay,
+        MinEps]),
 
     init_qtable,
 

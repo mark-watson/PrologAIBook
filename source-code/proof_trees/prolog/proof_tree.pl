@@ -1,11 +1,13 @@
-%% proof_tree.pl - Build and display proof trees for explainable reasoning
+%% proof_tree.pl - Build and display proof trees
+%% for explainable reasoning
 :- module(proof_tree, [
     prove_with_tree/2,
     print_proof/1,
     sample_data_loaded/0
 ]).
 
-%% Load sample data - try multiple paths for different working directories
+%% Load sample data - try multiple paths for
+%% different working directories
 sample_data_loaded :-
     (   exists_file('sample_data.pl')
     ->  consult('sample_data.pl')

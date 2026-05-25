@@ -33,7 +33,8 @@ behavior_trees:user_action(recharge, success) :-
     NewLevel is min(100, Level + 50),
     retractall(battery(_)),
     assertz(battery(NewLevel)),
-    format('[Action] Charging... Battery increased from ~w% to ~w%~n', [Level, NewLevel]).
+    format('[Action] Charging... Battery increased from ~w% to ~w%~n',
+        [Level, NewLevel]).
 
 % Clean Action
 behavior_trees:user_action(clean, success) :-
@@ -51,7 +52,8 @@ behavior_trees:user_action(patrol, success) :-
     NewLevel is max(0, Level - 15),
     retractall(battery(_)),
     assertz(battery(NewLevel)),
-    % Randomly generate new dust on patrol to keep the simulation interesting
+    % Randomly generate new dust on patrol to keep the simulation
+    % interesting
     maybe_generate_dust,
     format('[Action] Patrolling rooms... Battery at ~w%~n', [NewLevel]).
 

@@ -7,7 +7,10 @@
 test(module_loads) :-
     true.
 
-test(simple_fact, [true(Tree == node(parent(adam,john), leaf(true)))]) :-
+test(simple_fact,
+     [true(Tree ==
+           node(parent(adam,john),
+                leaf(true)))]) :-
     prove_with_tree(parent(adam, john), Tree).
 
 test(conjunction_grandparent, [

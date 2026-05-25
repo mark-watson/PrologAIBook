@@ -9,7 +9,8 @@
 :- dynamic prob_fact/2.  % prob_fact(Fact, Probability)
 
 %% prob_rule(+Conditions, +Conclusion, +CondProb)
-%% If all Conditions hold, conclude Conclusion with conditional probability
+%% If all Conditions hold, conclude Conclusion with conditional
+%% probability
 :- dynamic prob_rule/3.
 
 %% prob_query(+Goal, -Probability)
@@ -32,8 +33,10 @@ mul(X, Acc, Result) :- Result is Acc * X.
 
 %% Complex weather knowledge base
 %% 5 base facts, 7 rules, 4 levels of reasoning depth
-%% Chain: low_pressure -> unstable_air -> thick_clouds -> severe_storm -> tornado_risk
-%%        cold_front + warm_front -> frontal_zone -> storm_system -> severe_storm -> flash_flood_risk
+%% Chain: low_pressure -> unstable_air -> thick_clouds -> severe_storm
+%% -> tornado_risk
+%%        cold_front + warm_front -> frontal_zone -> storm_system ->
+%%        severe_storm -> flash_flood_risk
 %% Probabilities:
 %%   P(unstable_air)      = 0.5*0.8                       = 0.4
 %%   P(thick_clouds)      = 0.5*0.4*0.5                   = 0.1

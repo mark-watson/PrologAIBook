@@ -1,4 +1,5 @@
-%% shell.pl - Expert system shell with backward chaining and explanations
+%% shell.pl - Expert system shell with backward
+%% chaining and explanations
 :- module(shell, [
     consult_expert/1,
     explain/1,
@@ -29,6 +30,8 @@ ask_question(Attribute) :-
 hypothesis(unknown) :-
     format("Could not determine a conclusion from the given facts.~n").
 
-hypothesis_explanation(unknown, 'Insufficient data to reach a conclusion.').
+hypothesis_explanation(
+    unknown,
+    'Insufficient data to reach a conclusion.').
 
 %% TBD: Domain-specific rules will be loaded as separate knowledge bases

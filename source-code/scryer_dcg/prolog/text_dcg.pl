@@ -23,7 +23,8 @@ csv_field(Field) --> unquoted_chars(Chars),
 quoted_chars([C|Cs]) --> [C], { C \= ('"') }, quoted_chars(Cs).
 quoted_chars([]) --> [].
 
-unquoted_chars([C|Cs]) --> [C], { C \= (','), C \= ('\n') }, unquoted_chars(Cs).
+unquoted_chars([C|Cs]) --> [C], { C \= (','), C \= ('\n') },
+    unquoted_chars(Cs).
 unquoted_chars([]) --> [].
 
 %% parse_key_value(+String, -Pair)

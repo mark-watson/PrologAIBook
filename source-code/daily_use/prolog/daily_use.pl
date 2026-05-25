@@ -1,4 +1,5 @@
-%% daily_use.pl — Interactive Gemini REPL with search grounding and cache
+%% daily_use.pl — Interactive Gemini REPL with search grounding and
+%% cache
 %%
 %% Commands:
 %%   <text>          Ask Gemini a question (plain, no search)
@@ -35,20 +36,60 @@ cache_db_path(Path) :-
 
 %% ---- Stop words ----
 
-stop_word(a). stop_word(an). stop_word(the). stop_word(is). stop_word(are).
-stop_word(was). stop_word(were). stop_word(be). stop_word(been). stop_word(being).
-stop_word(have). stop_word(has). stop_word(had). stop_word(do). stop_word(does).
-stop_word(did). stop_word(will). stop_word(would). stop_word(shall). stop_word(should).
-stop_word(may). stop_word(might). stop_word(must). stop_word(can). stop_word(could).
+stop_word(a).
+stop_word(an).
+stop_word(the).
+stop_word(is).
+stop_word(are).
+stop_word(was).
+stop_word(were).
+stop_word(be).
+stop_word(been).
+stop_word(being).
+stop_word(have).
+stop_word(has).
+stop_word(had).
+stop_word(do).
+stop_word(does).
+stop_word(did).
+stop_word(will).
+stop_word(would).
+stop_word(shall).
+stop_word(should).
+stop_word(may).
+stop_word(might).
+stop_word(must).
+stop_word(can).
+stop_word(could).
 stop_word(am). stop_word(it). stop_word(its).
-stop_word(in). stop_word(on). stop_word(at). stop_word(to). stop_word(for).
-stop_word(of). stop_word(with). stop_word(by). stop_word(from). stop_word(as).
-stop_word(and). stop_word(or). stop_word(but). stop_word(not). stop_word(no).
+stop_word(in).
+stop_word(on).
+stop_word(at).
+stop_word(to).
+stop_word(for).
+stop_word(of).
+stop_word(with).
+stop_word(by).
+stop_word(from).
+stop_word(as).
+stop_word(and).
+stop_word(or).
+stop_word(but).
+stop_word(not).
+stop_word(no).
 stop_word(nor). stop_word(so). stop_word(yet).
 stop_word(this). stop_word(that). stop_word(these). stop_word(those).
 stop_word(what). stop_word(which). stop_word(who). stop_word(whom).
-stop_word(i). stop_word(me). stop_word(my). stop_word(we). stop_word(our).
-stop_word(you). stop_word(your). stop_word(he). stop_word(she). stop_word(they).
+stop_word(i).
+stop_word(me).
+stop_word(my).
+stop_word(we).
+stop_word(our).
+stop_word(you).
+stop_word(your).
+stop_word(he).
+stop_word(she).
+stop_word(they).
 stop_word(them).
 stop_word(how). stop_word(when). stop_word(where). stop_word(why).
 stop_word(if). stop_word(then). stop_word(than). stop_word(about).
@@ -73,7 +114,8 @@ strip_punctuation(Word, Clean) :-
     string_chars(Clean, CleanChars).
 
 non_punct(C) :-
-    \+ member(C, ['?','!','.',',',';',':','"','\'','(',')','[',']','{','}']).
+    \+ member(C, ['?','!','.',',',';',':','"','\'','(',')','[',']','{',
+        '}']).
 
 meaningful_word(W) :-
     string_length(W, Len),
@@ -99,7 +141,12 @@ build_context_from_cache(Connection, Query, Context) :-
         ;
             format_context_items(Items, Formatted),
             format(atom(Context),
-                   "Use the following context from previous conversations when answering:\n\n~w\n---\n\n",
+
+
+
+
+
+                                       "Use the following context from previous conversations when answering:\n\n~w\n---\n\n",
                    [Formatted])
         )
     ).
@@ -128,7 +175,12 @@ call_gemini_api(Prompt, SearchP, Response) :-
     getenv('GOOGLE_API_KEY', ApiKey),
     model(Model),
     format(atom(URL),
-           'https://generativelanguage.googleapis.com/v1beta/models/~w:generateContent?key=~w',
+
+
+
+
+
+                               'https://generativelanguage.googleapis.com/v1beta/models/~w:generateContent?key=~w',
            [Model, ApiKey]),
     build_payload(Prompt, SearchP, Payload),
     http_post(URL, json(Payload), Result, [json_object(dict)]),
@@ -186,7 +238,12 @@ display_answer(Text) :-
         retractall(last_answer(_)),
         assert(last_answer(Text))
     ;
-        format("~n  [No response from Gemini — check model name or API key]~n~n")
+
+
+
+
+
+                            format("~n  [No response from Gemini — check model name or API key]~n~n")
     ).
 
 %% ---- REPL ----
@@ -244,7 +301,8 @@ process_input('!') :- !,
     cache_engine:cache_clear_older_one_week(Conn),
     cache_engine:cache_count(Conn, After),
     Cleared is Before - After,
-    format("  [Cleared ~w old entries. ~w items remain]~n", [Cleared, After]).
+    format("  [Cleared ~w old entries. ~w items remain]~n", [Cleared,
+        After]).
 
 % "!<query>" — search-grounded question
 process_input(Input) :-
@@ -278,8 +336,18 @@ main :-
     ( getenv('GOOGLE_API_KEY', _) ->
         true
     ;
-        format("Error: GOOGLE_API_KEY environment variable is not set.~n"),
-        format("Export it before running:  export GOOGLE_API_KEY=your-key-here~n"),
+
+
+
+
+
+                            format("Error: GOOGLE_API_KEY environment variable is not set.~n"),
+
+
+
+
+
+                            format("Export it before running:  export GOOGLE_API_KEY=your-key-here~n"),
         halt(1)
     ),
     cache_db_path(DbPath),

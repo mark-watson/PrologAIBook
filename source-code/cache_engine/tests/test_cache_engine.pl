@@ -7,14 +7,17 @@
 
 %% Helper to create a fresh cache for testing
 setup_cache(Conn) :-
-    ( exists_file('test_cache.db') -> delete_file('test_cache.db') ; true ),
+    ( exists_file('test_cache.db') -> delete_file('test_cache.db') ;
+        true ),
     cache_open(test_cache, Conn).
 
 teardown_cache(Conn) :-
     cache_close(Conn),
-    ( exists_file('test_cache.db') -> delete_file('test_cache.db') ; true ).
+    ( exists_file('test_cache.db') -> delete_file('test_cache.db') ;
+        true ).
 
-test(add_and_count, [setup(setup_cache(C)), cleanup(teardown_cache(C))]) :-
+test(add_and_count, [setup(setup_cache(C)),
+    cleanup(teardown_cache(C))]) :-
     cache_add(C, 'The quick brown fox jumps over the lazy dog'),
     cache_add(C, 'Hello world'),
     cache_add(C, 'Common Lisp is powerful'),
@@ -29,7 +32,8 @@ test(lookup_single_term,
     cache_add(C, 'Hello world'),
     cache_add(C, 'Common Lisp is powerful'),
     cache_lookup(C, [fox], Results),
-    assertion(Results == ['The quick brown fox jumps over the lazy dog']).
+    assertion(Results ==
+        ['The quick brown fox jumps over the lazy dog']).
 
 test(lookup_multiple_terms_and,
      [nondet, setup(setup_cache(C)), cleanup(teardown_cache(C))]) :-
@@ -72,7 +76,8 @@ test(lookup_no_match,
     cache_lookup(C, [nonexistent], Results),
     assertion(Results == []).
 
-test(clear_cache, [setup(setup_cache(C)), cleanup(teardown_cache(C))]) :-
+test(clear_cache, [setup(setup_cache(C)), cleanup(teardown_cache(C))])
+    :-
     cache_add(C, 'First entry'),
     cache_add(C, 'Second entry'),
     cache_count(C, Before),
@@ -86,7 +91,12 @@ test(clear_older_one_week,
     cache_add(C, 'Recent item'),
     %% Insert an old record directly via SQL
     ( sqlite_query(C,
-        "INSERT INTO cache (content, created_at) VALUES ('Old item', datetime('now', '-8 days'))",
+
+
+
+
+
+                            "INSERT INTO cache (content, created_at) VALUES ('Old item', datetime('now', '-8 days'))",
         _) -> true ; true ),
     cache_count(C, Before),
     assertion(Before == 2),
@@ -105,6 +115,7 @@ test(lookup_the,
     cache_add(C, 'Lisp is the best'),
     cache_lookup(C, [the], Results, [limit(10)]),
     length(Results, Len),
-    assertion(Len == 2).  %% "The quick brown fox..." and "Lisp is the best"
+    assertion(Len == 2).
+    %% "The quick brown fox.
 
 :- end_tests(cache_engine).

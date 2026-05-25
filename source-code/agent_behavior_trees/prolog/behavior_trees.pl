@@ -5,7 +5,8 @@
 
 /** <module> Behavior Trees Engine
  *
- * A simple, lightweight, and elegant Behavior Tree implementation in Prolog.
+ * A simple, lightweight, and elegant
+ * Behavior Tree implementation in Prolog.
  * Supports:
  *   - sequence([Children])
  *   - selector([Children]) (fallback)
@@ -52,7 +53,9 @@ tick_node(condition(CondName), Status) :-
     ).
 
 % 4. Action Node: Executes a user-defined action predicate.
-%    - The action predicate must bind its status argument (success, failure, or running).
+%    - The action predicate must bind its
+%      status argument
+%      (success, failure, or running).
 tick_node(action(ActionName), Status) :-
     call_action(ActionName, Status).
 
@@ -77,7 +80,8 @@ tick_selector([Child|Rest], Status) :-
     ).
 
 % --- Interface to Hook Action & Condition Predicates ---
-% User-defined actions and conditions are expected to be defined in user modules
+% User-defined actions and conditions are
+% expected to be defined in user modules
 % or hooked into the following dynamic/multifile predicates:
 :- multifile user_condition/1.
 :- multifile user_action/2.

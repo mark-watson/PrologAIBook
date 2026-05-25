@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running structured_output examples ==="
-	$(SWIPL) -g "json_string_to_facts('{"entities":[{"name":"Paris","type":"city"}]}'), forall(extracted_entity(N, T), format('Entity: ~w (~w)~n', [N, T])), halt" -s load.pl
+	$(SWIPL) -g "json_string_to_facts('{\"entities\":[{\"name\":\"Paris\",\"type\":\"city\"}]}'), forall(extracted_entity(N, T), format('Entity: ~w (~w)~n', [N, T])), halt" -s load.pl
 
 test:
 	@echo "=== Running structured_output tests ==="

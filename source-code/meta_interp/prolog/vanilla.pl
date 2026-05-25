@@ -9,14 +9,16 @@
 %% mi_solve(+Goal) - Vanilla meta-interpreter (user module context)
 mi_solve(Goal) :- mi_solve(user, Goal).
 
-%% mi_solve(+Module, +Goal) - Vanilla meta-interpreter with module context
+%% mi_solve(+Module, +Goal)
+%% Vanilla meta-interpreter with module context
 mi_solve(_, true) :- !.
 mi_solve(Mod, (A, B)) :- !, mi_solve(Mod, A), mi_solve(Mod, B).
 mi_solve(Mod, Goal) :-
     clause(Mod:Goal, Body),
     mi_solve(Mod, Body).
 
-%% mi_solve_proof(+Goal, -Proof) - Meta-interpreter with proof tree (user module)
+%% mi_solve_proof(+Goal, -Proof)
+%% Meta-interpreter with proof tree (user module)
 mi_solve_proof(Goal, Proof) :- mi_solve_proof(user, Goal, Proof).
 
 %% mi_solve_proof(+Module, +Goal, -Proof) - With module context

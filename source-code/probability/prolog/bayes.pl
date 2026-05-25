@@ -23,7 +23,8 @@ make_bayes_model(PriorPairs, Model) :-
     maplist(pair_value, PriorPairs, Priors),
     sumlist(Priors, Total),
     (   Total =:= 0
-    ->  throw(error(all_priors_zero, 'All priors are zero — cannot normalise.'))
+    ->  throw(error(all_priors_zero,
+        'All priors are zero — cannot normalise.'))
     ;   maplist(normalise_pair(Total), PriorPairs, Model)
     ).
 
@@ -35,18 +36,25 @@ normalise_pair(Total, H-P, H-NP) :-
 :- meta_predicate update(+, +, 2, -).
 
 %% update(+Model, +Evidence, :LikelihoodPred, -Updated)
-%% LikelihoodPred is a predicate of arity 2: LikelihoodPred(Hypothesis, P)
+%% LikelihoodPred is a predicate of arity 2: LikelihoodPred(Hypothesis,
+%% P)
 %% that binds P to P(Evidence | Hypothesis) when called.
 %% Evidence is passed for documentation but not used directly.
 %% Example: update(Model, positive, my_lik, Updated)
 %%   where my_lik(disease, 0.99) and my_lik(healthy, 0.05) are defined.
 update(Model, _Evidence, LikelihoodPred, Updated) :-
-    maplist(unnormalised_posterior(LikelihoodPred), Model, Unnormalised),
+    maplist(unnormalised_posterior(LikelihoodPred), Model,
+        Unnormalised),
     maplist(pair_value, Unnormalised, UnnormProbs),
     sumlist(UnnormProbs, Marginal),
     (   Marginal =:= 0.0
     ->  throw(error(zero_marginal,
-              'Marginal likelihood is zero — evidence impossible under all hypotheses.'))
+
+
+
+
+
+                                  'Marginal likelihood is zero — evidence impossible under all hypotheses.'))
     ;   maplist(normalise_pair(Marginal), Unnormalised, Updated)
     ).
 

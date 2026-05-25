@@ -4,7 +4,8 @@
     solve_farmer/1
 ]).
 
-%% State: state(Farmer, Fox, Chicken, Grain) where each is 'left' or 'right'
+%% State: state(Farmer, Fox, Chicken, Grain) where each is 'left' or
+%% 'right'
 %% Goal: all on the right bank
 
 solve_farmer(Moves) :-
@@ -30,7 +31,8 @@ move(state(right,F,right,G), state(left,F,left,G), farmer_chicken).
 move(state(left,F,C,left), state(right,F,C,right), farmer_grain).
 move(state(right,F,C,right), state(left,F,C,left), farmer_grain).
 
-%% Safety: fox cannot be alone with chicken, chicken cannot be alone with grain
+%% Safety: fox cannot be alone with chicken, chicken cannot be alone
+%% with grain
 safe(state(Farmer, Fox, Chicken, Grain)) :-
     (Fox == Chicken -> Farmer == Fox ; true),
     (Chicken == Grain -> Farmer == Chicken ; true).

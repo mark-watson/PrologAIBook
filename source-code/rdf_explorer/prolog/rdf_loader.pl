@@ -1,4 +1,5 @@
-%% rdf_loader.pl - Load and query RDF data using SWI-Prolog's semweb library
+%% rdf_loader.pl - Load and query RDF data using SWI-Prolog's semweb
+%% library
 :- module(rdf_loader, [
     load_rdf_file/1,
     query_rdf/3,

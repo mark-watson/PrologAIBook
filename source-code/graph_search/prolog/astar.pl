@@ -7,11 +7,13 @@
 
 :- use_module(read_graph, [edge/2]).
 
-%% Safe call: if Heuristic(Node, Value) fails with existence error, return 0.
+%% Safe call: if Heuristic(Node, Value) fails with existence error,
+%% return 0.
 safe_call(Callable, Node, Value) :-
     catch(call(Callable, Node, Value), _, Value = 0).
 
-%% A* search: accepts both string designators ('h/2') and callable terms (?(-N,-V)).
+%% A* search: accepts both string designators ('h/2') and callable terms
+%% (?(-N,-V)).
 astar(Start, Goal, Heuristic, Path) :-
     safe_call(Heuristic, Start, H0),
     H is H0 + 0,
@@ -35,12 +37,14 @@ astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Path) :-
     sort(1, @=<, Unsorted, Sorted),
     astar_loop(Sorted, Goal, Heuristic, Path).
 
-%% Zero heuristic: admissible for uniform-weight graphs (all edge weights = 1).
+%% Zero heuristic: admissible for uniform-weight graphs (all edge
+%% weights = 1).
 %% Useful as a baseline for testing A* correctness.
 zero_heuristic(_, 0).
 
 %% Example heuristic: estimated remaining distance to goal (reno).
-%% Rough estimates for the sample_graph cities — admissible for uniform-weight graph.
+%% Rough estimates for the sample_graph cities — admissible for
+%% uniform-weight graph.
 distance_heuristic(reno,      0).
 distance_heuristic(portland,  1).
 distance_heuristic(quincy,    1).

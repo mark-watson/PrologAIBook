@@ -20,9 +20,11 @@ pair(white, spicy_food).
 pair(white, dessert).
 pair(red, dessert).
 
-% Recommend a wine based on food, body preference, and sweetness preference.
+% Recommend a wine based on food, body preference, and sweetness
+% preference.
 % Returns Wine name, its Color, and a justification string.
-recommend(Food, PreferredBody, PreferredSweetness, Wine, Color, Explanation) :-
+recommend(Food, PreferredBody, PreferredSweetness, Wine, Color,
+    Explanation) :-
     wine(Wine, Color, Body, Sweetness),
     % Check food pairing compatibility
     pair(Color, Food),
@@ -30,10 +32,16 @@ recommend(Food, PreferredBody, PreferredSweetness, Wine, Color, Explanation) :-
     (PreferredBody == any ; Body == PreferredBody),
     (PreferredSweetness == any ; Sweetness == PreferredSweetness),
     % Generate a human-readable explanation
-    generate_explanation(Wine, Color, Body, Sweetness, Food, Explanation).
+    generate_explanation(Wine, Color, Body, Sweetness, Food,
+        Explanation).
 
 % Generate a beautiful explanation sentence
 generate_explanation(Wine, Color, Body, Sweetness, Food, Explanation) :-
     format(string(Explanation), 
-           "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.", 
+
+
+
+
+
+                               "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.",
            [Food, Color, Wine, Body, Sweetness, Color]).

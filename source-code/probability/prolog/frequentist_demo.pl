@@ -37,13 +37,18 @@ simulate_loop(N, Prev, Sens, FPR, TP0, FP0, TN0, FN0, TP, FP, TN, FN) :-
     ->  (R2 < Sens -> Pos = true ; Pos = false)
     ;   (R2 < FPR  -> Pos = true ; Pos = false)
     ),
-    (   Sick = true,  Pos = true  -> TP1 is TP0+1, FP1=FP0, TN1=TN0, FN1=FN0
-    ;   Sick = true,  Pos = false -> FN1 is FN0+1, TP1=TP0, FP1=FP0, TN1=TN0
-    ;   Sick = false, Pos = true  -> FP1 is FP0+1, TP1=TP0, TN1=TN0, FN1=FN0
-    ;   /* healthy, negative */      TN1 is TN0+1, TP1=TP0, FP1=FP0, FN1=FN0
+    (   Sick = true,  Pos = true  -> TP1 is TP0+1, FP1=FP0, TN1=TN0,
+        FN1=FN0
+    ;   Sick = true,  Pos = false -> FN1 is FN0+1, TP1=TP0, FP1=FP0,
+        TN1=TN0
+    ;   Sick = false, Pos = true  -> FP1 is FP0+1, TP1=TP0, TN1=TN0,
+        FN1=FN0
+    ;   /* healthy, negative */      TN1 is TN0+1, TP1=TP0, FP1=FP0,
+        FN1=FN0
     ),
     N1 is N - 1,
-    simulate_loop(N1, Prev, Sens, FPR, TP1, FP1, TN1, FN1, TP, FP, TN, FN).
+    simulate_loop(N1, Prev, Sens, FPR, TP1, FP1, TN1, FN1, TP, FP, TN,
+        FN).
 
 format_pval(PVal) :-
     (   PVal < 1.0e-15
@@ -52,9 +57,19 @@ format_pval(PVal) :-
     ).
 
 run_frequentist_demo :-
-    format('~n================================================================~n'),
+
+
+
+
+
+                        format('~n================================================================~n'),
     format('  FREQUENTIST ANALYSIS: Medical Screening Test~n'),
-    format('================================================================~n'),
+
+
+
+
+
+                        format('================================================================~n'),
     %% 1. Simulate
     simulate_screening(100000, TP, FP, TN, FN),
     Total is TP + FP + TN + FN,
@@ -70,7 +85,8 @@ run_frequentist_demo :-
     NF is float(Total),
     ETP is R1*C1/NF, EFP is R1*C2/NF,
     EFN is R2*C1/NF, ETN is R2*C2/NF,
-    chi_squared_test([TP,FP,FN,TN], [ETP,EFP,EFN,ETN], _, result(Chi2,DF,PVal)),
+    chi_squared_test([TP,FP,FN,TN], [ETP,EFP,EFN,ETN], _, result(Chi2,
+        DF,PVal)),
     format('  chi-squared = ~2f   df = ~w   p-value ', [Chi2, DF]),
     format_pval(PVal), nl,
     format('~n  The association exists but says nothing about~n'),
@@ -80,7 +96,8 @@ run_frequentist_demo :-
     (Positives =:= 0 -> PPV = 0.0 ; PPV is float(TP) / Positives),
     format('~n--- 3. Positive Predictive Value (PPV) ---~n'),
     PPVPct is PPV * 100.0,
-    format('  PPV = ~w / ~w = ~4f  (~2f %)~n', [TP, Positives, PPV, PPVPct]),
+    format('  PPV = ~w / ~w = ~4f  (~2f %)~n', [TP, Positives, PPV,
+        PPVPct]),
     confidence_interval_proportion(TP, Positives, 0.95, result(Lo, Hi)),
     LoPct is Lo*100, HiPct is Hi*100,
     format('  95% Wilson CI for PPV: [~4f, ~4f]  (~2f% - ~2f%)~n',
@@ -106,7 +123,27 @@ run_frequentist_demo :-
            [PDisease, PDPct]),
     format('  Frequentist PPV from simulation          = ~4f  (~2f%)~n',
            [PPV, PPVPct]),
-    format('~n  Both frameworks agree: about 2% probability of illness.~n'),
-    format('================================================================~n'),
-    format('  Key lesson: statistical significance /= practical significance.~n'),
-    format('================================================================~n').
+
+
+
+
+
+                        format('~n  Both frameworks agree: about 2% probability of illness.~n'),
+
+
+
+
+
+                        format('================================================================~n'),
+
+
+
+
+
+                        format('  Key lesson: statistical significance /= practical significance.~n'),
+
+
+
+
+
+                        format('================================================================~n').

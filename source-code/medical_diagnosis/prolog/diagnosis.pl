@@ -19,7 +19,8 @@ diagnose(Symptoms, diagnosis(Disease, Explanation)) :-
 
 assert_symptom(S) :- assert(symptom(S)).
 retract_symptoms([]).
-retract_symptoms([S|Rest]) :- retract(symptom(S)), retract_symptoms(Rest).
+retract_symptoms([S|Rest]) :- retract(symptom(S)),
+    retract_symptoms(Rest).
 
 %% Disease knowledge base
 disease(flu, [fever, cough, fatigue, body_aches]).

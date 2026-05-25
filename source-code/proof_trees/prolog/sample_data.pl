@@ -1,6 +1,7 @@
 %% sample_data.pl - Extended sample data for proof tree examples
 %%
-%% A multi-generational family tree providing diverse proof tree scenarios:
+%% A multi-generational family tree providing
+%% diverse proof tree scenarios:
 %%   - Direct facts (parent/2)
 %%   - Conjunctions (grandparent/2, sibling/2)
 %%   - Recursion (ancestor/2)
@@ -8,7 +9,7 @@
 %%   - Negation-as-failure (sibling/2 via \=)
 %%   - Multiple clauses per predicate
 
-%% --- Direct facts: parent/2 ------------------------------------------------
+%% --- Direct facts: parent/2 -------------------------
 %% Generation 1: great-grandparents
 parent(adam,   john).
 parent(eve,    john).
@@ -51,7 +52,7 @@ parent(lisa,   frank).
 parent(carol,  grace).
 parent(david,  henry).
 
-%% --- Rules ----------------------------------------------------------------
+%% --- Rules ----------------------------------------
 
 %% grandparent(X, Z) - X is a grandparent of Z (conjunction)
 grandparent(X, Z) :-

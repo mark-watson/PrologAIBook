@@ -4,9 +4,11 @@
 %   Example 2: a Forest Management problem
 %
 % References:
-%   MDP:              https://en.wikipedia.org/wiki/Markov_decision_process
-%   Value Iteration:  https://en.wikipedia.org/wiki/Markov_decision_process#Value_iteration
-%   Policy Iteration: https://en.wikipedia.org/wiki/Markov_decision_process#Policy_iteration
+%   MDP: https://en.wikipedia.org/wiki/Markov_decision_process
+%   Value Iteration:
+%   https://en.wikipedia.org/wiki/Markov_decision_process#Value_iteration
+%   Policy Iteration:
+%   https://en.wikipedia.org/wiki/Markov_decision_process#Policy_iteration
 %   Bellman equation: https://en.wikipedia.org/wiki/Bellman_equation
 %
 % Run with SWI-Prolog:
@@ -71,7 +73,8 @@ reward(S, _, 0.0) :- S \= 8, S \= 5.
 % -----------------------------------------------
 % Value Iteration
 %
-% Bellman optimality:  V(s) = max_a [ R(s,a) + gamma * sum_{s'} P(s'|s,a)*V(s') ]
+% Bellman optimality: V(s) = max_a [ R(s,a) + gamma * sum_{s'}
+% P(s'|s,a)*V(s') ]
 % -----------------------------------------------
 
 % q_value(+State, +Action, +VList, +Gamma, -QValue)
@@ -171,7 +174,8 @@ pi_loop(Policy, NStates, Gamma, Tol, VFinal, PolicyFinal, I, IFinal) :-
     I1 is I + 1,
     ( NewPolicy == Policy
     -> VFinal = V, PolicyFinal = Policy, IFinal = I1
-    ;  pi_loop(NewPolicy, NStates, Gamma, Tol, VFinal, PolicyFinal, I1, IFinal)
+    ;  pi_loop(NewPolicy, NStates, Gamma, Tol, VFinal, PolicyFinal, I1,
+        IFinal)
     ).
 
 % Print a 3x3 grid policy using arrow characters
@@ -211,15 +215,17 @@ forest_transition(S, 0, FireP, Trans) :-   % Wait
     SurvP is 1.0 - FireP,
     Trans = [0-FireP, NS-SurvP].
 
-forest_transition(4, 0, FireP, Trans) :-   % Wait at max age -> stay at 4 (or fire)
+forest_transition(4, 0, FireP, Trans) :-   % Wait at max age -> stay at
+                                           % 4 (or fire)
     SurvP is 1.0 - FireP,
     Trans = [0-FireP, 4-SurvP].
 
-forest_transition(_, 1, _, [0-1.0]).       % Cut -> replant (age 0), deterministic
+forest_transition(_, 1, _, [0-1.0]).
 
 % forest_reward(+State, +Action, +R1, +R2, -Reward)
 forest_reward(_, 1, R1, R2, R) :-          % Cut
-    R is (R1 + R2) / 2.0.                  % simplified average reward for cutting
+    R is (R1 + R2) / 2.0.                  % simplified average reward
+                                           % for cutting
 forest_reward(4, 0, R1, _, R1).            % Wait at max age
 forest_reward(S, 0, _, _, 0.0) :- S < 4.  % Wait at younger age
 
@@ -235,7 +241,8 @@ weighted_v(VList, NS-P, WV) :-
     nth0(NS, VList, V),
     WV is P * V.
 
-% forest_best_value(+S, +VList, +Gamma, +FireP, +R1, +R2, -BestQ, -BestA)
+% forest_best_value(+S, +VList, +Gamma, +FireP, +R1, +R2, -BestQ,
+% -BestA)
 forest_best_value(S, VList, Gamma, FireP, R1, R2, BestQ, BestA) :-
     findall(QV-Ac,
             ( member(Ac, [0,1]),
@@ -245,25 +252,30 @@ forest_best_value(S, VList, Gamma, FireP, R1, R2, BestQ, BestA) :-
     max_list(QVals, BestQ),
     member(BestQ-BestA, Pairs), !.
 
-% forest_vi(+NStates, +Gamma, +Tol, +FireP, +R1, +R2, -V, -Policy, -Iter)
+% forest_vi(+NStates, +Gamma, +Tol, +FireP, +R1, +R2, -V, -Policy,
+% -Iter)
 forest_vi(NStates, Gamma, Tol, FireP, R1, R2, V, Policy, Iter) :-
     length(V0, NStates),
     maplist(=(0.0), V0),
     forest_vi_loop(V0, NStates, Gamma, Tol, FireP, R1, R2, V, 0, Iter),
     NStatesM1 is NStates - 1,
     numlist(0, NStatesM1, States),
-    maplist(forest_best_action(V, Gamma, FireP, R1, R2), States, Policy).
+    maplist(forest_best_action(V, Gamma, FireP, R1, R2), States,
+        Policy).
 
-forest_vi_loop(V, NStates, Gamma, Tol, FireP, R1, R2, VFinal, I, IFinal) :-
+forest_vi_loop(V, NStates, Gamma, Tol, FireP, R1, R2, VFinal, I,
+    IFinal) :-
     NStatesM1 is NStates - 1,
     numlist(0, NStatesM1, States),
-    maplist(forest_best_state_value(V, Gamma, FireP, R1, R2), States, NewV),
+    maplist(forest_best_state_value(V, Gamma, FireP, R1, R2), States,
+        NewV),
     maplist(abs_diff, V, NewV, Diffs),
     max_list(Diffs, MaxDelta),
     I1 is I + 1,
     ( MaxDelta < Tol
     -> VFinal = NewV, IFinal = I1
-    ;  forest_vi_loop(NewV, NStates, Gamma, Tol, FireP, R1, R2, VFinal, I1, IFinal)
+    ;  forest_vi_loop(NewV, NStates, Gamma, Tol, FireP, R1, R2, VFinal,
+        I1, IFinal)
     ).
 
 forest_best_state_value(VList, Gamma, FireP, R1, R2, S, BestQ) :-

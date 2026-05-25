@@ -21,13 +21,13 @@
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 
-%% ======================================================================
+%% =====================================================================
 %%  Normal CDF approximation (Abramowitz & Stegun 26.2.17)
 %%
 %%  Maximum absolute error: 1.5 × 10⁻⁷
 %%  Input: z (real number)
 %%  Output: Φ(z) = P(Z ≤ z) for Z ~ N(0,1)
-%% ======================================================================
+%% =====================================================================
 
 phi_approx(Z, CDF) :-
     P  = 0.2316419,
@@ -49,13 +49,13 @@ phi_approx(Z, CDF) :-
     ;   CDF is 1.0 - CDF0
     ).
 
-%% ======================================================================
+%% =====================================================================
 %%  Chi-squared CDF approximation (Wilson–Hilferty, 1931)
 %%
 %%  Transforms chi² to an approximately standard-normal variate:
 %%     z ≈ ((χ²/k)^(1/3) − (1 − 2/(9k))) / sqrt(2/(9k))
 %%  then uses phi_approx.  Good for df ≥ 3; acceptable for df ≥ 1.
-%% ======================================================================
+%% =====================================================================
 
 chi_squared_cdf(X, DF, CDF) :-
     (   X =< 0.0
@@ -66,9 +66,9 @@ chi_squared_cdf(X, DF, CDF) :-
         phi_approx(ZVal, CDF)
     ).
 
-%% ======================================================================
+%% =====================================================================
 %%  Z-score
-%% ======================================================================
+%% =====================================================================
 
 %% z_score(+Observed, +Expected, +StdDev, -Z)
 z_score(Observed, Expected, StdDev) :-
@@ -80,12 +80,13 @@ z_score(Observed, Expected, StdDev, Z) :-
     StdDev > 0,
     Z is (float(Observed) - float(Expected)) / float(StdDev).
 
-%% ======================================================================
+%% =====================================================================
 %%  One-sample z-test for a proportion
-%% ======================================================================
+%% =====================================================================
 
 %% z_test_proportion(+Successes, +N, +HypothesisedP, -result(Z, PValue))
-%% Tests H₀: p = HypothesisedP against H₁: p ≠ HypothesisedP (two-tailed).
+%% Tests H₀: p = HypothesisedP against H₁: p ≠ HypothesisedP
+%% (two-tailed).
 z_test_proportion(Successes, N, HypP, result(Z, PVal)) :-
     P0  is float(HypP),
     NF  is float(N),
@@ -96,11 +97,12 @@ z_test_proportion(Successes, N, HypP, result(Z, PVal)) :-
     PVal0 is 2.0 * (1.0 - PhiAbs),
     PVal is min(PVal0, 1.0).
 
-%% ======================================================================
+%% =====================================================================
 %%  Pearson's chi-squared test (goodness-of-fit)
-%% ======================================================================
+%% =====================================================================
 
-%% chi_squared_test(+Observed, +Expected, -ChiSq, -result(ChiSq, DF, PValue))
+%% chi_squared_test(+Observed, +Expected, -ChiSq, -result(ChiSq, DF,
+%% PValue))
 %% Observed and Expected are equal-length lists of non-negative counts.
 %% H₀: observed counts follow the expected distribution.
 chi_squared_test(Observed, Expected, _, result(ChiSq, DF, PVal)) :-
@@ -120,9 +122,9 @@ chi_sq_term(O, E, T) :-
     ;   T is (OF - EF)^2 / EF
     ).
 
-%% ======================================================================
+%% =====================================================================
 %%  Wilson score confidence interval for a proportion
-%% ======================================================================
+%% =====================================================================
 
 %% z_critical(+Confidence, -ZCrit)
 %% Return the z* critical value for a two-sided confidence level.
@@ -149,17 +151,20 @@ bisect_z(Lo, Hi, Target, Steps, Z) :-
     ;   bisect_z(Lo, Mid, Target, Steps1, Z)
     ).
 
-%% confidence_interval_proportion(+Successes, +N, +Confidence, -result(Lower, Upper))
+%% confidence_interval_proportion(+Successes, +N, +Confidence,
+%% -result(Lower, Upper))
 %% Wilson score confidence interval for a binomial proportion.
 %% More accurate than the Wald (normal-approximation) interval,
 %% especially for small samples or extreme proportions.
-confidence_interval_proportion(Successes, N, Confidence, result(Lower, Upper)) :-
+confidence_interval_proportion(Successes, N, Confidence, result(Lower,
+    Upper)) :-
     NF is float(N),
     P  is float(Successes) / NF,
     z_critical(Confidence, ZC),
     Z2 is ZC * ZC,
     Denom is 1.0 + Z2 / NF,
     Centre is (P + Z2 / (2.0 * NF)) / Denom,
-    Margin is (ZC * sqrt(P * (1.0 - P) / NF + Z2 / (4.0 * NF * NF))) / Denom,
+    Margin is (ZC * sqrt(P * (1.0 - P) / NF + Z2 / (4.0 * NF * NF))) /
+        Denom,
     Lower is max(0.0, Centre - Margin),
     Upper is min(1.0, Centre + Margin).

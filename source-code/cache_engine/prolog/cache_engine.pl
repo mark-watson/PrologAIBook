@@ -30,8 +30,26 @@ cache_open(DbPath, Connection) :-
     ensure_cache_table(Connection).
 
 ensure_cache_table(Conn) :-
-    SQL = 'CREATE TABLE IF NOT EXISTS cache (id INTEGER PRIMARY KEY, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)',
-    ( sqlite_query(Conn, SQL, _Row) -> true ; true ).
+    atom_concat(
+        'CREATE TABLE IF NOT EXISTS cache ',
+        '(id INTEGER PRIMARY KEY, ',
+        S1),
+    atom_concat(
+        S1,
+        'content TEXT, ',
+        S2),
+    atom_concat(
+        S2,
+        'created_at DATETIME DEFAULT ',
+        S3),
+    atom_concat(
+        S3,
+        'CURRENT_TIMESTAMP)',
+        SQL),
+    ( sqlite_query(Conn, SQL, _Row)
+    -> true
+    ;  true
+    ).
 
 %% cache_close(+Connection)
 %% Closes the SQLite database connection.
@@ -42,7 +60,8 @@ cache_close(Connection) :-
 %% Adds a string to the cache.
 cache_add(Connection, Text) :-
     escape_sql(Text, Escaped),
-    format(atom(SQL), "INSERT INTO cache (content) VALUES ('~w')", [Escaped]),
+    format(atom(SQL), "INSERT INTO cache (content) VALUES ('~w')",
+        [Escaped]),
     ( sqlite_query(Connection, SQL, _Row) -> true ; true ).
 
 %% cache_lookup(+Connection, +SearchTerms, -Results)
@@ -59,9 +78,11 @@ cache_lookup(Connection, SearchTerms, Results) :-
 cache_lookup(Connection, [], Results, Options) :-
     option_limit(Options, Limit),
     format(atom(SQL),
-           "SELECT content FROM cache ORDER BY created_at DESC LIMIT ~d",
-           [Limit]),
-    findall(Content, sqlite_query(Connection, SQL, row(Content)), Results).
+        "SELECT content FROM cache ORDER BY created_at DESC LIMIT ~d",
+        [Limit]),
+    findall(Content,
+        sqlite_query(Connection, SQL, row(Content)),
+        Results).
 
 cache_lookup(Connection, SearchTerms, Results, Options) :-
     SearchTerms \= [],
@@ -69,9 +90,11 @@ cache_lookup(Connection, SearchTerms, Results, Options) :-
     option_match_any(Options, MatchAny),
     build_where_clause(SearchTerms, MatchAny, WhereClause),
     format(atom(SQL),
-           "SELECT content FROM cache WHERE ~w ORDER BY created_at DESC LIMIT ~d",
-           [WhereClause, Limit]),
-    findall(Content, sqlite_query(Connection, SQL, row(Content)), Results).
+        "SELECT content FROM cache WHERE ~w ORDER BY created_at DESC LIMIT ~d",
+        [WhereClause, Limit]),
+    findall(Content,
+        sqlite_query(Connection, SQL, row(Content)),
+        Results).
 
 %% cache_count(+Connection, -Count)
 %% Returns the number of items in the cache.
@@ -87,10 +110,11 @@ cache_clear(Connection) :-
 %% cache_clear_older_one_week(+Connection)
 %% Removes items older than 7 days from the cache.
 cache_clear_older_one_week(Connection) :-
-    ( sqlite_query(Connection,
-        "DELETE FROM cache WHERE created_at <= datetime('now', '-7 days')",
-        _Row)
-    -> true ; true ).
+    SQL = "DELETE FROM cache WHERE created_at <= datetime('now', '-7 days')",
+    ( sqlite_query(Connection, SQL, _Row)
+    -> true
+    ;  true
+    ).
 
 %% --- Helper predicates ---
 

@@ -1,31 +1,38 @@
-%% categorizer.pl - Bag-of-words text categorization with expanded vocabulary
+%% categorizer.pl - Bag-of-words text categorization with expanded
+%% vocabulary
 :- module(categorizer, [
     categorize/2
 ]).
 
 %% Category keyword weights — 8 categories, ~40 words each (~320 total)
 category_words(politics, [
-    president, congress, election, vote, senator, law, government, political,
+    president, congress, election, vote, senator, law, government,
+        political,
     democrat, republican, campaign, ballot, bill, legislation, governor,
     cabinet, diplomacy, policy, reform, amendment, referendum, lobbyist,
-    partisan, bipartisan, inauguration, veto, debate, delegate, constituent,
+    partisan, bipartisan, inauguration, veto, debate, delegate,
+        constituent,
     judiciary, mayor, ordinance, filibuster, executive, legislature,
     regulation, sanction, treaty, impeachment, oversight
 ]).
 category_words(sports, [
     game, team, player, score, win, tournament, match, championship,
     league, coach, referee, offense, defense, touchdown, goal, season,
-    playoff, athlete, stadium, draft, roster, quarter, overtime, penalty,
-    medal, rivalry, final, semifinal, sprint, marathon, rookie, franchise,
+    playoff, athlete, stadium, draft, roster, quarter, overtime,
+        penalty,
+    medal, rivalry, final, semifinal, sprint, marathon, rookie,
+        franchise,
     batting, pitching, goaltender, referee, scrimmage, relegation,
     tryout, concussion
 ]).
 category_words(technology, [
     computer, software, algorithm, data, programming, internet, digital,
     code, hardware, network, server, database, encryption, startup,
-    browser, mobile, cloud, cybersecurity, robotics, interface, processor,
+    browser, mobile, cloud, cybersecurity, robotics, interface,
+        processor,
     framework, deployment, debug, latency, bandwidth, analytics,
-    machine_learning, automation, compiler, kernel, firmware, middleware,
+    machine_learning, automation, compiler, kernel, firmware,
+        middleware,
     container, blockchain, quantum, virtual_reality, augmented_reality,
     neural_network, cryptography
 ]).
@@ -38,7 +45,8 @@ category_words(economy, [
     deregulation, arbitrage, yield, benchmark, capital
 ]).
 category_words(healthcare, [
-    doctor, nurse, hospital, patient, medicine, surgery, vaccine, clinic,
+    doctor, nurse, hospital, patient, medicine, surgery, vaccine,
+        clinic,
     disease, diagnosis, therapy, prescription, symptom, specialist,
     emergency, pharmacy, insurance, wellness, epidemic, treatment,
     physician, surgeon, pediatric, oncology, cardiology, radiology,

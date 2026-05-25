@@ -14,7 +14,8 @@ test(preprocess_scales_target_malignant, [true(Target =:= 1.0)]) :-
     preprocess([[10,10,10,10,10,10,10,10,10,4]], [Row]),
     last(Row, Target).
 
-test(preprocess_features_normalised, [true((Min >= -0.001, Max =< 1.001))]) :-
+test(preprocess_features_normalised, [true((Min >= -0.001, Max =<
+    1.001))]) :-
     preprocess([[5,3,4,1,8,10,4,9,1,4]], [Row]),
     length(Feats, 9),
     append(Feats, [_], Row),

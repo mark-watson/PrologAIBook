@@ -1,4 +1,5 @@
-%% json_to_facts.pl - Convert structured LLM JSON output into Prolog facts
+%% json_to_facts.pl - Convert structured LLM JSON output into Prolog
+%% facts
 :- module(json_to_facts, [
     json_string_to_facts/1,
     extracted_entity/2,
@@ -8,7 +9,8 @@
 :- use_module(library(json)).
 
 :- dynamic extracted_entity/2.    % extracted_entity(Name, Type)
-:- dynamic extracted_relation/3.  % extracted_relation(Subject, Predicate, Object)
+:- dynamic extracted_relation/3.  % extracted_relation(Subject,
+                                  %            Predicate, Object)
 
 %% json_string_to_facts(+JsonString)
 %% Parses JSON with entities/relations arrays into Prolog facts

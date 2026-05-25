@@ -41,7 +41,8 @@ num_input_features(9).
 load_wisconsin_data(Rows) :-
     once(source_file(anomaly_detection:_, ThisFile)),
     file_directory_name(ThisFile, Dir),
-    atomic_list_concat([Dir, '/../data/cleaned_wisconsin_cancer_data.csv'], Path),
+    atomic_list_concat([Dir,
+        '/../data/cleaned_wisconsin_cancer_data.csv'], Path),
     csv_read_file(Path, CsvRows,
                   [separator(0',), convert(true), arity(10)]),
     maplist(row_to_list, CsvRows, AllRows),
@@ -71,11 +72,10 @@ row_to_list(Row, List) :-
 %    3. Min-max normalise features 0-8 within each row
 %    4. Remap target (column 9): (x - 2) * 0.5  →  {0, 1}
 preprocess(Raw, Processed) :-
-    maplist(preprocess_row, Raw, Processed).
+    maplist(preprocess_row, Raw, Processed), !.
 
-preprocess_row(Row, Out) :-
-    length(Features, 9),
-    append(Features, [Target], Row),
+preprocess_row([F1, F2, F3, F4, F5, F6, F7, F8, F9, Target], Out) :-
+    Features = [F1, F2, F3, F4, F5, F6, F7, F8, F9],
     maplist(scale01, Features, Scaled),
     maplist(log_transform, Scaled, Logged),
     min_list(Logged, Min), max_list(Logged, Max),
@@ -85,7 +85,8 @@ preprocess_row(Row, Out) :-
     ;   maplist(normalise(Min, Span), Logged, Normed)
     ),
     TargetOut is (Target - 2) * 0.5,
-    append(Normed, [TargetOut], Out).
+    Normed = [N1, N2, N3, N4, N5, N6, N7, N8, N9],
+    Out = [N1, N2, N3, N4, N5, N6, N7, N8, N9, TargetOut].
 
 scale01(X, Y) :- Y is X * 0.1.
 log_transform(X, Y) :- Y is log(X + 1.2).
@@ -94,7 +95,8 @@ normalise(Min, Span, X, Y) :- Y is (X - Min) / Span.
 %% ---------- Data Splitting ----------
 
 %% split_data(+Rows, -Train, -CV, -Test) is det.
-%  Mimics the Java split: 60% training (mostly normal, ~10% anomalies leak),
+%  Mimics the Java split: 60% training (mostly normal, ~10% anomalies
+%  leak),
 %  ~28% cross-validation, ~12% test.
 %  Fully deterministic — no choicepoints.
 split_data(Rows, Train, CV, Test) :-
@@ -279,7 +281,8 @@ evaluate_model(Model, TestRows) :-
     format(' -- recall    = ~6f~n', [Recall]),
     format(' -- F1        = ~6f~n', [F1]).
 
-classify_row(Model, Row, counts(TP0,FP0,FN0,TN0), counts(TP,FP,FN,TN)) :-
+classify_row(Model, Row, counts(TP0,FP0,FN0,TN0), counts(TP,FP,FN,TN))
+    :-
     Model = model(Mu, SigmaSq, NF, Eps),
     gaussian_prob(Row, Mu, SigmaSq, NF, PVal),
     last(Row, Target),
@@ -313,7 +316,7 @@ bin_val(NumBins, Val, BinsIn, BinsOut) :-
     New is Old + 1,
     replace_nth1(Idx1, BinsIn, New, BinsOut).
 
-replace_nth1(1, [_|T], X, [X|T]).
+replace_nth1(1, [_|T], X, [X|T]) :- !.
 replace_nth1(N, [H|T], X, [H|T2]) :-
     N > 1, N1 is N - 1,
     replace_nth1(N1, T, X, T2).

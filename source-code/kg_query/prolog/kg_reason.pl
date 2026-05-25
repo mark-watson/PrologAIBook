@@ -14,7 +14,8 @@
 :- dynamic entity/2.      % entity(ID, Type)
 :- dynamic relation/3.    % relation(From, Predicate, To)
 
-%% path(+Start, +End, -Path) - Find multi-hop path between entities (cycle-free)
+%% path(+Start, +End, -Path) - Find multi-hop path between entities
+%% (cycle-free)
 path(Start, End, Path) :-
     path(Start, End, [Start], Path).
 
@@ -31,22 +32,27 @@ path(Start, End, Visited, [Start|Rest]) :-
 connected(A, B) :- path(A, B, _).
 connected(A, B) :- path(B, A, _).
 
-%% neighbors(+Entity, -Neighbors, -Predicates) - Find all direct neighbors
+%% neighbors(+Entity, -Neighbors, -Predicates) - Find all direct
+%% neighbors
 neighbors(Entity, Neighbors, Predicates) :-
-    findall(Neighbor-Predicate, relation(Entity, Predicate, Neighbor), Pairs),
+    findall(Neighbor-Predicate, relation(Entity, Predicate, Neighbor),
+        Pairs),
     pairs_keys_values(Pairs, Neighbors, Predicates).
 
-%% path_length(+Start, +End, -Length) - Find length of a path between entities
+%% path_length(+Start, +End, -Length) - Find length of a path between
+%% entities
 path_length(Start, End, Length) :-
     path(Start, End, P),
     !,
     length(P, Length).
 
-%% all_paths(+Start, +End, -Paths) - Find all cycle-free paths between entities
+%% all_paths(+Start, +End, -Paths) - Find all cycle-free paths between
+%% entities
 all_paths(Start, End, Paths) :-
     findall(Path, path(Start, End, Path), Paths).
 
-%% reachable(+Entity, -Reachable) - Find all entities reachable from Entity (BFS, bidirectional)
+%% reachable(+Entity, -Reachable) - Find all entities reachable from
+%% Entity (BFS, bidirectional)
 reachable(Entity, Reachable) :-
     reachable_fwd([Entity], [Entity], Fwd),
     reachable_bwd([Entity], [Entity], Bwd),
@@ -73,7 +79,8 @@ reachable_bwd([Curr|Queue], Visited, Result) :-
     reachable_bwd(NewQueue, NewVisited, RestResult),
     append(NewNeighbors, RestResult, Result).
 
-%% relation_count(+Predicate, -Count) - Count relations with given predicate
+%% relation_count(+Predicate, -Count) - Count relations with given
+%% predicate
 relation_count(Predicate, Count) :-
     findall(_, relation(_, Predicate, _), List),
     length(List, Count).

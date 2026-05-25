@@ -17,7 +17,12 @@ gemini_generate(Prompt, Response) :-
 gemini_generate(Prompt, Response, _Options) :-
     getenv('GOOGLE_API_KEY', ApiKey),
     format(atom(URL),
-           'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=~w',
+
+
+
+
+
+                               'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=~w',
            [ApiKey]),
     Payload = json([
         contents=[json([

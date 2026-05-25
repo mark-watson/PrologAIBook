@@ -16,11 +16,13 @@ schedule_jobs(Jobs, Schedule) :-
     no_overlap(Schedule),
     maplist(label_task, Schedule).
 
-create_task(job(Name, Duration, _Deadline), scheduled(Name, Start, End), Start) :-
+create_task(job(Name, Duration, _Deadline), scheduled(Name, Start, End),
+    Start) :-
     Start in 0..100,
     End #= Start + Duration.
 
-deadline_constraint(job(Name, _Duration, Deadline), scheduled(Name, _Start, End)) :-
+deadline_constraint(job(Name, _Duration, Deadline), scheduled(Name,
+    _Start, End)) :-
     End #=< Deadline.
 
 no_overlap([]).

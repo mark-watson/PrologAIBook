@@ -4,5 +4,6 @@
 :- if(exists_source(library(clpz))).
 :- use_module(prolog/scryer_constraints).
 :- else.
-:- format('Note: scryer_clp requires Scryer Prolog (clpz not available)~n').
+:- format('Note: scryer_clp requires Scryer Prolog'),
+   format(' (clpz not available)~n').
 :- endif.

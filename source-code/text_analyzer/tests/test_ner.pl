@@ -17,7 +17,8 @@ test(find_org) :-
     memberchk(entity(org, 'Apple'), Entities).
 
 test(find_all_types) :-
-    find_entities(['Musk', visited, 'Tokyo', to, open, 'Tesla', office], Entities),
+    find_entities(['Musk', visited, 'Tokyo', to, open, 'Tesla', office],
+        Entities),
     memberchk(entity(person, 'Musk'), Entities),
     memberchk(entity(place, 'Tokyo'), Entities),
     memberchk(entity(org, 'Tesla'), Entities).
@@ -31,7 +32,8 @@ test(historical_person) :-
     memberchk(entity(person, 'Churchill'), Entities).
 
 test(multiple_places) :-
-    find_entities(['Paris', to, 'Berlin', via, 'Switzerland'], Entities),
+    find_entities(['Paris', to, 'Berlin', via, 'Switzerland'],
+        Entities),
     memberchk(entity(place, 'Paris'), Entities),
     memberchk(entity(place, 'Berlin'), Entities),
     memberchk(entity(place, 'Switzerland'), Entities).

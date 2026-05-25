@@ -1,4 +1,5 @@
-%% pipeline.pl - Hybrid AI pipeline: Python preprocessing + Prolog reasoning
+%% pipeline.pl - Hybrid AI pipeline: Python preprocessing + Prolog
+%% reasoning
 :- module(pipeline, [
     run_pipeline/2
 ]).
@@ -16,7 +17,8 @@ run_pipeline(InputText, Result) :-
     %% Step 2: Assert as Prolog facts
     maplist(assert_entity, Entities),
     %% Step 3: Prolog reasoning
-    findall(conclusion(E, Type), entity_conclusion(E, Type), Conclusions),
+    findall(conclusion(E, Type), entity_conclusion(E, Type),
+        Conclusions),
     Result = pipeline_result(Entities, Conclusions),
     %% Cleanup
     retractall(extracted(_,_)).
