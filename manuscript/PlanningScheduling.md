@@ -1,11 +1,11 @@
 # Planning and Scheduling
 
-Planning — the automatic generation of action sequences to achieve goals — is a foundational AI problem, and Prolog is exceptionally well-suited for it. Prolog's backtracking search, unification, and declarative style make it natural to express planning domains and let the system find solutions.
+Planning, the automatic generation of action sequences to achieve goals, is a foundational AI problem, and Prolog is exceptionally well-suited for it. Prolog's backtracking search, unification, and declarative style make it natural to express planning domains and let the system find solutions.
 
 
 ## Classical Planning in Prolog
 
-Classical planning represents the world as a set of logical **fluents** — facts that can be true or false at any given time. A **state** is a collection of fluents that hold true. Actions change the state by adding and deleting fluents, and a plan is a sequence of actions that transforms an initial state into one that satisfies a goal condition.
+Classical planning represents the world as a set of logical **fluents**, facts that can be true or false at any given time. A **state** is a collection of fluents that hold true. Actions change the state by adding and deleting fluents, and a plan is a sequence of actions that transforms an initial state into one that satisfies a goal condition.
 
 The most influential representation is **STRIPS** (STanford Research Institute Problem Solver), where each action is defined by three components:
 
@@ -120,7 +120,7 @@ For the two-block stacking problem, BFS finds the optimal 2-step plan:
 Plan = [pickup(a), stack(a, b)].
 ```
 
-Building a three-block tower — BFS finds the minimal 4-step sequence:
+Building a three-block tower, BFS finds the minimal 4-step sequence:
 
 ```prolog
 ?- plan_bfs([on_table(a), on_table(b), on_table(c),
@@ -170,7 +170,7 @@ Plan = [load_truck(pkg1, truck1, loc_a),
         unload_truck(pkg1, truck1, loc_b)].
 ```
 
-This separation of planner from domain is the key architectural insight: add a new domain by defining `action/4` facts — the search code never changes.
+This separation of planner from domain is the key architectural insight: add a new domain by defining `action/4` facts and the search code never changes.
 
 
 ## The Blocks World
@@ -253,7 +253,7 @@ Stack block `a` on top of block `b` starting from an empty table:
 Moves = [move(a, table, b)].
 ```
 
-Rearrange a small tower — unstack `a` from `b` and restack `b` on `a`:
+Rearrange a small tower by unstacking `a` from `b` and restack `b` on `a`:
 
 ```prolog
 ?- blocks_plan([on(a, b), on_table(b), clear(a)],
@@ -266,7 +266,7 @@ The dedicated representation produces plans that read naturally: "move block a f
 
 ## Planning with Constraints
 
-Classical STRIPS planning answers *what to do*, but real-world problems also demand answers to *when* and *with what resources*. **Constraint Logic Programming** over finite domains (CLP(FD)) extends planning with temporal reasoning, resource limits, and scheduling constraints — all while retaining Prolog's declarative style.
+Classical STRIPS planning answers *what to do*, but real-world problems also demand answers to *when* and *with what resources*. **Constraint Logic Programming** over finite domains (CLP(FD)) extends planning with temporal reasoning, resource limits, and scheduling constraints, all while retaining Prolog's declarative style.
 
 ### Temporal Constraints on Actions
 
@@ -287,7 +287,7 @@ A practical architecture separates the two concerns:
 1. A **STRIPS planner** (like the ones in the previous sections) finds a valid action sequence.
 2. A **constraint solver** assigns times and resources to that sequence.
 
-This division works because the causal structure (what actions are needed and in what order) is often independent of the temporal structure (exactly when each action executes). For problems where action choice depends on timing — such as selecting a faster but costlier machine over a slower cheaper one — the two layers can interleave: the planner proposes a partial plan, the scheduler checks feasibility, and backtracking drives the combined search.
+This division works because the causal structure (what actions are needed and in what order) is often independent of the temporal structure (exactly when each action executes). For problems where action choice depends on timing, such as selecting a faster but costlier machine over a slower cheaper one, the two layers can interleave: the planner proposes a partial plan, the scheduler checks feasibility, and backtracking drives the combined search.
 
 ### A Constraint-Based Scheduler
 
@@ -316,9 +316,9 @@ no_overlap([scheduled(_,_,End1)|Rest]) :-
 
 This scheduler handles three constraint types simultaneously:
 
-1. **Capacity** — `no_overlap/1` ensures only one job executes at a time on the shared machine.
-2. **Deadlines** — each job's `End` must not exceed its deadline.
-3. **Ordering** — `chain/2` sorts jobs by start time, eliminating symmetries.
+1. **Capacity**: `no_overlap/1` ensures only one job executes at a time on the shared machine.
+2. **Deadlines**: each job's `End` must not exceed its deadline.
+3. **Ordering**: `chain/2` sorts jobs by start time, eliminating symmetries.
 
 A six-job problem with tight deadlines:
 
@@ -329,7 +329,7 @@ Schedule = [scheduled(a,0,3), scheduled(b,3,5), scheduled(c,5,9),
             scheduled(d,9,10), scheduled(e,10,12), scheduled(f,12,17)].
 ```
 
-The constraint solver finds a feasible packing where short tasks `d` and `e` fill gaps between longer jobs — a pattern that appears in real production scheduling, timetabling, and project planning.
+The constraint solver finds a feasible packing where short tasks `d` and `e` fill gaps between longer jobs: a pattern that appears in real production scheduling, timetabling, and project planning.
 
 
 ## Partial-Order Planning
@@ -344,7 +344,7 @@ A partial-order plan is a directed acyclic graph where:
 - **Ordering constraints** specify that action *A* must precede action *B*.
 - **Causal links** record that action *A* produces fluent *p* for action *B* to consume. Written as *A* ⟶^p *B*, a causal link means "A achieves precondition p of B."
 
-Planning proceeds by selecting an **open precondition** — a fluent needed by some action that is not yet linked to a producer — and either:
+Planning proceeds by selecting an **open precondition**, a fluent needed by some action that is not yet linked to a producer, and either:
 
 1. Find an existing action whose effects include that fluent and add a causal link, or
 2. Add a new action to the plan that produces it.
