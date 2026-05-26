@@ -4,8 +4,10 @@
 
 :- begin_tests(rdf_loader).
 
-%% TBD: Add tests with sample Turtle files
-test(module_loads) :-
-    true.  % Module loads without error
+test(load_and_query) :-
+    load_rdf_file('example.ttl'),
+    query_rdf(S, 'http://www.w3.org/2000/01/rdf-schema#label', literal('SWI-Prolog')),
+    S = 'http://example.org/swi_prolog',
+    !.
 
 :- end_tests(rdf_loader).

@@ -6,6 +6,8 @@
 
 :- use_module(library(janus)).
 
+:- initialization(py_add_lib_dir(python)).
+
 %% run_pipeline(+InputText, -Result)
 %% 1. Use Python/spaCy for NER extraction
 %% 2. Assert extracted entities as Prolog facts

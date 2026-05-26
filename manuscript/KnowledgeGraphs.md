@@ -67,6 +67,8 @@ export_cypher(FileName) :-
                 format(Stream, 'CREATE (~w)-[:~w]->(~w)~n', [S, P, O])
             )
         ),
+        close(Stream)
+    ).
 ```
 
 ### Adding Triples with Deduplication
@@ -335,4 +337,54 @@ The simple approach shown here illustrates the essential idea: Prolog's triple s
 
 ## Integrating with DBpedia and Wikidata
 
-TBD: Enriching local knowledge graphs with data from public linked data sources using SPARQL queries from Prolog. The Semantic Web chapter covers SPARQL client tools that can fetch remote triples and merge them into a local knowledge graph.
+Local knowledge graphs are most powerful when connected to the global web of Linked Open Data (LOD). Public knowledge bases like DBpedia (which structures Wikipedia content as RDF) and Wikidata (Wikimedia's structured database) act as massive, open-access triple stores. Both databases expose public SPARQL endpoints that can be queried remotely over HTTP.
+
+SWI-Prolog's `library(semweb/sparql_client)` allows us to query these endpoints directly and merge remote graph segments into our local database. This process is called **graph enrichment**.
+
+### Querying Remote SPARQL Endpoints
+
+A SPARQL client query returns results as a list of `row` terms representing variable bindings. For instance, we can fetch metadata about programming languages directly from DBpedia.
+
+Here is a Prolog predicate that queries DBpedia for the developer of a given programming language, and automatically asserts the result as a new triple in our local knowledge graph:
+
+```prolog
+:- use_module(library(semweb/sparql_client)).
+
+%% enrich_language_developer(+LanguageName)
+%% Queries DBpedia for the developer of LanguageName and adds it locally.
+enrich_language_developer(LanguageName) :-
+    % 1. Construct the SPARQL query string (targeting DBpedia resources)
+    format(string(Query),
+        "SELECT ?devLabel WHERE { \n\
+         <http://dbpedia.org/resource/~w> <http://dbpedia.org/ontology/developer> ?dev . \n\
+         ?dev <http://www.w3.org/2000/01/rdf-schema#label> ?devLabel . \n\
+         FILTER (lang(?devLabel) = 'en') \n\
+         } LIMIT 1", [LanguageName]),
+    
+    % 2. Send the HTTP query to the DBpedia endpoint
+    sparql_query('https://dbpedia.org/sparql', Query, Row),
+    
+    % 3. Extract the literal value from the returned row
+    Row = row(literal(Developer)),
+    
+    % 4. Merge this new triple into our local kg_creator store
+    add_triple(LanguageName, developed_by, Developer).
+```
+
+### Unifying Local and Remote Schemas
+
+By combining remote endpoints with local rules, you can dynamically fetch missing information at runtime. For example, if a user queries our local graph for the developer of Prolog, but that relation is missing, a Prolog rule can catch the failure, query DBpedia in the background, assert the new relation, and return the answer seamlessly:
+
+```prolog
+%% query_developer(+Lang, -Developer)
+query_developer(Lang, Developer) :-
+    % Check local store first
+    query_triples(Lang, developed_by, Developer),
+    !.
+query_developer(Lang, Developer) :-
+    % Fallback: Query DBpedia, assert locally, and return the result
+    catch(enrich_language_developer(Lang), _, fail),
+    query_triples(Lang, developed_by, Developer).
+```
+
+This hybrid pattern uses Prolog's backtracking and unification to build self-enriching knowledge engines, turning the entire web of Linked Open Data into an extension of your application's local knowledge graph. Details on constructing advanced SPARQL queries and managing namespace conversions are covered in depth in the Semantic Web chapter.

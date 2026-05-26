@@ -56,6 +56,9 @@ read_edges(Stream) :-
     ).
 
 assert_edge(edge(From, To)) :-
+    !,
+    assertz(edge(From, To)).
+assert_edge(_).   % skip comments / unrecognised terms
 ```
 
 
@@ -123,7 +126,52 @@ Notice that BFS finds the shortest path (7 nodes), while DFS may explore a longe
 
 ## Iterative Deepening
 
-TBD: Combining the space efficiency of DFS with the completeness of BFS. SWI-Prolog's built-in support.
+Depth-First Search (DFS) has a major space advantage: it only needs to store the path it is currently exploring, meaning its memory consumption is linear with the maximum depth of the search tree, $O(d)$. However, DFS is not complete on infinite graphs and is not guaranteed to find the shortest path (as we saw on our city graph). Breadth-First Search (BFS) is complete and guarantees the shortest path, but its memory consumption is exponential, $O(b^d)$ (where $b$ is the branching factor), because it must store all active paths in its queue.
+
+**Iterative Deepening Search (IDS)** combines the best of both worlds: the space efficiency of DFS with the completeness and optimality of BFS.
+
+IDS operates by repeatedly running a depth-limited DFS, starting with a depth limit of 1, and incrementing the limit on each iteration. Although it seems wasteful to re-explore the top parts of the search tree multiple times, the number of nodes at depth $d$ grows exponentially, so the overhead of re-exploring the shallower levels is minimal (usually under 11% for binary trees).
+
+### Custom Pure Prolog Implementation
+
+In Prolog, we can implement IDS very elegantly. We use the built-in predicate `between/3` to generate depth limits starting from 1, and then call a custom depth-limited DFS predicate:
+
+```prolog
+%% ids(+Start, +Goal, -Path)
+%% Iterative Deepening Search: increases depth limit incrementally.
+ids(Start, Goal, Path) :-
+    between(1, 100, DepthLimit),
+    depth_limited_dfs(Start, Goal, [Start], DepthLimit, Path).
+
+%% depth_limited_dfs(+Current, +Goal, +Visited, +Limit, -Path)
+depth_limited_dfs(Goal, Goal, Visited, _, Path) :-
+    !,
+    reverse(Visited, Path).
+depth_limited_dfs(Current, Goal, Visited, Limit, Path) :-
+    Limit > 0,
+    edge(Current, Next),
+    \+ member(Next, Visited),
+    NextLimit is Limit - 1,
+    depth_limited_dfs(Next, Goal, [Next|Visited], NextLimit, Path).
+```
+
+Because of Prolog's backtracking, if `depth_limited_dfs/5` fails to find the goal within the current `DepthLimit`, Prolog backtracks to `between/3`, which increments `DepthLimit` to the next integer, and the search starts again with the larger limit. Like BFS, this guarantees that the first path found is the shortest path.
+
+### Built-in Support: `call_with_depth_limit/3`
+
+SWI-Prolog also provides a built-in meta-predicate called `call_with_depth_limit(:Goal, +Limit, -Result)`. This limits the depth of execution of any arbitrary Prolog goal (measured by the depth of the call stack).
+
+If the goal succeeds within the limit, `Result` is unified with the number of stack frames used. If the limit is reached, `Result` unifies with the atom `depth_limit_exceeded`. We can use this to build a general-purpose iterative deepening search wrapper over our standard, unbounded `dfs/3` predicate:
+
+```prolog
+%% ids_builtin(+Start, +Goal, -Path)
+ids_builtin(Start, Goal, Path) :-
+    between(1, 100, Limit),
+    call_with_depth_limit(dfs(Start, Goal, Path), Limit, Result),
+    Result \= depth_limit_exceeded.
+```
+
+This built-in approach is useful when you want to impose depth limits on complex reasoning rules or when wrapping existing code, though writing a custom `depth_limited_dfs/5` predicate (as shown above) is usually preferred for finer search control.
 
 ## A* Heuristic Search
 
@@ -205,16 +253,30 @@ The heuristic guides A* directly toward the goal, avoiding the unnecessary explo
 
 ## State-Space Search and Puzzle Solving
 
-TBD: Modeling classic puzzles (e.g., the farmer-fox-chicken-grain problem, 8-puzzle) as state-space search problems in Prolog. Using Prolog's unification to match goal states.
+Many classic AI problems can be modeled as **State-Space Search**. In this paradigm, we define:
+1. **State representation**: A data structure representing the current configuration of the world (typically a Prolog compound term).
+2. **Initial state**: The starting configuration.
+3. **Goal state**: The target configuration we want to reach.
+4. **State transitions (moves)**: Legal actions that transform one state into another.
+5. **Constraints**: Conditions that states must satisfy to be considered valid or safe.
 
+Prolog is uniquely suited for state-space search because of its built-in backtracking and pattern matching. We can implement search algorithms (like DFS) to traverse the states automatically, and use unification to check if our current state matches the goal state.
 
-{width: "80%"}
-![Architecture diagram for the Puzzle Solver example](FIG_puzzle_solver.jpg)
+### The Farmer, Fox, Chicken, and Grain Puzzle
 
+To illustrate, we solve the classic river crossing puzzle: a farmer must transport a fox, a chicken, and a sack of grain from the left bank of a river to the right bank. The constraints are:
+- The farmer's boat can only carry the farmer and at most one other item.
+- If the farmer leaves the fox and chicken alone on a bank, the fox eats the chicken.
+- If the farmer leaves the chicken and grain alone on a bank, the chicken eats the grain.
 
-The **puzzle_solver** project implements the classic farmer-fox-chicken-grain river crossing puzzle. Here is the file **puzzle_solver/prolog/farmer.pl**:
+We represent the state as a compound term: `state(Farmer, Fox, Chicken, Grain)`, where each argument can be either `left` or `right` to indicate which bank the item is currently on.
+
+The **puzzle_solver** project implements this solver. Here is the complete file **puzzle_solver/prolog/farmer.pl**:
 
 ```prolog
+%% farmer.pl - Farmer, Fox, Chicken, Grain river crossing puzzle
+%% Demonstrates state-space search with Prolog backtracking
+:- module(farmer, [
     solve_farmer/1
 ]).
 
