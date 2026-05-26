@@ -6,14 +6,11 @@ This chapter implements a Gaussian anomaly detector in SWI-Prolog, ported from a
 
 ## The Gaussian Approach
 
-The core idea is straightforward. For each feature in the training data, we fit a Gaussian (bell curve) distribution by computing its mean μ and variance σ². At prediction time, we evaluate the Gaussian probability density function (PDF) for each feature of an unseen data point:
+The core idea is straightforward. For each feature in the training data, we fit a Gaussian (bell curve) distribution by computing its mean $\mu$ and variance $\sigma^2$. At prediction time, we evaluate the Gaussian probability density function (PDF) for each feature of an unseen data point:
 
-{linenos=off}
-~~~~~~~~
-p(x_i) = (1 / (√(2π) · σ_i)) · exp(-(x_i - μ_i)² / (2σ_i²))
-~~~~~~~~
+$$p(x_i) = \frac{1}{\sqrt{2\pi}\sigma_i} \exp\left(-\frac{(x_i - \mu_i)^2}{2\sigma_i^2}\right)$$
 
-If the average per-feature probability falls below a learned threshold ε (epsilon), the data point is flagged as anomalous — it lies too far from the centre of the normal distribution.
+If the average per-feature probability falls below a learned threshold $\epsilon$ (epsilon), the data point is flagged as anomalous — it lies too far from the centre of the normal distribution.
 
 This approach has two appealing properties:
 
@@ -178,7 +175,7 @@ The tag-then-filter pattern deserves comment. An earlier version used direct rec
 
 ## Computing Statistics
 
-With the training set isolated, we compute per-feature mean (μ) and variance (σ²):
+With the training set isolated, we compute per-feature mean ($\mu$) and variance ($\sigma^2$):
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
@@ -213,7 +210,7 @@ sq_diff(FIdx, M, Row, D) :-
 
 ## The Gaussian PDF
 
-The Gaussian probability density function is the heart of the algorithm. For each feature in a data point, we compute how likely that value is under the learned normal distribution. The implementation walks three lists in parallel — the row's features, the means, and the variances — accumulating the sum of per-feature PDF values:
+The Gaussian Probability Density Function (PDF) is the heart of the algorithm. For each feature in a data point, we compute how likely that value is under the learned normal distribution. The implementation walks three lists in parallel — the row's features, the means, and the variances — accumulating the sum of per-feature PDF values:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
@@ -274,7 +271,7 @@ step_to_epsilon(Step, Eps) :-
 We test 20 epsilon values from 0.001 to 0.951, spaced at 0.05 intervals. For each epsilon, an error occurs when:
 
 - An **anomaly** (target > 0.5) has probability **above** epsilon — a false negative (missed anomaly)
-- A **normal** point (target ≤ 0.5) has probability **below** epsilon — a false positive (false alarm)
+- A **normal** point (target <= 0.5) has probability **below** epsilon — a false positive (false alarm)
 
 The epsilon with the fewest total cross-validation errors wins.
 
@@ -326,7 +323,7 @@ The accumulator is a `counts(TP, FP, FN, TN)` term that threads through the fold
 
 - **Precision** = TP / (TP + FP) — of the points we called anomalies, how many actually were?
 - **Recall** = TP / (TP + FN) — of the actual anomalies, how many did we catch?
-- **F1** = 2 · Precision · Recall / (Precision + Recall) — harmonic mean of precision and recall.
+- **F1** = 2 * Precision * Recall / (Precision + Recall) — harmonic mean of precision and recall.
 
 ## Running the Example
 
@@ -369,11 +366,11 @@ $ make test
 
 We addressed these with `once/1` wrappers and a tag-then-filter strategy for `split_data`. The final `!` in `train_model` commits to the first successful training run.
 
-**Lists vs. arrays.** Prolog lists are linked lists — `nth1/3` is O(n) per access. The Gaussian PDF needs to access three parallel lists (row, means, variances) for each of 9 features. Using `nth1` would mean 27 × O(n) lookups per row. Instead, we walk the three lists in parallel via pattern matching (`[X|Xs], [M|Ms], [S2|Ss]`), giving O(1) per element. This alone gave us a large speedup.
+**Lists vs. arrays.** Prolog lists are linked lists — `nth1/3` is O(n) per access. The Gaussian PDF needs to access three parallel lists (row, means, variances) for each of 9 features. Using `nth1` would mean 27 * O(n) lookups per row. Instead, we walk the three lists in parallel via pattern matching (`[X|Xs], [M|Ms], [S2|Ss]`), giving O(1) per element. This alone gave us a large speedup.
 
 **Precomputed probabilities.** The Java version recomputes the Gaussian PDF for every epsilon candidate. In Prolog, where arithmetic is slower than in the JVM, we precompute all PDF values before the epsilon sweep. The 20-step grid search then just compares precomputed floats to the epsilon threshold — pure arithmetic with no list traversal.
 
-**Subsampling.** The full 648-row dataset with 200 epsilon steps would be impractical in interpreted Prolog. We subsample to ~200 rows and use 20 epsilon steps, reducing the workload by roughly 65×. The model quality remains strong thanks to the class-balanced sampling and the dataset's clear separation between benign and malignant clusters.
+**Subsampling.** The full 648-row dataset with 200 epsilon steps would be impractical in interpreted Prolog. We subsample to ~200 rows and use 20 epsilon steps, reducing the workload by roughly 65x. The model quality remains strong thanks to the class-balanced sampling and the dataset's clear separation between benign and malignant clusters.
 
 ## Wrap Up
 

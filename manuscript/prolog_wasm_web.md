@@ -1,5 +1,8 @@
 # Client-Side Prolog with WebAssembly
 
+TBD TBD TBD: the example in this chapter does not yet work!
+
+
 Traditionally, incorporating a Prolog-based reasoning engine into a web application required a backend server running SWI-Prolog or another dialect. The web front-end would communicate with this server via HTTP REST APIs, WebSockets, or a language-specific bridge like Janus in Python. While this is a standard design, it introduces server overhead, hosting costs, network latency, and requires an internet connection to function.
 
 **WebAssembly (WASM)** changes this paradigm. By compiling the entire SWI-Prolog engine (written in C) into a highly optimized WASM binary, we can download and run Prolog directly in the user's web browser. 
@@ -71,12 +74,7 @@ recommend(Food, PreferredBody, PreferredSweetness, Wine, Color,
 % Generate a beautiful explanation sentence
 generate_explanation(Wine, Color, Body, Sweetness, Food, Explanation) :-
     format(string(Explanation), 
-
-
-
-
-
-                               "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.",
+           "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.",
            [Food, Color, Wine, Body, Sweetness, Color]).
 ~~~~~~~~
 

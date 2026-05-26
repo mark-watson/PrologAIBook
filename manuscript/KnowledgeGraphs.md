@@ -5,9 +5,6 @@ Knowledge representation is at the heart of symbolic AI, and Prolog's fact-and-r
 {width: "80%"}
 ![Architecture diagram for the Knowledge Graph Creator example](FIG_kg_creator.jpg)
 
-{width: "80%"}
-![Architecture diagram for the Knowledge Graph Query example](FIG_kg_query.jpg)
-
 ## Representing Knowledge in Prolog
 
 A knowledge graph is a set of triples, each linking a subject to an object through a named predicate. In Prolog this is direct:
@@ -239,6 +236,9 @@ path_length(Start, End, Length) :-
 ```
 
 Note the cut (`!`) in `path_length/3` — once a path is found, we commit to it rather than trying alternatives. This is appropriate when any shortest-or-longer path suffices, and the length of the first found path is returned. The `all_paths/3` predicate, by contrast, uses `findall/3` to collect every cycle-free path.
+
+{width: "80%"}
+![Architecture diagram for the Knowledge Graph Query example](FIG_kg_query.jpg)
 
 ### The Sample Knowledge Graph
 
