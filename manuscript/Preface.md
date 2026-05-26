@@ -21,7 +21,7 @@ This book is a practical guide to building AI applications with Prolog. We prima
 
 ## Who This Book Is For
 
-This book is intended for programmers who want to add Prolog to their toolkit for AI development. You do not need prior Prolog experience — we include a tutorial chapter — but familiarity with at least one other programming language will be helpful.
+This book is intended for programmers who want to add Prolog to their toolkit for AI development. You do not need prior Prolog experience. I include a tutorial chapter and familiarity with at least one other programming language will be helpful.
 
 ## How To Read This Book
 
