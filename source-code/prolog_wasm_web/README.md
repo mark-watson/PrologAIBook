@@ -13,7 +13,7 @@ Traditionally, running a Prolog rule-base required a backend server (e.g. using 
 This example builds a premium, interactive **Wine Advisor dashboard** that consults local rules and dynamically finds matches using SWI-Prolog WASM.
 
 ## Tools & Libraries Used
-- **SWI-Prolog WASM (`swipl-wasm`)**: The Emscripten-compiled build of SWI-Prolog. Loaded via the UNPKG CDN.
+- **SWI-Prolog WASM (`swipl-wasm`)**: The Emscripten-compiled build of SWI-Prolog. Loaded via the official SWI-Prolog GitHub Pages CDN.
 - **HTML5 & Vanilla CSS**: A modern glassmorphism dark-mode UI styled for premium aesthetics.
 
 ## Project Architecture

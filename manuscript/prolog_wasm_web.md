@@ -1,7 +1,5 @@
 # Client-Side Prolog with WebAssembly
 
-TBD TBD TBD: the example in this chapter does not yet work!
-
 
 Traditionally, incorporating a Prolog-based reasoning engine into a web application required a backend server running SWI-Prolog or another dialect. The web front-end would communicate with this server via HTTP REST APIs, WebSockets, or a language-specific bridge like Janus in Python. While this is a standard design, it introduces server overhead, hosting costs, network latency, and requires an internet connection to function.
 
@@ -14,10 +12,8 @@ This architecture offers several key advantages:
 
 In this chapter, we explore **SipLogic**, a Wine Advisor expert system dashboard. It loads SWI-Prolog WASM, reads a local Prolog rule-base, and runs recommendations interactively on the client side.
 
-
 {width: "80%"}
-![Architecture diagram for the WebAssembly Prolog example](FIG_prolog_wasm_web.jpg)
-
+![Prolog WASM Web App Demo](prolog-wasm.jpg)
 
 ## Architecture of a WASM Prolog Application
 
@@ -28,7 +24,9 @@ The execution model inside the browser is simple. The browser downloads the SWI-
 3. **Engine Consultation**: JavaScript queries the engine to run `consult('/rules.pl')`.
 4. **Interactive Query Loop**: Whenever the user updates UI filters (food, body preference, sweetness), a JavaScript event listener triggers, constructing and executing a Prolog query. The engine returns bindings as native JavaScript objects.
 
----
+{width: "80%"}
+![Architecture diagram for the WebAssembly Prolog example](FIG_prolog_wasm_web.jpg)
+
 
 ## Recommender System Logic
 
@@ -108,7 +106,7 @@ async function initProlog() {
         // 1. Initialize SWIPL loader
         const swipl = await SWIPL({
             arguments: ["-q"],
-            locateFile: (path) => `https://unpkg.com/swipl-wasm@0.1.0/dist/${path}`
+            locateFile: (path) => `https://unpkg.com/swipl-wasm@latest/dist/swipl/${path}`
         });
         
         prologEngine = swipl.prolog;
@@ -265,7 +263,7 @@ Then, open [http://localhost:8000](http://localhost:8000) in your web browser. Y
 
 ## Key Design Decisions
 
-**Loading from CDN vs. Self-Hosting WASM.** In this example, the Emscripten JS and WASM assets are loaded via the UNPKG CDN (`https://unpkg.com/swipl-wasm@0.1.0/dist/`). For production applications, it is usually better to self-host these assets on your own web server or Content Delivery Network to avoid dependencies on external CDN infrastructure and to enforce Strict Content Security Policies (CSP).
+**Loading from CDN vs. Self-Hosting WASM.** In this example, the Emscripten JS and WASM assets are loaded via the unpkg CDN (`https://unpkg.com/swipl-wasm@latest/dist/swipl/`). For production applications, it is usually better to self-host these assets on your own web server or Content Delivery Network to avoid dependencies on external CDN infrastructure and to enforce Strict Content Security Policies (CSP).
 
 **File System Emulation.** Emscripten maps virtual memory structures to regular file system logic. The call `swipl.FS.writeFile('/rules.pl', rulesText)` creates a virtual file that SWI-Prolog's core `consult` predicate reads as if it were a physical file on disk. This is a powerful feature: it means you can reuse existing complex Prolog databases without modifying the Prolog codebase to load from strings.
 

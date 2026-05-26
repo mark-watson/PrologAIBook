@@ -38,5 +38,5 @@ recommend(Food, PreferredBody, PreferredSweetness, Wine, Color,
 % Generate a beautiful explanation sentence
 generate_explanation(Wine, Color, Body, Sweetness, Food, Explanation) :-
     format(string(Explanation), 
-\          "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.",
+           "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.",
            [Food, Color, Wine, Body, Sweetness, Color]).

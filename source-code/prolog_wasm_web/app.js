@@ -18,7 +18,7 @@ async function initProlog() {
         // 1. Initialize SWIPL loader
         const swipl = await SWIPL({
             arguments: ["-q"],
-            locateFile: (path) => `https://unpkg.com/swipl-wasm@0.1.0/dist/${path}`
+            locateFile: (path) => `https://unpkg.com/swipl-wasm@latest/dist/swipl/${path}`
         });
         
         prologEngine = swipl.prolog;
