@@ -36,6 +36,7 @@ personal_travel(charlie).
 expense_amount(charlie, 150).
 
 %% s(CASP) Explanations/Translations
+:- style_check(-singleton).
 #pred eligible_for_reimbursement(Person) ::
     '@(Person) is eligible for travel reimbursement'.
 #pred employee(Person) :: '@(Person) is a registered employee'.
@@ -47,6 +48,7 @@ expense_amount(charlie, 150).
     '@(Person) has exceeded the travel expense limit of $500'.
 #pred expense_amount(Person, Amount) :: '@(Person)\'s travel expense
     amount is $ @(Amount)'.
+:- style_check(+singleton).
 
 %% Helper to run and output the explanation
 run_compliance_check(Person) :-
