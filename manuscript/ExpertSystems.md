@@ -5,9 +5,6 @@ Expert systems were one of the earliest commercial successes of AI, and Prolog i
 {width: "80%"}
 ![Architecture diagram for the Expert Shell example](FIG_expert_shell.jpg)
 
-{width: "80%"}
-![Architecture diagram for the Wine Advisor example](FIG_wine_advisor.jpg)
-
 ## What Is an Expert System?
 
 An **expert system** is a computer program that emulates the decision-making ability of a human expert. Developed in the 1970s and 1980s during the "Rule-Based AI" era (producing famous systems like MYCIN and DENDRAL), they represent one of the first successful applications of AI to real-world problems.
@@ -117,6 +114,9 @@ To demonstrate rule-based reasoning in a practical domain, we look at the **wine
 The system utilizes two distinct categories of rules:
 1. **Meal Pairing Rules**: Determining which color of wine (red, white, rose) matches the food type (fish, red meat, dessert).
 2. **Flavor Preference Rules**: Matching the user's body preference (bold, light, moderate) with the wine's characteristics (full body, light body, medium body).
+
+{width: "80%"}
+![Architecture diagram for the Wine Advisor example](FIG_wine_advisor.jpg)
 
 The **wine_advisor** project implements a rule-based wine recommender. Here is the file **wine_advisor/prolog/wine_rules.pl**:
 
