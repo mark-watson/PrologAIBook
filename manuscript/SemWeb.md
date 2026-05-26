@@ -2,12 +2,6 @@
 
 Prolog's logic-based foundation makes it a natural fit for working with Semantic Web technologies — RDF, RDFS, OWL, and SPARQL. SWI-Prolog provides mature libraries for all of these.
 
-{width: "80%"}
-![Architecture diagram for the RDF Explorer example](FIG_rdf_explorer.jpg)
-
-{width: "80%"}
-![Architecture diagram for the SPARQL Client example](FIG_sparql_client.jpg)
-
 ## Loading and Querying RDF Data
 
 The Resource Description Framework (RDF) represents knowledge as a directed graph of subject-predicate-object triples. SWI-Prolog includes a highly optimized RDF database in its `semweb` library package.
@@ -32,6 +26,10 @@ ex:prolog a ex:Language ;
 ### Loading and Querying in Prolog
 
 The `library(semweb/rdf_db)` module stores all loaded RDF triples in an internal database, which we query using `rdf(?Subject, ?Predicate, ?Object)`. To parse Turtle files, we import `library(semweb/turtle)`.
+
+
+{width: "80%"}
+![Architecture diagram for the RDF Explorer example](FIG_rdf_explorer.jpg)
 
 The **rdf_explorer** project wraps SWI-Prolog's semweb library. Here is the complete file **rdf_explorer/prolog/rdf_loader.pl**:
 
@@ -75,6 +73,9 @@ describe_resource(URI) :-
 To query RDF data across the web, we use **SPARQL** (SPARQL Protocol and RDF Query Language). SWI-Prolog provides a standard SPARQL client in `library(semweb/sparql_client)`. This module sends a SPARQL SELECT query over HTTP to a remote endpoint and parses the returned JSON or XML results into Prolog terms.
 
 A SPARQL query typically specifies variables starting with a question mark (e.g. `?developer`). The result of a query is returned as individual `row(Value1, Value2, ...)` terms containing the unified results for each row.
+
+{width: "80%"}
+![Architecture diagram for the SPARQL Client example](FIG_sparql_client.jpg)
 
 The **sparql_client** project provides convenient wrappers for sending queries. Here is the complete file **sparql_client/prolog/sparql.pl**:
 

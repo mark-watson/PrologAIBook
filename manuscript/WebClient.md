@@ -1,6 +1,6 @@
 # Web Clients in Prolog
 
-SWI-Prolog includes comprehensive HTTP client libraries that make it straightforward to interact with REST APIs, parse JSON, and scrape web content — all from within Prolog.
+SWI-Prolog includes comprehensive HTTP client libraries that make it straightforward to interact with REST APIs, parse JSON, and scrape web content, all from within Prolog.
 
 {width: "80%"}
 ![Architecture diagram for the HTTP Client example](FIG_http_client.jpg)
@@ -10,8 +10,8 @@ SWI-Prolog includes comprehensive HTTP client libraries that make it straightfor
 SWI-Prolog ships with `library(http/http_client)`, a full HTTP/1.1 client that handles GET, POST, PUT, and DELETE requests. The companion library `library(http/http_json)` adds automatic JSON serialisation and deserialisation, so a single `http_get/3` call can fetch a URL and return its JSON body as a Prolog dict.
 
 The key predicates are:
-- **`http_get(+URL, -Reply, +Options)`** — Sends a GET request. The `json_object(dict)` option tells the library to parse the response body as a SWI-Prolog dict rather than the older `json/1` term format.
-- **`http_post(+URL, +Data, -Reply, +Options)`** — Sends a POST request. The `Data` argument can be `atom(Body)`, `json(Term)`, or other content types. Custom request headers (such as `Content-Type` or `Authorization`) are passed via the options list.
+- **`http_get(+URL, -Reply, +Options)`** - Sends a GET request. The `json_object(dict)` option tells the library to parse the response body as a SWI-Prolog dict rather than the older `json/1` term format.
+- **`http_post(+URL, +Data, -Reply, +Options)`** - Sends a POST request. The `Data` argument can be `atom(Body)`, `json(Term)`, or other content types. Custom request headers (such as `Content-Type` or `Authorization`) are passed via the options list.
 
 Error handling is straightforward: if the server returns a non-2xx status code, `http_get` and `http_post` throw an `http_error` exception, which you can catch with `catch/3`.
 
@@ -52,8 +52,8 @@ R = _{ completed:false, id:1, title:"delectus aut autem", userId:1 }.
 ## Working with JSON
 
 Most modern web APIs return JSON. SWI-Prolog provides two representations for JSON data:
-1. **Dicts** (the modern approach) — SWI-Prolog dicts are key-value stores accessed with dot notation (e.g., `Dict.name`). They map naturally to JSON objects and are the recommended format.
-2. **`json/1` terms** (the legacy approach) — The older `json([key=value, ...])` compound term format. Still supported but less ergonomic.
+1. **Dicts** (the modern approach) - SWI-Prolog dicts are key-value stores accessed with dot notation (e.g., `Dict.name`). They map naturally to JSON objects and are the recommended format.
+2. **`json/1` terms** (the legacy approach) - The older `json([key=value, ...])` compound term format. Still supported but less ergonomic.
 
 The `atom_json_dict/3` predicate is the core conversion tool. It converts between a JSON-formatted atom (or string) and a Prolog dict in both directions:
 
@@ -67,7 +67,7 @@ Dict = _{ age:30, name:"Alice" }.
 Json = '{"name":"Bob","score":95}'.
 ```
 
-To traverse nested JSON structures, use chained dot notation: `Dict.address.city` accesses the `city` field inside a nested `address` object. For lists, use standard Prolog list operations — a JSON array becomes a Prolog list.
+To traverse nested JSON structures, use chained dot notation: `Dict.address.city` accesses the `city` field inside a nested `address` object. For lists, use standard Prolog list operations: a JSON array becomes a Prolog list.
 
 The **http_client** project also includes JSON utilities. Here is the file **http_client/prolog/json_utils.pl**:
 
@@ -96,11 +96,11 @@ The `json_to_prolog/2` predicate uses `dict_pairs/3` to decompose a dict into a 
 ## Web Scraping
 
 SWI-Prolog can also fetch and parse HTML pages directly. The workflow combines three libraries:
-1. **`library(http/http_client)`** — Fetches the raw HTML content from a URL.
-2. **`library(sgml)`** — Parses the HTML string into a DOM tree (a nested Prolog term representing the document structure).
-3. **`library(xpath)`** — Queries the DOM tree using XPath expressions to extract specific elements.
+1. **`library(http/http_client)`** - Fetches the raw HTML content from a URL.
+2. **`library(sgml)`** - Parses the HTML string into a DOM tree (a nested Prolog term representing the document structure).
+3. **`library(xpath)`** - Queries the DOM tree using XPath expressions to extract specific elements.
 
-The `load_html/3` predicate from `library(sgml)` is tolerant of malformed HTML, making it suitable for scraping real-world web pages. Once you have a DOM tree, `xpath/3` lets you select elements declaratively — for example, `xpath(DOM, //a(@href), Href)` extracts the `href` attribute from every `<a>` tag in the document.
+The `load_html/3` predicate from `library(sgml)` is tolerant of malformed HTML, making it suitable for scraping real-world web pages. Once you have a DOM tree, `xpath/3` lets you select elements declaratively, for example, `xpath(DOM, //a(@href), Href)` extracts the `href` attribute from every `<a>` tag in the document.
 
 The **web_scraper** project implements a simple HTML scraper. Here is the file **web_scraper/prolog/scraper.pl**:
 
@@ -156,7 +156,7 @@ The `extract_links/2` and `extract_text/2` predicates both use `findall/3` with 
 
 These HTTP client and scraping building blocks are used throughout the book:
 
-- **LLM API Integration** — The `rest_client` module is the foundation for calling the Google Gemini and Ollama APIs (see the LLM Integration chapter). A single `http_post_json/3` call sends a prompt and receives the model's response.
-- **SPARQL Queries** — The Semantic Web chapter uses HTTP GET requests to query remote SPARQL endpoints like DBpedia and Wikidata, parsing the JSON results into Prolog terms for local reasoning.
-- **Knowledge Graph Enrichment** — Web scraping can extract structured data from HTML pages and assert it into a local knowledge graph. For example, scraping a product catalogue and converting the extracted attributes into `entity/3` facts.
-- **Data Pipeline Preprocessing** — Fetching CSV or JSON datasets from public APIs (such as government open data portals) and transforming them into Prolog facts for analysis with the anomaly detection or probabilistic reasoning modules.
+- **LLM API Integration** - The `rest_client` module is the foundation for calling the Google Gemini and Ollama APIs (see the LLM Integration chapter). A single `http_post_json/3` call sends a prompt and receives the model's response.
+- **SPARQL Queries** - The Semantic Web chapter uses HTTP GET requests to query remote SPARQL endpoints like DBpedia and Wikidata, parsing the JSON results into Prolog terms for local reasoning.
+- **Knowledge Graph Enrichment** - Web scraping can extract structured data from HTML pages and assert it into a local knowledge graph. For example, scraping a product catalogue and converting the extracted attributes into `entity/3` facts.
+- **Data Pipeline Preprocessing** - Fetching CSV or JSON datasets from public APIs (such as government open data portals) and transforming them into Prolog facts for analysis with the anomaly detection or probabilistic reasoning modules.
