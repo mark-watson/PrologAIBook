@@ -7,6 +7,9 @@
     extract_emails/2
 ]).
 
+:- set_prolog_flag(double_quotes, chars).
+
+
 %% parse_csv_line(+Line, -Fields)
 %% Parse a CSV line into a list of fields
 parse_csv_line(Line, Fields) :-

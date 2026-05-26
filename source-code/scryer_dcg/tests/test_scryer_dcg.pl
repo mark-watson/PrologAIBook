@@ -1,5 +1,9 @@
 :- module(test_scryer_dcg, [run_tests/0]).
+
+:- set_prolog_flag(double_quotes, chars).
+
 :- use_module('../prolog/text_dcg').
+
 
 %% Simple test runner for Scryer Prolog (no plunit)
 run_tests :-
