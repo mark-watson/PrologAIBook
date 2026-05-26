@@ -14,7 +14,7 @@ triple(john, works_at, acme).
 triple(acme, located_in, london).
 ```
 
-No translation layer is needed — Prolog's fact base *is* a knowledge graph. The `triple/3` predicate is our storage schema, and Prolog's unification engine is our query processor. This is why Prolog is sometimes called the "language of knowledge graphs": the representation and the reasoning machinery are one and the same.
+No translation layer is needed: Prolog's fact base *is* a knowledge graph. The `triple/3` predicate is our storage schema, and Prolog's unification engine is our query processor. This is why Prolog is sometimes called the "language of knowledge graphs": the representation and the reasoning machinery are one and the same.
 
 We organize the code into modules so that the triple store is encapsulated and the exported predicates form a clean API. The convention `:- dynamic triple/3.` declares the predicate as modifiable at runtime, which is essential since knowledge graphs grow as we add information.
 
