@@ -315,15 +315,3 @@ Running the assistant:
 Researching: What are the health benefits of green tea?
 Answer = "Green tea contains antioxidants called catechins..."
 ```
-
-## Where to Go from Here
-
-The agent framework in this chapter is intentionally minimal. The agent loop, tool registry, and belief database give you the scaffolding; your domain-specific perception and action predicates give the agent its capabilities. The other chapters in this book provide the components you need to build richer agents:
-
-- **Web Clients** (Chapter 13) — replace placeholder search with real REST API calls.
-- **LLM Integration** (Chapter 14) — add Gemini or Ollama for natural language understanding, tool selection, and summarization.
-- **Expert Systems** (Chapter 11) — use backward-chaining rule engines for sophisticated reasoning over accumulated knowledge.
-- **Knowledge Graphs** (Chapter 20) — store agent knowledge in a structured graph for richer queries.
-- **Meta-Interpreters** (Chapter 16) — give the agent introspection into its own reasoning process for explanation and debugging.
-
-The reactive agent loop in this chapter is the backbone. Everything else plugs into it as a perception, a tool, or a belief.
