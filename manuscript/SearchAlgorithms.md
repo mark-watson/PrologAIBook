@@ -126,7 +126,7 @@ Notice that BFS finds the shortest path (7 nodes), while DFS may explore a longe
 
 ## Iterative Deepening
 
-Depth-First Search (DFS) has a major space advantage: it only needs to store the path it is currently exploring, meaning its memory consumption is linear with the maximum depth of the search tree, $O(d)$. However, DFS is not complete on infinite graphs and is not guaranteed to find the shortest path (as we saw on our city graph). Breadth-First Search (BFS) is complete and guarantees the shortest path, but its memory consumption is exponential, $O(b^d)$ (where $b$ is the branching factor), because it must store all active paths in its queue.
+Depth-First Search (DFS) has a major space advantage: it only needs to store the path it is currently exploring, meaning its memory consumption is linear with the maximum depth of the search tree, `O(d)`$. However, DFS is not complete on infinite graphs and is not guaranteed to find the shortest path (as we saw on our city graph). Breadth-First Search (BFS) is complete and guarantees the shortest path, but its memory consumption is exponential, `O(b^d)`$ (where `b`$ is the branching factor), because it must store all active paths in its queue.
 
 **Iterative Deepening Search (IDS)** combines the best of both worlds: the space efficiency of DFS with the completeness and optimality of BFS.
 
@@ -319,7 +319,7 @@ safe(state(Farmer, Fox, Chicken, Grain)) :-
 
 A third powerful paradigm for search in Prolog is **Constraint Logic Programming**, specifically Constraint Logic Programming over Finite Domains (`CLP(FD)`). Instead of manually coding depth-first search or backtracking state transitions, you define variables, their domains, and the relationships (constraints) that must hold true. Prolog's constraint solver then automatically propagates these constraints to prune the search space and find valid assignments.
 
-To illustrate this, we can look at the classic **N-Queens problem**, which asks how to place $N$ queens on an $N \times N$ chessboard such that no two queens can attack each other. This means no two queens can share the same row, column, or diagonal.
+To illustrate this, we can look at the classic **N-Queens problem**, which asks how to place `N`$ queens on an `N \times N`$ chessboard such that no two queens can attack each other. This means no two queens can share the same row, column, or diagonal.
 
 {width: "80%"}
 ![Architecture diagram for the N-Queens example](FIG_n_queens.jpg)
@@ -357,17 +357,17 @@ safe_queen(Q, [Q1|Qs], D) :-
 
 ### How the CLP(FD) Search Works
 
-1. **Representation**: We represent the board as a list of length $N$ called `Queens`. The index of an element in the list represents the row number (1 to $N$), and the value at that index represents the column number of the queen in that row.
-2. **Domain**: `Queens ins 1..N` establishes that each variable in the `Queens` list must be an integer between $1$ and $N$.
+1. **Representation**: We represent the board as a list of length `N`$ called `Queens`. The index of an element in the list represents the row number (1 to `N`$), and the value at that index represents the column number of the queen in that row.
+2. **Domain**: `Queens ins 1..N` establishes that each variable in the `Queens` list must be an integer between `1`$ and `N`$.
 3. **Column Constraints**: Since each row has exactly one queen, we only need to ensure no two queens share a column. By using the list representation, the index ensures row uniqueness. The column constraint `Q #\= Q1` (in `safe_queen/3`) ensures that no two queens share the same column.
-4. **Diagonal Constraints**: Two queens at columns $Q$ and $Q_1$ separated by $D$ rows are on the same diagonal if $|Q - Q_1| = D$. This is elegantly modeled using two inequality constraints:
+4. **Diagonal Constraints**: Two queens at columns `Q`$ and `Q_1`$ separated by `D`$ rows are on the same diagonal if `|Q - Q_1| = D`$. This is elegantly modeled using two inequality constraints:
    - `Q #\= Q1 + D` (upper-diagonal check)
    - `Q #\= Q1 - D` (lower-diagonal check)
 5. **Labeling**: `label(Queens)` tells the constraint solver to perform the backtracking search to assign concrete values to the variables in the `Queens` list that satisfy all constraints.
 
 ### Running the Solver
 
-You can run queries in the REPL to solve for a specific size $N$:
+You can run queries in the REPL to solve for a specific size `N`$:
 
 ```prolog
 ?- n_queens(8, Queens).

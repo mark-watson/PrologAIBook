@@ -99,7 +99,7 @@ Scryer's approach is exactly what DCGs expect—a list that can be consumed elem
 SWI-Prolog provides `library(clpfd)` for finite domain constraint solving. Scryer ships with `library(clpz)`, Markus Triska's successor library. The API is largely compatible—predicates like `ins`, `all_different/1`, `label/1`, and constraint operators (`#=`, `#\=`, `#<`, etc.) work the same way. The key differences are:
 
 - Import `library(clpz)` instead of `library(clpfd)`.
-- CLP(Z) operates over arbitrary-precision integers (the "Z" stands for the integers $\mathbb{Z}$), not just machine-bounded finite domains.
+- CLP(Z) operates over arbitrary-precision integers (the "Z" stands for the integers `\mathbb{Z}`$), not just machine-bounded finite domains.
 - Some advanced predicates have been renamed or refined for cleaner semantics.
 
 #### Module System

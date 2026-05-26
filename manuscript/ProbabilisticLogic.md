@@ -11,7 +11,7 @@ In classical logic, a statement is either true or false. This binary worldview w
 
 Classical Prolog relies on the **Closed World Assumption**: if a fact cannot be proven true from the knowledge base, it is assumed to be false. However, in the real world, a lack of evidence does not equal evidence of absence. Furthermore, classical logic is **monotonic**: once a fact is proven, it remains true regardless of any new information added to the system. 
 
-In contrast, real-world reasoning is **non-monotonic** and probabilistic. For instance, we might believe a patient has a specific illness with $90\%$ certainty, but when a new test result comes back negative, our belief should adapt. Probabilistic logic programming solves this by representing truth values as real numbers in the range $[0, 1]$, representing the probability or degree of belief that a statement holds. This allows us to build logic models that handle exceptions, noisy measurements, and uncertain outcomes.
+In contrast, real-world reasoning is **non-monotonic** and probabilistic. For instance, we might believe a patient has a specific illness with `90\%`$ certainty, but when a new test result comes back negative, our belief should adapt. Probabilistic logic programming solves this by representing truth values as real numbers in the range `[0, 1]`$, representing the probability or degree of belief that a statement holds. This allows us to build logic models that handle exceptions, noisy measurements, and uncertain outcomes.
 
 ## ProbLog and Probabilistic Facts
 
@@ -20,7 +20,7 @@ One of the most popular frameworks for combining logic with probability is **Pro
 0.3::windy.
 0.5::cloudy.
 ```
-This notation declares that `windy` has a $30\%$ chance of being true, and `cloudy` has a $50\%$ chance. Under the **distribution semantics** introduced by Taisuke Sato, a ProbLog program defines a probability distribution over a set of possible worlds. In each possible world, every probabilistic fact is independently chosen to be either true (with probability $p$) or false (with probability $1-p$). The probability of a query is the sum of the probabilities of all possible worlds in which the query can be logically proven.
+This notation declares that `windy` has a `30\%`$ chance of being true, and `cloudy` has a `50\%`$ chance. Under the **distribution semantics** introduced by Taisuke Sato, a ProbLog program defines a probability distribution over a set of possible worlds. In each possible world, every probabilistic fact is independently chosen to be either true (with probability `p`$) or false (with probability `1-p`$). The probability of a query is the sum of the probabilities of all possible worlds in which the query can be logically proven.
 
 While a full ProbLog solver requires compiling queries into Binary Decision Diagrams (BDDs) to handle dependencies and logical cycles, we can implement a lightweight reasoner using certainty factors in pure Prolog. This approach propagates probabilities recursively through backtracking search.
 
@@ -98,12 +98,12 @@ mul(X, Acc, Result) :- Result is Acc * X.
 
 #### Deep Probability Attenuation
 The weather knowledge base demonstrates how probabilities attenuate (rapidly decrease) across deep inference chains. Consider the path from `low_pressure` to `tornado_risk`:
-1. `low_pressure` is a base fact with $P=0.5$.
-2. `unstable_air` is derived from `low_pressure` with conditional probability $0.8$, yielding $P=0.5 \times 0.8 = 0.4$.
-3. `thick_clouds` is derived from `high_humidity` ($P=0.5$) and `unstable_air` ($P=0.4$) with conditional probability $0.5$, yielding $P=0.5 \times 0.4 \times 0.5 = 0.1$.
-4. Parallel reasoning yields `frontal_zone` ($P=0.15$) and `storm_system` ($P=0.06$).
-5. `severe_storm` converges from `thick_clouds` and `storm_system` with conditional probability $0.5$, yielding $P=0.1 \times 0.06 \times 0.5 = 0.003$.
-6. `tornado_risk` is derived from `severe_storm` with conditional probability $0.6$, yielding $P=0.003 \times 0.6 = 0.0018$.
+1. `low_pressure` is a base fact with `P=0.5`$.
+2. `unstable_air` is derived from `low_pressure` with conditional probability `0.8`$, yielding `P=0.5 \times 0.8 = 0.4`$.
+3. `thick_clouds` is derived from `high_humidity` (`P=0.5`$) and `unstable_air` (`P=0.4`$) with conditional probability `0.5`$, yielding `P=0.5 \times 0.4 \times 0.5 = 0.1`$.
+4. Parallel reasoning yields `frontal_zone` (`P=0.15`$) and `storm_system` (`P=0.06`$).
+5. `severe_storm` converges from `thick_clouds` and `storm_system` with conditional probability `0.5`$, yielding `P=0.1 \times 0.06 \times 0.5 = 0.003`$.
+6. `tornado_risk` is derived from `severe_storm` with conditional probability `0.6`$, yielding `P=0.003 \times 0.6 = 0.0018`$.
 
 This rapid attenuation shows that naive multiplication across deep chains can quickly shrink probabilities. In real-world applications, to prevent underflow and model complex dependencies correctly, we use more sophisticated models like Bayesian networks or full ProbLog.
 
@@ -148,9 +148,11 @@ cpt(wet_grass, true, [sprinkler=false, rain=true], 0.90).
 cpt(wet_grass, true, [sprinkler=false, rain=false], 0.01).
 ```
 
-To perform inference (such as calculating $P(\text{rain} \mid \text{wet\_grass} = \text{true})$), we can write a query solver that uses **variable elimination** or **enumeration** to sum out the latent variables over the joint distribution:
+To perform inference (such as calculating `P(\text{rain} \mid \text{wet\_grass} = \text{true})`$), we can write a query solver that uses **variable elimination** or **enumeration** to sum out the latent variables over the joint distribution:
 
-$$P(A \mid B) = \frac{P(A, B)}{P(B)} = \frac{\sum_{Y} P(A, B, Y)}{\sum_{X, Y} P(X, B, Y)}$$
+{$$}
+P(A \mid B) = \frac{P(A, B)}{P(B)} = \frac{\sum_{Y} P(A, B, Y)}{\sum_{X, Y} P(X, B, Y)}
+{/$$}
 
 Prolog's pattern matching and list processing make it easy to traverse parent-child relationships and lookup CPT probabilities during joint probability factorization.
 

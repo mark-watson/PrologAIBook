@@ -316,7 +316,7 @@ You can also selectively import specific predicates to avoid polluting your name
 Definite Clause Grammars (DCGs) are a built-in Prolog syntax designed for parsing and generating sequences (most commonly lists of tokens or characters). DCGs provide a clean, readable notation that automatically translates into standard Prolog clauses using **difference lists**.
 
 #### Difference Lists
-A difference list represents a list as the difference between two lists: a starting list and a remainder list (written as `List1 - List2`). This allows list concatenation in $O(1)$ time without calling `append/3`.
+A difference list represents a list as the difference between two lists: a starting list and a remainder list (written as `List1 - List2`). This allows list concatenation in `O(1)`$ time without calling `append/3`.
 
 #### DCG Syntax (`-->`)
 Instead of the standard neck operator `:-`, DCG rules use `-->`. The compiler automatically adds two hidden arguments representing the difference list input and output.

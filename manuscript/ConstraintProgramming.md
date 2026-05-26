@@ -28,7 +28,7 @@ Unlike ordinary arithmetic operators (like `is/2` or `=:=/2`), which require all
 
 ## Solving Sudoku with CLP(FD)
 
-A classic demonstration of constraint propagation is solving Sudoku puzzles. Standard Sudoku requires placing digits 1 to 9 in a $9 \times 9$ grid such that every row, column, and $3 \times 3$ sub-grid block contains unique numbers.
+A classic demonstration of constraint propagation is solving Sudoku puzzles. Standard Sudoku requires placing digits 1 to 9 in a `9 \times 9`$ grid such that every row, column, and `3 \times 3`$ sub-grid block contains unique numbers.
 
 Using `library(clpfd)`, we can model this complete constraint system in under 20 lines of logic. The solver propagates constraints so efficiently that most puzzles are solved instantly without any backtracking search at all.
 
@@ -74,11 +74,11 @@ print_board([Row|Rows]) :-
 
 ## The N-Queens Problem
 
-The N-Queens problem asks how to place $N$ non-attacking queens on an $N \times N$ chessboard.
+The N-Queens problem asks how to place `N`$ non-attacking queens on an `N \times N`$ chessboard.
 - **Naive Backtracking**: Places a queen row-by-row, recursively checking for row, column, and diagonal conflicts. If a conflict is found, it backtracks. This checks many invalid states.
 - **CLP(FD) Search**: Declares queen positions as variables, constrains their columns and diagonals, and uses constraint propagation to prune invalid domains before values are labeled. This limits backtracking.
 
-The diagonal constraints are written using arithmetic offsets: two queens at columns $Q$ and $Q_1$ separated by $D$ rows are on the same diagonal if $|Q - Q_1| = D$, which translates to `Q #\= Q1 + D` and `Q #\= Q1 - D`.
+The diagonal constraints are written using arithmetic offsets: two queens at columns `Q`$ and `Q_1`$ separated by `D`$ rows are on the same diagonal if `|Q - Q_1| = D`$, which translates to `Q #\= Q1 + D` and `Q #\= Q1 - D`.
 
 The **n_queens** project solves the problem using CLP(FD) diagonal constraints. Here is the file **n_queens/prolog/queens.pl**:
 

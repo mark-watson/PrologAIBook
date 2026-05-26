@@ -89,7 +89,7 @@ Popper can be executed as a command-line tool or invoked programmatically inside
 Using a hybrid of Prolog and Python in Popper examples comes down to a deliberate architectural decision: Prolog is the target language and testing engine, but Python is the orchestrator. While the Inductive Logic Programming (ILP) core targets first-order logic, the tool itself is implemented as a modern Python application. The hybrid nature of the examples reflects this clean separation of concerns.
 
 1. Python as the Orchestrator (Glue Code)
-The entire multi-engine loop you evaluated earlier (Generation ‭$\rightarrow$‬ Testing ‭$\rightarrow$‬ Feedback) is written in Python:
+The entire multi-engine loop you evaluated earlier (Generation `\rightarrow`$ Testing `\rightarrow`$ Feedback) is written in Python:
 - State Management: Python maintains the overall state of the search, handles file I/O, parses command-line arguments, and manages timers.
 - Inter-Process Communication: Python acts as the coordinator that calls Clingo (via its Python API or subprocesses) to get a candidate, translates that candidate into a format SWI-Prolog understands, spins up the Prolog interpreter, and parses the results.
 - Evaluation Frameworks: In many examples or benchmarks, you will see Python scripts (ilpexp.py or popper.py) managing cross-validation, plotting learning curves, or feeding synthetic data generators into the ILP engine.

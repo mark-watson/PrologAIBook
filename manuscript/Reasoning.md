@@ -10,10 +10,14 @@ Prolog predicates naturally map to **First-Order Logic (FOL)**. We express propo
 Classical logic allows rules with arbitrary conjunctions, disjunctions, and negations. However, resolving arbitrary first-order formulas is computationally expensive. To remain efficient, Prolog restricts its database to **Horn clauses**.
 
 A Horn clause is a disjunction of literals with *at most one positive (non-negated) literal*. In classical notation:
-$$A \lor \neg B_1 \lor \neg B_2 \lor \dots \lor \neg B_n$$
+{$$}
+A \lor \neg B_1 \lor \neg B_2 \lor \dots \lor \neg B_n
+{/$$}
 
 By applying Boolean algebra, this is logically equivalent to the implication:
-$$(B_1 \land B_2 \land \dots \land B_n) \Rightarrow A$$
+{$$}
+(B_1 \land B_2 \land \dots \land B_n) \Rightarrow A
+{/$$}
 
 In Prolog, this implication is written in reverse as:
 ```prolog
@@ -26,8 +30,8 @@ A :- B1, B2, ..., Bn.
 
 #### Mapping Logic to Prolog
 While this Horn clause format is highly efficient for execution using **SLD Resolution**, it does place some limitations on what can be directly expressed:
-- **Universal Quantifiers ($\forall$)**: Implicitly assumed for all variables in a rule.
-- **Existential Quantifiers ($\exists$)**: Represented by introducing new variables on the right-hand side of a rule (e.g. `has_child(X) :- parent(X, _).` means "For all X, X has a child if there exists some Y such that X is a parent of Y").
+- **Universal Quantifiers (`\forall`$)**: Implicitly assumed for all variables in a rule.
+- **Existential Quantifiers (`\exists`$)**: Represented by introducing new variables on the right-hand side of a rule (e.g. `has_child(X) :- parent(X, _).` means "For all X, X has a child if there exists some Y such that X is a parent of Y").
 - **Disjunction in the Head**: Prolog does *not* allow disjunctive heads like `A or B :- C.`. You must split this into multiple rules, or use helper predicates.
 
 
@@ -51,7 +55,7 @@ Here is a comparison of the two approaches:
 
 | Feature | Backward Chaining | Forward Chaining |
 | :--- | :--- | :--- |
-| **Direction** | Goal $\to$ Facts | Facts $\to$ Conclusions |
+| **Direction** | Goal `\to`$ Facts | Facts `\to`$ Conclusions |
 | **Prolog Integration** | Native execution engine | Needs custom meta-interpreter |
 | **Space Complexity** | Low (only stores active path in stack) | High (asserts all derived facts on heap) |
 | **Best Fit** | Diagnostic queries, verification | Event monitoring, data analysis |
@@ -215,9 +219,13 @@ In real-world applications, reasoning is rarely black-and-white. AI systems must
 
 To compute the probability of a derived goal, we apply the rules of probability:
 1. **Conjunction (AND)**: If a rule depends on multiple conditions, the probability of the conditions holding jointly is the product of their individual probabilities (assuming independence):
-   $$P(A \land B) = P(A) \times P(B)$$
+   {$$}
+   P(A \land B) = P(A) \times P(B)
+   {/$$}
 2. **Rule Application**: The probability of the conclusion is the joint probability of its conditions multiplied by the conditional probability (confidence) of the rule:
-   $$P(Conclusion) = P(Conditions) \times P(Rule)$$
+   {$$}
+   P(Conclusion) = P(Conditions) \times P(Rule)
+   {/$$}
 
 The companion project **prob_reasoning** implements this logic. Here is the complete file **prob_reasoning/prolog/prob_facts.pl**:
 
@@ -256,9 +264,9 @@ Prob = 0.105.
 ## Abductive Reasoning
 
 Abductive reasoning is the process of reasoning from **observations** to the most likely **explanations** (or hypotheses) that could cause them. It is often described as "inference to the best explanation."
-- **Deduction**: Given $A$ and $A \Rightarrow B$, derive $B$.
-- **Induction**: Given examples of $A$ and $B$, derive the rule $A \Rightarrow B$.
-- **Abduction**: Given $B$ and $A \Rightarrow B$, hypothesize $A$ as the explanation for $B$.
+- **Deduction**: Given `A`$ and `A \Rightarrow B`$, derive `B`$.
+- **Induction**: Given examples of `A`$ and `B`$, derive the rule `A \Rightarrow B`$.
+- **Abduction**: Given `B`$ and `A \Rightarrow B`$, hypothesize `A`$ as the explanation for `B`$.
 
 In Prolog, we can implement abductive reasoning by defining a set of **abducible predicates**—facts that we are allowed to assume true if they help explain the observation.
 
