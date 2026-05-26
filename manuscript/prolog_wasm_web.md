@@ -36,6 +36,10 @@ Here is the code in **source-code/prolog_wasm_web/rules.pl**:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
+% rules.pl - Wine Recommendation Expert System for WASM
+
+% Database of Wines: wine(Name, Color, Body, Sweetness)
+wine(cabernet_sauvignon, red, full_body, dry).
 wine(merlot, red, medium_body, dry).
 wine(pinot_noir, red, light_body, dry).
 wine(chardonnay, white, full_body, dry).
