@@ -2,12 +2,6 @@
 
 Constraint Logic Programming (CLP) extends Prolog with the ability to reason about constraints over various domains — integers, reals, and finite domains. SWI-Prolog provides excellent CLP libraries that make it possible to solve complex combinatorial and optimization problems declaratively.
 
-{width: "80%"}
-![Architecture diagram for the Sudoku Solver example](FIG_sudoku_solver.jpg)
-
-{width: "80%"}
-![Architecture diagram for the Blocks World example](FIG_blocks_world.jpg)
-
 ## Introduction to CLP
 
 In traditional logic programming, evaluation relies on unification and backtracking. For complex search problems, this often leads to a **generate-and-test** strategy: the program instantiates variables to concrete values and then checks if they satisfy the problem conditions. If they do not, it backtracks and tries other values. For large combinatorial search spaces, this approach is extremely inefficient.
@@ -37,6 +31,9 @@ Unlike ordinary arithmetic operators (like `is/2` or `=:=/2`), which require all
 A classic demonstration of constraint propagation is solving Sudoku puzzles. Standard Sudoku requires placing digits 1 to 9 in a $9 \times 9$ grid such that every row, column, and $3 \times 3$ sub-grid block contains unique numbers.
 
 Using `library(clpfd)`, we can model this complete constraint system in under 20 lines of logic. The solver propagates constraints so efficiently that most puzzles are solved instantly without any backtracking search at all.
+
+{width: "80%"}
+![Architecture diagram for the Sudoku Solver example](FIG_sudoku_solver.jpg)
 
 The **sudoku_solver** project provides a complete solver in under 30 lines of logic. Here is the file **sudoku_solver/prolog/sudoku.pl**:
 
