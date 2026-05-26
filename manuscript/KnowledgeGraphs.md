@@ -1,6 +1,6 @@
 # Knowledge Graphs and Knowledge Representation
 
-Knowledge representation is at the heart of symbolic AI, and Prolog's fact-and-rule database is itself a knowledge representation system. A knowledge graph stores information as triples — subject, predicate, object — exactly the structure of a Prolog fact. This makes Prolog a natural language for building, querying, and reasoning over knowledge graphs. In this chapter we develop two complementary tools: **kg_creator** for building knowledge graphs from scratch and exporting them to standard formats, and **kg_query** for multi-hop reasoning and path finding over richly connected graph data.
+Knowledge representation is at the heart of symbolic AI, and Prolog's fact-and-rule database is itself a knowledge representation system. A knowledge graph stores information as triples (subject, predicate, object) exactly the structure of a Prolog fact. This makes Prolog a natural language for building, querying, and reasoning over knowledge graphs. In this chapter we develop two complementary tools: **kg_creator** for building knowledge graphs from scratch and exporting them to standard formats, and **kg_query** for multi-hop reasoning and path finding over richly connected graph data.
 
 {width: "80%"}
 ![Architecture diagram for the Knowledge Graph Creator example](FIG_kg_creator.jpg)

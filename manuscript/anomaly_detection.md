@@ -6,11 +6,13 @@ This chapter implements a Gaussian anomaly detector in SWI-Prolog, ported from a
 
 ## The Gaussian Approach
 
-The core idea is straightforward. For each feature in the training data, we fit a Gaussian (bell curve) distribution by computing its mean $\mu$ and variance $\sigma^2$. At prediction time, we evaluate the Gaussian probability density function (PDF) for each feature of an unseen data point:
+The core idea is straightforward. For each feature in the training data, we fit a Gaussian (bell curve) distribution by computing its mean `\mu`$ and variance `\sigma^2`$. At prediction time, we evaluate the Gaussian probability density function (PDF) for each feature of an unseen data point:
 
-$$p(x_i) = \frac{1}{\sqrt{2\pi}\sigma_i} \exp\left(-\frac{(x_i - \mu_i)^2}{2\sigma_i^2}\right)$$
+{$$}
+p(x_i) = \frac{1}{\sqrt{2\pi}\sigma_i} \exp\left(-\frac{(x_i - \mu_i)^2}{2\sigma_i^2}\right)
+{/$$}
 
-If the average per-feature probability falls below a learned threshold $\epsilon$ (epsilon), the data point is flagged as anomalous — it lies too far from the centre of the normal distribution.
+If the average per-feature probability falls below a learned threshold `\epsilon`$ (epsilon), the data point is flagged as anomalous — it lies too far from the centre of the normal distribution.
 
 This approach has two appealing properties:
 
@@ -175,7 +177,7 @@ The tag-then-filter pattern deserves comment. An earlier version used direct rec
 
 ## Computing Statistics
 
-With the training set isolated, we compute per-feature mean ($\mu$) and variance ($\sigma^2$):
+With the training set isolated, we compute per-feature mean (`\mu`$) and variance (`\sigma^2`$):
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
