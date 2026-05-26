@@ -2,6 +2,8 @@
 
 Machine learning is dominated by connectionist methods like deep artificial neural networks. These models learn by updating millions or billions of continuous numerical weights. While neural networks excel at perception tasks (such as computer vision and speech recognition), they suffer from several drawbacks: they require vast amounts of training data, their internal reasoning is opaque (a "black box"), and they cannot easily incorporate existing domain knowledge.
 
+The material for this chapter is derived and inspired by the Popper inductive logic programming system GitHub repository [https://github.com/logic-and-learning-lab/Popper/](https://github.com/logic-and-learning-lab/Popper/).
+
 **Inductive Logic Programming (ILP)** is an alternative approach to machine learning situated at the intersection of machine learning and logic programming. Rather than fitting mathematical functions to numbers, an ILP system learns **symbolic rules** (Prolog programs) directly from:
 1. **Background Knowledge (BK)**: Existing facts and rules representing known domain concepts.
 2. **Positive Examples**: Examples of the target relationship that the learned program must entail.
@@ -83,6 +85,19 @@ head_pred(grandparent, 2).
 ## Python Orchestrator
 
 Popper can be executed as a command-line tool or invoked programmatically inside Python. We construct a script that sets the knowledge-base paths and initiates the solver.
+
+Using a hybrid of Prolog and Python in Popper examples comes down to a deliberate architectural decision: Prolog is the target language and testing engine, but Python is the orchestrator. While the Inductive Logic Programming (ILP) core targets first-order logic, the tool itself is implemented as a modern Python application. The hybrid nature of the examples reflects this clean separation of concerns.
+
+1. Python as the Orchestrator (Glue Code)
+The entire multi-engine loop you evaluated earlier (Generation ‭$\rightarrow$‬ Testing ‭$\rightarrow$‬ Feedback) is written in Python:
+- State Management: Python maintains the overall state of the search, handles file I/O, parses command-line arguments, and manages timers.
+- Inter-Process Communication: Python acts as the coordinator that calls Clingo (via its Python API or subprocesses) to get a candidate, translates that candidate into a format SWI-Prolog understands, spins up the Prolog interpreter, and parses the results.
+- Evaluation Frameworks: In many examples or benchmarks, you will see Python scripts (ilpexp.py or popper.py) managing cross-validation, plotting learning curves, or feeding synthetic data generators into the ILP engine.
+
+2. Prolog as the Relational Data and Representation Layer: even though Python runs the show, the data and the learned rules must be expressed in a logic programming syntax. Therefore, the input files for a Popper problem use standard Prolog format:
+- Background Knowledge (bk.pl): Relational data (e.g., parent(amy, bob).) or procedural background knowledge definitions are written natively in Prolog because SWI-Prolog will execute them directly during the test phase.
+- Examples (exs.pl): Positive and negative training instances are defined as Prolog facts (e.g., pos(grandparent(amy, charlie)).).
+- The Output: The ultimate goal of Popper is to output a crisp, human-readable Prolog program.
 
 Here is the code in **source-code/inductive_logic_popper/run_popper.py**:
 
