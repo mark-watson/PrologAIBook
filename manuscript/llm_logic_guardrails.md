@@ -90,12 +90,7 @@ check_policy(Dict, Error) :-
 
 % 3. If risk tolerance is 'low', crypto allocation must be 0%
 check_policy(Dict,
-
-
-
-
-
-                        "Low risk tolerance portfolio cannot contain speculative crypto assets") :-
+            "Low risk tolerance portfolio cannot contain speculative crypto assets") :-
     Risk = Dict.get(risk_tolerance),
     Risk == "low", % json_read_dict parses strings as SWI-Prolog string
                    % terms or atoms depending on settings
@@ -111,12 +106,7 @@ check_policy(Dict, Error) :-
     Conservative is Bonds + Cash,
     Conservative < 50,
     format(string(Error),
-
-
-
-
-
-                            "Low risk tolerance requires at least 50% in conservative assets (currently ~w%)", [Conservative]).
+           "Low risk tolerance requires at least 50% in conservative assets (currently ~w%)", [Conservative]).
 
 % 5. No asset allocation can be negative
 check_policy(Dict, "Asset allocations cannot be negative") :-
@@ -130,7 +120,7 @@ get_allocations(Dict, Stocks, Bonds, Crypto, Cash) :-
     Bonds = Allocations.get(bonds, 0),
 ~~~~~~~~
 
----
+
 
 ## Python Verification Harness
 

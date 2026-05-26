@@ -1,8 +1,8 @@
 # Meta-Interpreters: Prolog Reasoning About Prolog
 
-Meta-interpreters are one of Prolog's most unique and powerful capabilities. A meta-interpreter is a Prolog program that interprets Prolog programs, allowing us to modify, extend, or instrument the reasoning process itself. This is a form of *computational reflection* — the language turns its inference engine inward, treating its own rules and facts as data to be examined, transformed, and re-executed under new policies.
+Meta-interpreters are one of Prolog's most unique and powerful capabilities. A meta-interpreter is a Prolog program that interprets Prolog programs, allowing us to modify, extend, or instrument the reasoning process itself. This is a form of *computational reflection*: the language turns its inference engine inward, treating its own rules and facts as data to be examined, transformed, and re-executed under new policies.
 
-Why does this matter? In most programming languages, if you want to change how code executes — to add tracing, limit recursion depth, try alternative search strategies, or attach uncertainty scores to conclusions — you modify the compiler or runtime, write a DSL, or build an external tool. In Prolog, you write a half-dozen lines of Prolog. The meta-interpreter sits *above* the base language yet *within* it, intercepting every resolution step and deciding what to do next. This makes Prolog uniquely suited to tasks like explainable AI, automated debugging, and reasoning under resource constraints.
+Why does this matter? In most programming languages, if you want to change how code executes (to add tracing, limit recursion depth, try alternative search strategies, or attach uncertainty scores to conclusions), you modify the compiler or runtime, write a DSL, or build an external tool. In Prolog, you write a half-dozen lines of Prolog. The meta-interpreter sits *above* the base language yet *within* it, intercepting every resolution step and deciding what to do next. This makes Prolog uniquely suited to tasks like explainable AI, automated debugging, and reasoning under resource constraints.
 
 {width: "80%"}
 ![Architecture diagram for the Meta-Interpreter example](FIG_meta_interp.jpg)
@@ -15,13 +15,13 @@ The key built-in predicate is `clause(Head, Body)`, which retrieves the clauses 
 
 The vanilla meta-interpreter uses exactly three clauses, corresponding to the three kinds of goals Prolog encounters:
 
-1. **The goal `true`** — always succeeds. The meta-interpreter handles this as a base case with a cut to prevent backtracking into other clauses.
+1. **The goal `true`**: always succeeds. The meta-interpreter handles this as a base case with a cut to prevent backtracking into other clauses.
 
-2. **A conjunction `(A, B)`** — the meta-interpreter decomposes it, solving `A` first (which may bind variables), then solving `B` in the resulting environment. The cut ensures this is recognized before the general goal clause.
+2. **A conjunction `(A, B)`**: the meta-interpreter decomposes it, solving `A` first (which may bind variables), then solving `B` in the resulting environment. The cut ensures this is recognized before the general goal clause.
 
-3. **Any other goal** — the meta-interpreter looks up matching clauses with `clause/2`. For each matching clause body, it recursively interprets the body. If no clauses match, the goal simply fails; if multiple clauses match, Prolog's native backtracking explores each in turn.
+3. **Any other goal**: the meta-interpreter looks up matching clauses with `clause/2`. For each matching clause body, it recursively interprets the body. If no clauses match, the goal simply fails; if multiple clauses match, Prolog's native backtracking explores each in turn.
 
-This three-clause structure is the template from which all other meta-interpreters are derived. Every extension we build — proof trees, depth bounds, uncertainty propagation, custom search — starts by modifying one or more of these clauses.
+This three-clause structure is the template from which all other meta-interpreters are derived. Every extension we build (proof trees, depth bounds, uncertainty propagation, custom search) starts by modifying one or more of these clauses.
 
 The **meta_interp** project provides both a vanilla and bounded meta-interpreter. Here is the file **meta_interp/prolog/vanilla.pl**:
 
@@ -56,11 +56,11 @@ mi_solve_proof(Mod, (A, B), (PA, PB)) :- !,
 mi_solve_proof(Mod, Goal, Goal-Proof) :-
 ```
 
-Notice the module-aware variants (`mi_solve/2` and `mi_solve_proof/3`). By qualifying the `clause/2` lookup with a module prefix (`Mod:Goal`), the meta-interpreter can operate over predicates defined in any module, not just the one it's loaded into. This is essential for building reusable reasoning tools that work across different knowledge bases. The proof-tree variant (`mi_solve_proof`) returns a nested term rather than just succeeding or failing — a preview of the explanation capabilities we'll explore next.
+Notice the module-aware variants (`mi_solve/2` and `mi_solve_proof/3`). By qualifying the `clause/2` lookup with a module prefix (`Mod:Goal`), the meta-interpreter can operate over predicates defined in any module, not just the one it's loaded into. This is essential for building reusable reasoning tools that work across different knowledge bases. The proof-tree variant (`mi_solve_proof`) returns a nested term rather than just succeeding or failing: a preview of the explanation capabilities we'll explore next.
 
 ## Adding Proof Trees
 
-A meta-interpreter that merely succeeds or fails tells us *whether* a conclusion follows from our knowledge base, but not *why*. For explainable AI — where a system must justify its reasoning to a user, an auditor, or another system — we need to capture the inference path. This is where proof trees come in.
+A meta-interpreter that merely succeeds or fails tells us *whether* a conclusion follows from our knowledge base, but not *why*. For explainable AI where a system must justify its reasoning to a user, an auditor, or another system, we need to capture the inference path. This is where proof trees come in.
 
 A proof tree is a data structure that records every resolution step the meta-interpreter takes: which goal was proved, which clause was used, and what sub-proofs were required. It transforms the meta-interpreter from a yes/no oracle into a transparent reasoner.
 
@@ -138,7 +138,7 @@ The updated version adds explicit clauses for `\+/1` (negation-as-failure) and `
 
 Let's examine actual proof tree output from the extended sample data. Each example illustrates a different reasoning pattern:
 
-**Direct fact lookup** — the simplest possible proof:
+**Direct fact lookup** is the simplest possible proof:
 ```
 ├─ parent(adam,john)
    ✓ true
@@ -187,7 +187,7 @@ This tree traces the lineage adam → john → mary → ann → carol → grace.
 ```
 The final subgoal `ann \= bob` is printed as a leaf showing the built-in comparison. Without this check, the sibling rule would also report that Ann is her own sibling (since `parent(mary, ann)` and `parent(mary, ann)` would both succeed).
 
-**Negation-as-failure** — `cousin(carol, emma)` uses `\+ sibling(carol, emma)`:
+**Negation-as-failure** like `cousin(carol, emma)` uses `\+ sibling(carol, emma)`:
 ```
 ├─ cousin(carol,emma)
    ├─ grandparent(mary,carol)
@@ -205,9 +205,9 @@ The final subgoal `ann \= bob` is printed as a leaf showing the built-in compari
    ├─ \+sibling(carol,emma)
       ✓ \+sibling(carol,emma)
 ```
-Carol and Emma share grandmother Mary, making them cousins — but they could also have been siblings if they shared a parent. The `\+ sibling/2` goal confirms they aren't, and the proof tree records this check as a visible leaf node. (Note: this query actually has two solutions — Mary and Tom are both grandparents of both children — so backtracking would produce a second tree with `grandparent(tom, ...)` variants.)
+Carol and Emma share grandmother Mary, making them cousins but they could also have been siblings if they shared a parent. The `\+ sibling/2` goal confirms they aren't, and the proof tree records this check as a visible leaf node. (Note: this query actually has two solutions; Mary and Tom are both grandparents of both children so backtracking would produce a second tree with `grandparent(tom, ...)` variants.)
 
-**Derived predicates** — `aunt_uncle(michael, ann)` chains two relationships:
+**Derived predicates** like `aunt_uncle(michael, ann)` chains two relationships:
 ```
 ├─ aunt_uncle(michael,ann)
    ├─ parent(mary,ann)
@@ -245,13 +245,13 @@ This tree reveals the full 6-generation path from Adam down to Grace. The `desce
 
 ### Why Proof Trees Matter
 
-Proof trees bridge the gap between logical inference and human-understandable explanation. In expert systems, they let a domain expert verify that the system's conclusions follow from the intended rules. In legal or regulatory applications, they provide an audit trail. In interactive AI assistants, they let users ask "why did you conclude that?" and receive a structured answer. The proof tree is not a post-hoc rationalization stitched on after the fact — it *is* the reasoning, captured as it happens by a meta-interpreter that observes every step of its own execution.
+Proof trees bridge the gap between logical inference and human-understandable explanation. In expert systems, they let a domain expert verify that the system's conclusions follow from the intended rules. In legal or regulatory applications, they provide an audit trail. In interactive AI assistants, they let users ask "why did you conclude that?" and receive a structured answer. The proof tree is not a post-hoc rationalization stitched on after the fact because it *is* the reasoning, captured as it happens by a meta-interpreter that observes every step of its own execution.
 
 ## Bounded Reasoning
 
-Prolog's native depth-first search has a well-known vulnerability: if a predicate can generate an infinite chain of subgoals — either through a buggy recursive rule or through cyclic data — the interpreter will descend forever, eventually exhausting the stack. In open-world settings like the semantic web or knowledge graphs constructed from crawled data, cycles are not bugs; they're facts of life. An employee works for a division, which belongs to a company, which owns a subsidiary, which employs the same person. Unchecked recursion over such data is a guaranteed infinite loop.
+Prolog's native depth-first search has a well-known vulnerability: if a predicate can generate an infinite chain of subgoals, either through a buggy recursive rule or through cyclic data, the interpreter will descend forever, eventually exhausting the stack. In open-world settings like the semantic web or knowledge graphs constructed from crawled data, cycles are not bugs they're facts of life. An employee works for a division, which belongs to a company, which owns a subsidiary, which employs the same person. Unchecked recursion over such data is a guaranteed infinite loop.
 
-The bounded meta-interpreter solves this by adding a depth counter that decrements with each resolution step. When the counter reaches zero, the current branch of the search tree is pruned. This is not a heuristic — it is a *guarantee* of termination. For any knowledge base and any query, `mi_bounded(Goal, MaxDepth)` will either succeed or fail in finite time.
+The bounded meta-interpreter solves this by adding a depth counter that decrements with each resolution step. When the counter reaches zero, the current branch of the search tree is pruned. This is not a heuristic, it is a *guarantee* of termination. For any knowledge base and any query, `mi_bounded(Goal, MaxDepth)` will either succeed or fail in finite time.
 
 Here is the file **meta_interp/prolog/bounded.pl**:
 
@@ -276,11 +276,11 @@ mi_bounded(Mod, Goal, D) :-
     clause(Mod:Goal, Body),
 ```
 
-The depth limit operates on the *inference depth*, not the recursion depth of a single predicate. If a goal requires three levels of clause resolution to prove — say, `grandparent(X, Z)` → `parent(X, Y)` → `parent(Y, Z)` → `true` — that consumes three depth units. The same limit applies regardless of which predicates are involved: a shallow chain through many different predicates and a deep chain through a single recursive predicate are both bounded by the same `MaxDepth`.
+The depth limit operates on the *inference depth*, not the recursion depth of a single predicate. If a goal requires three levels of clause resolution to prove, say, `grandparent(X, Z)` → `parent(X, Y)` → `parent(Y, Z)` → `true`, that consumes three depth units. The same limit applies regardless of which predicates are involved: a shallow chain through many different predicates and a deep chain through a single recursive predicate are both bounded by the same `MaxDepth`.
 
 This has practical implications. A depth of 1 means only facts can be proved — no rules are allowed to fire. A depth of 2 allows rules whose bodies contain only facts. Each increment of the depth bound enables one more "hop" through the inference graph. For applications like knowledge graph traversal, you might set `MaxDepth` to the maximum path length you're willing to consider, effectively implementing a bounded path query in three lines of meta-interpreter code.
 
-**Iterative deepening** — running the bounded meta-interpreter with successively larger depth limits — is a standard technique for finding the "shallowest" proof first. Start with `MaxDepth = 1`, then 2, then 3, and so on. The first solution found is guaranteed to have the minimum inference depth. This combines the completeness of breadth-first search with the space efficiency of depth-first search, and it's implemented entirely in the calling code, not in the meta-interpreter itself.
+**Iterative deepening**: running the bounded meta-interpreter with successively larger depth limits is a standard technique for finding the "shallowest" proof first. Start with `MaxDepth = 1`, then 2, then 3, and so on. The first solution found is guaranteed to have the minimum inference depth. This combines the completeness of breadth-first search with the space efficiency of depth-first search, and it's implemented entirely in the calling code, not in the meta-interpreter itself.
 
 ## Reasoning with Uncertainty
 
@@ -305,11 +305,11 @@ mi_certain(Mod, Goal, CF) :-
 
 The conjunction case uses `min` because a chain of reasoning is only as strong as its weakest link. The goal case multiplies the rule's own certainty factor by the combined certainty of its body. Different combination functions model different uncertainty calculi: fuzzy logic uses `min` and `max`, probability theory uses multiplication with independence assumptions, Dempster-Shafer theory uses belief and plausibility intervals.
 
-What makes this powerful is the separation of concerns. The domain expert writes ordinary Prolog rules describing *what* is true. A separate annotation layer adds *how certain* each rule is. The meta-interpreter weaves them together at query time. You can experiment with different uncertainty models — min/max, product, Bayesian, Dempster-Shafer — without touching the knowledge base. You can even run multiple interpreters over the same rules: one for crisp logical inference, another for fuzzy reasoning, a third that tracks provenance.
+What makes this powerful is the separation of concerns. The domain expert writes ordinary Prolog rules describing *what* is true. A separate annotation layer adds *how certain* each rule is. The meta-interpreter weaves them together at query time. You can experiment with different uncertainty models, min/max, product, Bayesian, Dempster-Shafer, without touching the knowledge base. You can even run multiple interpreters over the same rules: one for crisp logical inference, another for fuzzy reasoning, a third that tracks provenance.
 
 ## Custom Search Strategies
 
-Prolog's baked-in search strategy — depth-first, left-to-right — is efficient and predictable, but it's not always what you want. A puzzle solver might benefit from breadth-first search to find the shortest solution path. A theorem prover might want iterative deepening to guarantee completeness. A planning system might use best-first search guided by a heuristic.
+Prolog's baked-in search strategy like depth-first, left-to-right is efficient and predictable, but it's not always what you want. A puzzle solver might benefit from breadth-first search to find the shortest solution path. A theorem prover might want iterative deepening to guarantee completeness. A planning system might use best-first search guided by a heuristic.
 
 Meta-interpreters let you swap out the search strategy without changing the rules. Rather than letting Prolog's native backtracking drive the search (which locks you into depth-first), the meta-interpreter collects alternative clauses explicitly and manages its own search queue:
 
@@ -332,11 +332,11 @@ This meta-interpreter maintains an explicit queue of pending goals. Conjunctions
 
 The same principle extends to other strategies. For **best-first search**, maintain a priority queue ordered by a heuristic evaluation function. For **iterative deepening**, wrap the bounded meta-interpreter in a loop that increments the depth limit. For **beam search**, keep only the top *k* partial solutions at each step. In each case, the domain rules remain unchanged — only the meta-interpreter's control flow differs.
 
-This is meta-interpretation at its most fundamental: the *logic* of the program (what is true) is separated from the *control* (how to find it). Kowalski's famous equation — "Algorithm = Logic + Control" — becomes literally executable when the logic lives in the program database and the control lives in the meta-interpreter.
+This is meta-interpretation at its most fundamental: the *logic* of the program (what is true) is separated from the *control* (how to find it). Kowalski's famous equation, "Algorithm = Logic + Control", becomes literally executable when the logic lives in the program database and the control lives in the meta-interpreter.
 
 ## Debugging and Tracing Meta-Interpreters
 
-Every Prolog programmer has stared at a query that loops forever or produces an unexpected answer, wishing they could see *exactly* what the interpreter was doing. Prolog's built-in tracer (`trace/0`) helps, but it's a blunt instrument — it shows everything at the port level (Call, Exit, Redo, Fail), which can produce overwhelming output for even moderately complex programs.
+Every Prolog programmer has stared at a query that loops forever or produces an unexpected answer, wishing they could see *exactly* what the interpreter was doing. Prolog's built-in tracer (`trace/0`) helps, but it's a blunt instrument: it shows everything at the port level (Call, Exit, Redo, Fail), which can produce overwhelming output for even moderately complex programs.
 
 A custom tracer, written as a meta-interpreter, can be selective. It knows about the structure of your program and can filter, summarize, or highlight the information that matters:
 
@@ -363,7 +363,7 @@ This produces output in the style of a structured call tree rather than a linear
 
 Beyond interactive debugging, meta-interpreters enable **performance instrumentation**. Wrap the meta-interpreter to count clause lookups, measure wall-clock time per predicate, or log which rules were most frequently used. For knowledge bases that evolve over time, you can instrument which facts and rules contributed to each conclusion — a form of data provenance. And because the instrumentation lives in the meta-interpreter, it can be enabled or disabled per query without modifying the knowledge base.
 
-A particularly elegant use is **declarative debugging**, also known as algorithmic debugging. When a query produces an incorrect answer, the debugger traverses the proof tree interactively, asking the user whether each intermediate conclusion is correct. It navigates to the deepest incorrect sub-proof, eventually pinpointing the exact clause (or missing clause) responsible for the bug. This is far more efficient than stepping through execution chronologically — it narrows the search space exponentially with each user interaction.
+A particularly elegant use is **declarative debugging**, also known as algorithmic debugging. When a query produces an incorrect answer, the debugger traverses the proof tree interactively, asking the user whether each intermediate conclusion is correct. It navigates to the deepest incorrect sub-proof, eventually pinpointing the exact clause (or missing clause) responsible for the bug. This is far more efficient than stepping through execution chronologically because it narrows the search space exponentially with each user interaction.
 
 ## Summary
 

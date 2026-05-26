@@ -9,9 +9,9 @@ AI agents that reason, plan, and act autonomously are a major focus of modern AI
 
 An **AI agent** is a system that perceives its environment, reasons about what it observes, and takes actions to achieve its goals. Every agent, from a simple thermostat to a LLM-powered research assistant, follows the same fundamental pattern: the **perception-reasoning-action loop**.
 
-1. **Perceive** — observe the environment. This could mean reading sensor data, parsing a user's natural language query, checking a database, or fetching the contents of a web page.
-2. **Reason** — decide what to do next. The agent matches its observations against its goals and its knowledge of how the world works, then selects the best action.
-3. **Act** — carry out the chosen action and feed the outcome back into the loop.
+1. **Perceive**: observe the environment. This could mean reading sensor data, parsing a user's natural language query, checking a database, or fetching the contents of a web page.
+2. **Reason**: decide what to do next. The agent matches its observations against its goals and its knowledge of how the world works, then selects the best action.
+3. **Act**: carry out the chosen action and feed the outcome back into the loop.
 
 Prolog is a natural fit for agent architectures because its inference engine already implements a reasoning loop: given a goal, Prolog searches for a proof using the available rules and facts. Wrapping that inference engine inside a perception-action cycle produces a goal-directed agent with minimal code.
 
@@ -155,13 +155,13 @@ Prolog's unification engine makes goal matching natural: a goal like `file_statu
 
 ## Tool-Using Agents with LLM Integration
 
-The reactive agent pattern becomes far more capable when the agent can call external tools — web search, database queries, LLM APIs, file system operations — and when an LLM helps select which tool to use.
+The reactive agent pattern becomes far more capable when the agent can call external tools (web search, database queries, LLM APIs, file system operations) and when an LLM helps select which tool to use.
 
 The architecture has three layers:
 
-1. **Tool Registry** — Prolog facts (`tool/2`) mapping tool names to the predicates that implement them. Each tool is a Prolog predicate that the agent can call.
-2. **Action Selection** — `select_action/1` queries the tool registry and the belief store to find applicable actions. In a simple agent, this is pure Prolog rule matching. In an LLM-augmented agent, the agent sends the list of available tools and the current beliefs to an LLM and asks it to pick the next action.
-3. **Tool Execution** — `execute_action/1` calls the selected tool predicate and records the result as a new belief.
+1. **Tool Registry**: Prolog facts (`tool/2`) mapping tool names to the predicates that implement them. Each tool is a Prolog predicate that the agent can call.
+2. **Action Selection**: `select_action/1` queries the tool registry and the belief store to find applicable actions. In a simple agent, this is pure Prolog rule matching. In an LLM-augmented agent, the agent sends the list of available tools and the current beliefs to an LLM and asks it to pick the next action.
+3. **Tool Execution**: `execute_action/1` calls the selected tool predicate and records the result as a new belief.
 
 A richer `select_action/1` that uses an LLM to choose among registered tools looks like this:
 
@@ -176,7 +176,7 @@ select_action(Action) :-
     term_string(Action, ActionAtom).
 ```
 
-The LLM receives a description of the current state (beliefs) and a list of available tools, then returns the selected action as structured text. Prolog parses it back into a term and executes it. This combines the LLM's flexibility — understanding natural language goals, adapting to novel situations — with Prolog's reliability for tool execution and state management.
+The LLM receives a description of the current state (beliefs) and a list of available tools, then returns the selected action as structured text. Prolog parses it back into a term and executes it. This combines the LLM's flexibility (understanding natural language goals, adapting to novel situations) with Prolog's reliability for tool execution and state management.
 
 ### Defining Tools
 
@@ -196,7 +196,7 @@ Each tool predicate does its work and then asserts the result as a belief. This 
 
 ## Multi-Agent Communication
 
-When multiple agents operate in the same environment, they need to communicate — sharing discoveries, delegating subtasks, and coordinating to avoid conflicting actions. Prolog's dynamic database is inherently shared within a process, which makes message passing between agents as simple as asserting and querying facts.
+When multiple agents operate in the same environment, they need to communicate, like sharing discoveries, delegating subtasks, and coordinating to avoid conflicting actions. Prolog's dynamic database is inherently shared within a process, which makes message passing between agents as simple as asserting and querying facts.
 
 A minimal message-passing system uses a `message/3` dynamic predicate:
 

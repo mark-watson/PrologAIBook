@@ -1,6 +1,6 @@
 # Daily Use REPL: Gemini with Search and Cache
 
-In the previous chapter we built a persistent cache engine using SQLite. Now we put it to practical use: an interactive command-line REPL that queries Google's Gemini API, optionally grounds answers with live Google Search results, and accumulates a persistent cache of useful responses that automatically enriches future prompts.
+In a previous chapter we built a persistent cache engine using SQLite. Now we put it to practical use: an interactive command-line REPL that queries Google's Gemini API, optionally grounds answers with live Google Search results, and accumulates a persistent cache of useful responses that automatically enriches future prompts.
 
 This chapter is a SWI-Prolog port of the Common Lisp `daily-use` tool. It demonstrates how Prolog's pattern matching and term manipulation make building an interactive command dispatcher particularly clean.
 
@@ -40,49 +40,15 @@ Before looking up the cache, we need to identify meaningful terms in the user's 
 :- use_module(library(readutil)).
 ~~~~~~~~
 
-Stop words are declared as unit clauses — a natural Prolog idiom that makes lookups efficient via first-argument indexing:
+Stop words are declared as unit clauses — a natural Prolog idiom that makes lookups efficient via first-argument indexing (partial list, edited for brevity):
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
 stop_word(a).
 stop_word(an).
 stop_word(the).
-stop_word(is).
-stop_word(are).
-stop_word(was).
-stop_word(were).
-stop_word(be).
-stop_word(been).
-stop_word(being).
-stop_word(have).
-stop_word(has).
-stop_word(had).
-stop_word(do).
-stop_word(does).
-stop_word(did).
-stop_word(will).
-stop_word(would).
-stop_word(shall).
-stop_word(should).
-stop_word(may).
-stop_word(might).
-stop_word(must).
-stop_word(can).
-stop_word(could).
 stop_word(am). stop_word(it). stop_word(its).
 stop_word(in).
-stop_word(on).
-stop_word(at).
-stop_word(to).
-stop_word(for).
-stop_word(of).
-stop_word(with).
-stop_word(by).
-stop_word(from).
-stop_word(as).
-stop_word(and).
-stop_word(or).
-stop_word(but).
 stop_word(not).
 stop_word(no).
 stop_word(nor). stop_word(so). stop_word(yet).
@@ -139,12 +105,7 @@ build_context_from_cache(Connection, Query, Context) :-
         ;
             format_context_items(Items, Formatted),
             format(atom(Context),
-
-
-
-
-
-                                       "Use the following context from previous conversations when answering:\n\n~w\n---\n\n",
+                        "Use the following context from previous conversations when answering:\n\n~w\n---\n\n",
                    [Formatted])
         )
     ).
@@ -167,12 +128,7 @@ call_gemini_api(Prompt, SearchP, Response) :-
     getenv('GOOGLE_API_KEY', ApiKey),
     model(Model),
     format(atom(URL),
-
-
-
-
-
-                               'https://generativelanguage.googleapis.com/v1beta/models/~w:generateContent?key=~w',
+           'https://generativelanguage.googleapis.com/v1beta/models/~w:generateContent?key=~w',
            [Model, ApiKey]),
     build_payload(Prompt, SearchP, Payload),
     http_post(URL, json(Payload), Result, [json_object(dict)]),
