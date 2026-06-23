@@ -246,3 +246,8 @@ LLM Output JSON:
 **Why use Janus and Python instead of writing everything in Prolog?** While SWI-Prolog can handle network requests, parsing, and LLM integrations directly, Python has a much wider ecosystem of libraries for building production-grade LLM applications (such as LangChain, LlamaIndex, and the official Google GenAI SDK). Janus offers an ideal compromise: we can write our API plumbing and LLM pipelines in Python, but delegate the critical verification steps to Prolog, keeping our policy logic clean and declarative.
 
 **Using findall/3 for complete error lists.** In typical Prolog programs, we rely on backtracking to find a solution. If a validation failed, Prolog would normally return `false` on the first rule violation and halt. However, when returning errors to a user or feeding them back to an LLM for correction, we want *all* violations reported at once. Using `findall(Error, check_policy(Dict, Error), Errors)` forces the engine to evaluate every safety check and collect all generated error strings into a single list.
+
+## Optional Practice Problems
+
+1. **Blacklist Guardrail**: In the `llm_logic_guardrails` project, write a logic guardrail that scans the LLM output for forbidden names or sensitive words and flags the output if any are found.
+2. **Contradiction Detection**: Implement a rule in `guardrails.pl` that checks if the LLM output asserts a fact that contradicts any of the safe facts stored in the Prolog knowledge base.

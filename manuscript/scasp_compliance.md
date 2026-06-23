@@ -141,3 +141,8 @@ If you run the query for `bob` or `charlie`, the check fails and outputs that th
 **Why s(CASP) over regular Prolog?** Traditional Prolog handles negation using *negation-as-failure* (`\+`). However, regular Prolog cannot easily reason about negative constraints or construct explicit justification trees for negative constraints (e.g. proving that "there is no evidence that Alice's trip was for personal reasons"). s(CASP) handles stable model semantics and goal-directed Answer Set Programming, allowing it to mathematically prove that a negative condition is not met and represent that proof step in the justification output.
 
 **Rules as Code movement.** Writing policies directly in executable code eliminates the translation gap between the legal draft of a policy and the software implementation. Government bodies and large enterprises are adopting this approach to ensure that business logic is auditable, self-documenting, and provably compliant.
+
+## Optional Practice Problems
+
+1. **Age-Restricted Access**: Extend the s(CASP) compliance rules in the `scasp_compliance` project to restrict access to certain services based on user age and regional jurisdiction.
+2. **Conflict Resolution Query**: Write a query in `compliance_check.pl` to verify how s(CASP) resolves cases where two different compliance policies overlap and conflict.

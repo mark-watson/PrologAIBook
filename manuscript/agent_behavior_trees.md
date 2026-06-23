@@ -318,3 +318,8 @@ Notice how at Tick 3, dust is detected, causing the selector to bypass the patro
 **Dynamic database for state.** The robot's variables (like `battery/1` and `dusty/1`) are kept as dynamic facts (`:- dynamic ...`). In Prolog, asserting and retracting facts mimics a global memory store, allowing conditions and actions to read and modify state without having to pass a state dictionary through the tree's recursive helper functions.
 
 **Logical structures as DSL.** Behavior trees are traditionally declared using JSON, XML, or specialized editor graphs. In Prolog, we can represent trees directly as structured terms, such as `selector([sequence([condition(A), action(B)]), action(C)])`. This provides an elegant domain-specific language (DSL) with zero parsing overhead, which can be modified directly within the source code.
+
+## Optional Practice Problems
+
+1. **Sequence and Selector Nodes**: In the `agent_behavior_trees` project, write unit tests to verify the behavior of compound nodes when one or more of their child nodes fail.
+2. **Vacuum Cleaning Agent**: Create a behavior tree in `prolog/behavior_trees.pl` for a robot vacuum cleaner agent. The tree should sequence tasks like `detect_dust`, `clean_area`, and `return_to_charger` based on the status of sensors.

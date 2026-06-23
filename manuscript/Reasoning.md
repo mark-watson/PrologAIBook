@@ -372,3 +372,8 @@ disease(migraine, [headache, nausea, light_sensitivity]).
 Here is sample output:
 
 TBD
+
+## Optional Practice Problems
+
+1. **Extended Diagnosis Rules**: In the `medical_diagnosis` project, add rules for diagnosing a new condition (e.g., flu or allergy) based on symptom overlap, and ensure that conflicting symptoms are handled gracefully.
+2. **Structured Proof Tree Printing**: In `proof_trees`, write a helper predicate to print the generated proof tree using visual indentation levels (e.g., nested bullet points) rather than raw Prolog terms.

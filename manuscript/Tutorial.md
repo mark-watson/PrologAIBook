@@ -359,3 +359,8 @@ SWI-Prolog includes a rich set of built-in predicates for control flow, database
 | `functor(Term, Functor, Arity)` | Unifies with the name and arity of a compound term (or creates one). | `?- functor(parent(tom, bob), F, A).` <br> `F = parent, A = 2.` |
 | `arg(N, Term, Argument)` | Accesses the N-th argument of a compound term. | `?- arg(2, parent(tom, bob), Arg).` <br> `Arg = bob.` |
 | `Term =.. List` | The "univ" operator; converts a compound term to/from a list of functor and arguments. | `?- parent(tom, bob) =.. L.` <br> `L = [parent, tom, bob].` |
+
+## Optional Practice Problems
+
+1. **Grandparent and Sibling Relations**: Extend the `family.pl` database in the `tutorial_basics` directory. Implement a `grandparent/2` predicate and a `sibling/2` predicate (ensuring that a person is not their own sibling). Write unit tests in `tests/test_family.pl` to verify your implementation.
+2. **Reverse a List**: In `lists.pl`, implement a predicate `reverse_list/2` that reverses a list using an accumulator pattern for efficient linear-time execution. Add corresponding unit tests.

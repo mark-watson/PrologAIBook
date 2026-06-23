@@ -382,3 +382,8 @@ Count = 92.
 ```
 
 CLP(FD) propagation dramatically prunes the search space relative to a naive backtracking search, making the search for solutions extremely efficient even for larger board sizes.
+
+## Optional Practice Problems
+
+1. **Weighted Graph Search**: In the `graph_search` project, modify the graph definition to include edge weights. Then implement a uniform-cost search (or Dijkstra's algorithm) to find the shortest path between two nodes in terms of cumulative edge weights.
+2. **Farmer Puzzle Variation**: In the `puzzle_solver` project, adapt the `farmer.pl` rules to allow the boat to hold the farmer and up to *two* items, but add a new constraint that the wolf and the goat cannot be left alone on either bank, nor can the goat and the cabbage.

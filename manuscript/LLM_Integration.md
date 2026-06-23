@@ -238,3 +238,8 @@ This pattern generalises easily: replace spaCy with an LLM call (using our `gemi
 
 {width: "80%"}
 ![Architecture diagram for the Research Assistant example](FIG_research_assistant.jpg)
+
+## Optional Practice Problems
+
+1. **Fact Extraction Prompt**: Write a structured JSON prompt in the `structured_output` project that asks the LLM to output details about historical events. Parse this JSON into Prolog facts of the form `event(Name, Year, Location)`.
+2. **System Instruction Support**: Extend the wrapper in `llm_client` to support system instructions, allowing you to configure the persona of the LLM before running queries.

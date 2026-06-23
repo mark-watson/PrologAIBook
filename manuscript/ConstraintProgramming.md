@@ -199,3 +199,8 @@ We can express logical operations (such as AND `*`, OR `+`, NOT `~`, XOR `#`) an
 X = 1,
 Y = 1.
 ```
+
+## Optional Practice Problems
+
+1. **Cryptarithmetic Solver**: In the `sudoku_solver` or `n_queens` project directories, create a new file that solves the classic cryptarithmetic puzzle `SEND + MORE = MONEY` using CLP(FD) constraints.
+2. **Variable Board Size**: Modify the N-Queens solver in `n_queens` to run dynamically for any board size `N` supplied at the query prompt, profiling the performance differences between smaller and larger boards.

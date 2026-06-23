@@ -169,3 +169,8 @@ Probabilistic logic programming has several unique strengths for real-world AI s
 3. **Information Extraction Pipelines**:
    Modern NLP systems (like NER taggers or relation extractors) output extracted facts with confidence scores. By feeding these confidence scores directly into a probabilistic Prolog reasoner as probabilistic facts (e.g., `0.85::extracted_relation('ACME', 'acquired', 'BetaCorp')`), we can run logical reasoning while correctly propagating the extraction uncertainty downstream to final conclusions.
 
+
+## Optional Practice Problems
+
+1. **Weather Delay Probability**: In the `prob_reasoning` project, add a probabilistic fact representing a flight delay caused by weather (e.g., 30% chance of snow, which leads to 80% chance of delay) and calculate the overall probability of arriving on time.
+2. **Coin Toss Network**: Write a ProbLog-style program in `prob_facts.pl` to compute the probability of getting at least two heads out of three independent biased coin flips.

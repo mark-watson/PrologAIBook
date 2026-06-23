@@ -165,3 +165,8 @@ Popper successfully discovered that a grandparent relationship between person `V
 **Why Popper?** Many historical ILP systems (like Progol or Aleph) used search heuristics that were prone to local minima, or struggled to scale. Popper solves this by formulating the search as a Constraint Satisfaction Problem. By using Answer Set Programming (Clingo), Popper leverages advanced conflict-driven clause learning solver technology to prune irrelevant logic programs extremely fast.
 
 **Bias and the search space.** ILP is not magic: if we do not guide the search, the space of possible Prolog programs is infinite. The `bias.pl` file is crucial because it limits the search to rules containing only `parent/2` predicates in their bodies. If we added `male/1` or `female/1` to the allowed body predicates, Popper would still find the correct rule, but the search space would expand, requiring more candidates to be evaluated before settling on the minimal program.
+
+## Optional Practice Problems
+
+1. **Learn Sibling Predicate**: In the `inductive_logic_popper` project, define a set of positive and negative examples in `exs.pl` and background knowledge in `bk.pl` to learn the recursive `ancestor/2` predicate.
+2. **Popper Bias Constraints**: In `bias.pl`, add a new constraint that prevents Popper from searching for rules with more than two literals in the body, checking how this speeds up the learning phase.

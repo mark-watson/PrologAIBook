@@ -289,3 +289,8 @@ Summary = [
    [the, hospital, installed, a, new, software, database, system]
 ].
 ```
+
+## Optional Practice Problems
+
+1. **Adjective Support**: Modify the DCG parser in the `dcg_parser` project to support adjectives modifying nouns (e.g., parsing sentences like "the quick brown fox jumps"). Update your grammar rules to handle arbitrary numbers of adjectives.
+2. **Question Answering Rule**: In `text_analyzer`, add categorizer rules to recognize question patterns (e.g., sentences starting with interrogatives like "who", "what", "where") and extract the question target.

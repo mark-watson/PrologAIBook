@@ -246,3 +246,8 @@ Reasoning: You can connect to raw IP addresses but not domain names. Your DNS se
 ```
 
 This case study demonstrates the power of separating the inference logic (defined in the shell) from the domain rules (defined in the fault diagnosis module), allowing you to build new expert systems simply by swapping in different rule bases.
+
+## Optional Practice Problems
+
+1. **Why Explanations**: Extend the `expert_shell` system to support `why` queries. When the system asks the user a question, the user should be able to type `why`, and the system should print the rules that are currently being evaluated.
+2. **Sweetness Recommendation**: In the `wine_advisor` project, add a new attribute for "sweetness" (e.g., dry, semi-sweet, sweet) and update the recommendation rules to recommend dessert wines.

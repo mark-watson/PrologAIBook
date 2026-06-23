@@ -237,3 +237,8 @@ This cache engine is designed to sit between your Prolog application and an exte
 - **Session context**: Accumulate LLM responses during a session and use `cache_lookup/4` with `match_any(true)` to retrieve relevant context for follow-up queries.
 - **Cost control**: Cache responses to avoid redundant API calls, especially during development and testing.
 - **Stale data management**: Use `cache_clear_older_one_week/1` in a periodic cleanup to prevent unbounded growth.
+
+## Optional Practice Problems
+
+1. **Time-To-Live Cache**: In the `cache_engine` project, modify the caching rules to store a timestamp with each cached query, and invalidate any cache entries that are older than a user-specified Time-To-Live (TTL) duration.
+2. **Selective Invalidation**: Implement a predicate `invalidate_cache_pattern/1` that accepts a pattern (e.g. `weather(city, _)`), matching and retracting all cached entries corresponding to that pattern.

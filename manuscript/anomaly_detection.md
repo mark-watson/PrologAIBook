@@ -377,3 +377,8 @@ We addressed these with `once/1` wrappers and a tag-then-filter strategy for `sp
 ## Wrap Up
 
 This example demonstrates that statistical machine learning algorithms can be implemented naturally in Prolog. The Gaussian anomaly detector uses only standard SWI-Prolog libraries — no external packs — and fits comfortably into Prolog's declarative style. The key techniques — `maplist` for transforms, `foldl` for accumulators, parallel list walking for performance, and tag-then-filter for deterministic splitting — are broadly useful patterns for any numerical computation in Prolog.
+
+## Optional Practice Problems
+
+1. **Sensitivity Threshold**: In the `anomaly_detection` project, modify the thresholding logic to accept a dynamic sensitivity parameter that increases or decreases the strictness of the anomaly classification.
+2. **Out-of-Order Sequence Check**: Write a predicate in `anomaly.pl` that flags sequences of log events that violate a predefined transaction state transitions order.

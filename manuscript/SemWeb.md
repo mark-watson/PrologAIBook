@@ -165,3 +165,8 @@ explore_and_enrich(ResourceURI) :-
 ```
 
 This pattern keeps your local codebase small and lightweight while placing the billions of triples of the Semantic Web at your logic engine's disposal.
+
+## Optional Practice Problems
+
+1. **Dbpedia SPARQL Query**: Modify `sparql_client` to fetch birth dates, death dates, and nationalities of famous computer scientists from the official DBpedia SPARQL endpoint.
+2. **RDF Subject Search**: In the `rdf_explorer` project, write a predicate to find all predicates and objects associated with a specific subject URI, filtering out anonymous blank nodes.

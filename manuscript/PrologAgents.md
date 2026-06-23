@@ -315,3 +315,8 @@ Running the assistant:
 Researching: What are the health benefits of green tea?
 Answer = "Green tea contains antioxidants called catechins..."
 ```
+
+## Optional Practice Problems
+
+1. **Obstacle Avoidance Goal**: In the `reactive_agent` project, add a goal to the agent's logic to steer around a simple 2D obstacle grid when navigating from a start position to a target destination.
+2. **arXiv Summary Agent**: In the `research_assistant` project, write a rule that fetches paper details from the arXiv API using the search query keyword, parses the XML response, and outputs a brief summary.

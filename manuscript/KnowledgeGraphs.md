@@ -388,3 +388,8 @@ query_developer(Lang, Developer) :-
 ```
 
 This hybrid pattern uses Prolog's backtracking and unification to build self-enriching knowledge engines, turning the entire web of Linked Open Data into an extension of your application's local knowledge graph. Details on constructing advanced SPARQL queries and managing namespace conversions are covered in depth in the Semantic Web chapter.
+
+## Optional Practice Problems
+
+1. **Text-to-Fact Parser**: In the `kg_creator` project, implement a simple parser that reads a text file of "Subject Verb Object" triples and dynamically asserts them into the knowledge graph.
+2. **Connection Path Query**: In `kg_query`, write a predicate `find_path/3` that performs a depth-first search on graph relations to find all paths of length <= 3 connecting two arbitrary entities.

@@ -289,3 +289,8 @@ Python libraries can be used to scrape data, poll live web APIs, or preprocess i
 
 ### 3. Explainable Machine Learning (XAI)
 Deep learning models are notoriously hard to audit. In a hybrid system, you can use Python to execute a neural model (such as a neural classifier or object detector) and pass its confidence scores into Prolog. Prolog can then combine these statistical detections with a symbolic rule system to construct a clear, human-understandable explanation or justification of the final decision.
+
+## Optional Practice Problems
+
+1. **Python Classification**: In the `janus_ml_python_interop` project, write a Prolog query that uses Janus to load Python's `scikit-learn` library, pass a vector of features, and classify them using a pre-trained model.
+2. **Backtracking to DataFrame**: Write a Python function in `pipeline.py` that calls a non-deterministic Prolog predicate using `janus.query()`, collects all backtracking results, and returns them as a Pandas DataFrame.

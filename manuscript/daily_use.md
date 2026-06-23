@@ -270,3 +270,8 @@ This REPL demonstrates several Prolog strengths applied to a practical tool:
 - **Higher-order predicates** (`maplist`, `include`) provide the same functional pipeline as Common Lisp's `mapcar` and `remove-if`.
 - **Dynamic predicates** (`last_answer/1`, `cache_connection/1`) provide mutable state where needed, while keeping the rest of the code purely declarative.
 - **Module composition** — the daily_use module imports `cache_engine` for persistence and uses the standard HTTP libraries for API calls, demonstrating how Prolog modules compose cleanly.
+
+## Optional Practice Problems
+
+1. **CLI Argument Parser**: In the `daily_use` project, write a predicate `parse_args/1` that parses command-line arguments (using `current_prolog_flag(argv, Args)`) and flags errors for unsupported options.
+2. **Prolog LOC Counter**: Write a script in `daily.pl` that walks a directory, counts the lines of code in all `.pl` files (excluding blank lines and comment-only lines), and prints a summary.

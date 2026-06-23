@@ -321,3 +321,8 @@ If you need code to run on both systems, you can use conditional compilation gua
 ```
 
 This pattern is used in this book's **scryer_clp** project to gracefully skip Scryer-specific modules when running tests under SWI-Prolog.
+
+## Optional Practice Problems
+
+1. **Boolean Constraint Puzzle**: In the `scryer_clp` project, implement a Scryer Prolog script using the `library(clpb)` (Boolean constraints) library to solve a logical puzzle like a truth-teller vs. liar riddle.
+2. **Log Parser DCG**: In `scryer_dcg`, write a DCG parser that parses a Scryer-compliant log entry (e.g. `[INFO] 2026-06-23: Message`) and extracts the log level, date, and message.

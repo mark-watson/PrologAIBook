@@ -400,3 +400,8 @@ The key takeaways are:
 - **Statistical significance is not practical significance.** A tiny p-value tells you an association exists; it does not tell you the association is large or useful.
 - **Correlation does not equal causation, and even correlation does not equal reliable individual prediction.** The Pearson-r between test results and disease is real but insufficient for clinical decision-making.
 - **Both frameworks have their place.** Bayesian methods shine when prior information matters; frequentist methods dominate regulatory and large-sample settings. Pragmatic practitioners use both.
+
+## Optional Practice Problems
+
+1. **Bayesian Medical Test**: In the `probability` project, extend the medical example in `medical_example.pl` to compute the posterior probability of a disease given a positive test result, given specific sensitivity, specificity, and prior disease prevalence rates.
+2. **Pearson Correlation**: In `correlation.pl`, implement a predicate to compute the Pearson correlation coefficient between two numeric lists of equal length.

@@ -429,3 +429,8 @@ Why use Prolog for scheduling at all? Three reasons stand out:
 1. **Declarative constraints** read like the problem description. "Task A ends before Task B starts" becomes `EndA #=< StartB` — no manual implementation of search or propagation.
 2. **Backtracking is built in**. When a partial schedule proves infeasible, Prolog automatically unwinds to the last choice point and tries an alternative — no hand-coded backtracking stack.
 3. **Rapid prototyping**. A working scheduler can be built in under 50 lines of Prolog. While a C++/CPLEX solution may run faster on 10,000 tasks, the Prolog version is running and validated long before the C++ version compiles.
+
+## Optional Practice Problems
+
+1. **STRIPS Negative Preconditions**: In the `strips_planner` project, modify the planner to support negative preconditions (e.g., an action can only be performed if a state property is *not* true).
+2. **Resource Conflicts**: In `job_scheduler`, add a constraint limiting the number of available workers. Modify the scheduler to resolve overlapping jobs by delaying jobs when the worker limit is exceeded.

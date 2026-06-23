@@ -160,3 +160,8 @@ These HTTP client and scraping building blocks are used throughout the book:
 - **SPARQL Queries** - The Semantic Web chapter uses HTTP GET requests to query remote SPARQL endpoints like DBpedia and Wikidata, parsing the JSON results into Prolog terms for local reasoning.
 - **Knowledge Graph Enrichment** - Web scraping can extract structured data from HTML pages and assert it into a local knowledge graph. For example, scraping a product catalogue and converting the extracted attributes into `entity/3` facts.
 - **Data Pipeline Preprocessing** - Fetching CSV or JSON datasets from public APIs (such as government open data portals) and transforming them into Prolog facts for analysis with the anomaly detection or probabilistic reasoning modules.
+
+## Optional Practice Problems
+
+1. **Image Link Scraper**: In the `web_scraper` project, extend `scraper.pl` to parse and extract the `src` attribute of all `<img>` tags on a webpage, handling relative paths correctly.
+2. **HTTP Retry Decorator**: In `http_client`, implement a wrapper predicate `http_get_retry/3` that automatically retries an HTTP request up to three times with exponential backoff if the server returns a temporary network code.

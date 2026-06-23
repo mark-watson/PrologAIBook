@@ -275,3 +275,8 @@ Then, open [http://localhost:8000](http://localhost:8000) in your web browser. Y
 - `prologEngine.query(queryStr)` returns an active query handle.
 - Calling `.next()` returns a dictionary of the variable bindings (e.g., `{ Wine: "merlot", Color: "red" }`) or a state object indicating the query is complete.
 - **Always** call `query.close()` once you are done fetching results to free the internal memory structures allocated in the WASM heap.
+
+## Optional Practice Problems
+
+1. **WASM Form Input**: Modify `index.html` in the `prolog_wasm_web` project to include an input form where a user can enter a family member's name and query the WASM Prolog engine to list all their siblings.
+2. **Execution Timing**: Add code to `app.js` that measures the time taken by the WASM Prolog engine to solve queries and renders the timing info in the browser DOM.

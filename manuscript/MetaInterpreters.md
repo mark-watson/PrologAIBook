@@ -370,3 +370,8 @@ A particularly elegant use is **declarative debugging**, also known as algorithm
 Meta-interpreters transform Prolog from a logic programming language into a *programmable logic programming language*. Starting from the three-clause vanilla interpreter, we can add proof trees for explainability, depth bounds for safety, certainty propagation for uncertainty reasoning, custom queues for alternative search strategies, and selective instrumentation for debugging — all without changing the underlying knowledge base. Each extension is a few lines of code that composes cleanly with the others.
 
 The pattern is simple, but the implications are profound. When your inference engine is itself a program you can read, modify, and extend, the boundary between "using" a reasoning system and "building" one disappears. This chapter's companion code — the `meta_interp` and `proof_trees` projects — provides runnable starting points for each pattern discussed here.
+
+## Optional Practice Problems
+
+1. **Resolution Step Counter**: In the `meta_interp` project, extend the vanilla meta-interpreter in `vanilla.pl` to return a count of the number of resolution steps (logical inferences) taken during execution.
+2. **Depth-Limited Interpreter**: Implement a depth-limited meta-interpreter in `bounded.pl` that fails if the resolution tree depth exceeds a user-specified limit, preventing infinite loops.
