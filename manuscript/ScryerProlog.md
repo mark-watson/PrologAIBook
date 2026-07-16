@@ -198,7 +198,7 @@ However, CLP(Z) introduces several improvements:
 - **Improved Propagation**: The constraint solver in CLP(Z) uses refined propagation algorithms that can solve some problems with less backtracking than CLP(FD).
 - **Cleaner Semantics**: Some predicates have been renamed or redesigned for consistency. For example, `all_different/1` is preferred over `all_distinct/1` (though both are available), and the labeling strategy options have been streamlined.
 
-The two example programs in the **scryer_clp** project demonstrate classic constraint satisfaction problems. The **magic square** solver fills a $3 \times 3$ grid with digits 1–9 such that every row, column, and diagonal sums to 15. The **SEND + MORE = MONEY** cryptarithmetic puzzle assigns distinct digits to letters so that the arithmetic equation holds. Both are solved purely by declaring constraints and letting the CLP(Z) solver find valid assignments.
+The two example programs in the **scryer_clp** project demonstrate classic constraint satisfaction problems. The **magic square** solver fills a `3 \times 3`$ grid with digits 1–9 such that every row, column, and diagonal sums to 15. The **SEND + MORE = MONEY** cryptarithmetic puzzle assigns distinct digits to letters so that the arithmetic equation holds. Both are solved purely by declaring constraints and letting the CLP(Z) solver find valid assignments.
 
 
 {width: "80%"}

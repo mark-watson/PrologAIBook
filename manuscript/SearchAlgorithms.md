@@ -130,7 +130,7 @@ Depth-First Search (DFS) has a major space advantage: it only needs to store the
 
 **Iterative Deepening Search (IDS)** combines the best of both worlds: the space efficiency of DFS with the completeness and optimality of BFS.
 
-IDS operates by repeatedly running a depth-limited DFS, starting with a depth limit of 1, and incrementing the limit on each iteration. Although it seems wasteful to re-explore the top parts of the search tree multiple times, the number of nodes at depth $d$ grows exponentially, so the overhead of re-exploring the shallower levels is minimal (usually under 11% for binary trees).
+IDS operates by repeatedly running a depth-limited DFS, starting with a depth limit of 1, and incrementing the limit on each iteration. Although it seems wasteful to re-explore the top parts of the search tree multiple times, the number of nodes at depth `d`$ grows exponentially, so the overhead of re-exploring the shallower levels is minimal (usually under 11% for binary trees).
 
 ### Custom Pure Prolog Implementation
 
