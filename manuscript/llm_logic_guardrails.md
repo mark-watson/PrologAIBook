@@ -1,4 +1,4 @@
-# LLM Logic Guardrails
+# LLM Logic Guardrails Using a Neuro-Symbolic Pattern
 
 Large Language Models (LLMs) are incredibly capable when it comes to open-ended generation, creative writing, and basic translation. However, they suffer from deep structural limitations that make them risky for high-stakes business logic:
 - **Hallucinations**: They generate plausible-sounding but entirely fabricated facts.
