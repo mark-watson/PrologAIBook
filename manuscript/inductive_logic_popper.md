@@ -98,8 +98,7 @@ The entire multi-engine loop you evaluated earlier (Generation `\rightarrow`$ Te
 
 Here is the code in **source-code/inductive_logic_popper/run_popper.py**:
 
-{lang="python",linenos=off}
-~~~~~~~~
+```python
 from popper.util import Settings, format_prog
 from popper.loop import popper
 
@@ -122,7 +121,7 @@ def main():
 
 if __name__ == '__main__':
     main()
-~~~~~~~~
+```
 
 ---
 
