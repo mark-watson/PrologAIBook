@@ -12,7 +12,9 @@ swipl -s load.pl
 ```prolog
 ?- load_rdf_file('example.ttl').
 ?- list_subjects.
-?- describe_resource('http://example.org/person/1').
+?- describe_resource('http://example.org/swi_prolog').
+?- subjects(Subjects).
+?- triples_of('http://example.org/prolog', Triples).
 ?- query_rdf(S, P, O).
 ```
 

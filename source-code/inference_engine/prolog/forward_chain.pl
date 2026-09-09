@@ -4,11 +4,17 @@
     forward_chain/0,
     add_rule/2,
     add_fact/1,
-    derived_fact/1
+    derived_fact/1,
+    reset_kb/0
 ]).
 
 :- dynamic fact/1.
 :- dynamic rule/2.
+
+%% reset_kb - Remove all facts and rules from the knowledge base
+reset_kb :-
+    retractall(fact(_)),
+    retractall(rule(_, _)).
 
 %% add_fact(+Fact) - Assert a new fact
 add_fact(F) :- \+ fact(F), assert(fact(F)).

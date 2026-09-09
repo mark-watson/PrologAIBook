@@ -1,26 +1,23 @@
 %% diagnosis.pl - Simple medical diagnosis reasoner
 %% Demonstrates reasoning with multiple rules and explanation
+%%
+%% This implementation is a pure function of the input symptom list:
+%% it matches the patient's symptoms against the disease knowledge base
+%% using subset/2 without asserting or retracting any dynamic state.
+
 :- module(diagnosis, [
-    diagnose/2,
-    symptom/1
+    diagnose/2
 ]).
 
-:- dynamic symptom/1.
-
 %% diagnose(+PatientSymptoms, -DiagnosisWithExplanation)
+%% Pure list-based matching: succeeds iff some disease's required
+%% symptoms are a subset of the patient's symptoms.
 diagnose(Symptoms, diagnosis(Disease, Explanation)) :-
-    maplist(assert_symptom, Symptoms),
     disease(Disease, RequiredSymptoms),
     subset(RequiredSymptoms, Symptoms),
     format(atom(Explanation),
            'Diagnosis: ~w based on symptoms: ~w',
-           [Disease, RequiredSymptoms]),
-    retract_symptoms(Symptoms).
-
-assert_symptom(S) :- assert(symptom(S)).
-retract_symptoms([]).
-retract_symptoms([S|Rest]) :- retract(symptom(S)),
-    retract_symptoms(Rest).
+           [Disease, RequiredSymptoms]).
 
 %% Disease knowledge base
 disease(flu, [fever, cough, fatigue, body_aches]).

@@ -13,7 +13,26 @@ swipl -s load.pl
 ?- sparql_query_dbpedia(
        'SELECT ?name WHERE { <http://dbpedia.org/resource/Prolog_(programming_language)> rdfs:label ?name . FILTER(lang(?name) = "en") }',
        Results).
+
+%% Wikidata demo (requires network)
+?- wikidata_query(
+       'SELECT ?item ?itemLabel WHERE { ?item wdt:P31 wd:Q5 . SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . } } LIMIT 3',
+       Results).
 ```
+
+## Tests
+
+The quoting helpers build safe query fragments from user data:
+
+```prolog
+?- sparql_literal('The "Prolog" language', Lit).
+Lit = '"The \\"Prolog\\" language"'.
+?- sparql_iri('http://www.wikidata.org/entity/Q22871', Iri).
+Iri = '<http://www.wikidata.org/entity/Q22871>'.
+```
+
+Unit tests cover only the offline quoting helpers; live endpoint
+queries are demonstrated above and must be run manually.
 
 ## Running Tests
 

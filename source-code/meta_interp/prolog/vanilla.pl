@@ -1,4 +1,9 @@
 %% vanilla.pl - Vanilla meta-interpreter and proof-tree variant
+%%
+%% Built-in system predicates (is/2, etc.) are detected via
+%% predicate_property/2 and called directly rather than being
+%% resolved through clause/2.
+
 :- module(vanilla, [
     mi_solve/1,
     mi_solve/2,
@@ -14,6 +19,10 @@ mi_solve(Goal) :- mi_solve(user, Goal).
 mi_solve(_, true) :- !.
 mi_solve(Mod, (A, B)) :- !, mi_solve(Mod, A), mi_solve(Mod, B).
 mi_solve(Mod, Goal) :-
+    predicate_property(Mod:Goal, built_in),
+    !,
+    call(Mod:Goal).
+mi_solve(Mod, Goal) :-
     clause(Mod:Goal, Body),
     mi_solve(Mod, Body).
 
@@ -26,6 +35,10 @@ mi_solve_proof(_, true, true) :- !.
 mi_solve_proof(Mod, (A, B), (PA, PB)) :- !,
     mi_solve_proof(Mod, A, PA),
     mi_solve_proof(Mod, B, PB).
+mi_solve_proof(Mod, Goal, Goal-builtin) :-
+    predicate_property(Mod:Goal, built_in),
+    !,
+    call(Mod:Goal).
 mi_solve_proof(Mod, Goal, Goal-Proof) :-
     clause(Mod:Goal, Body),
     mi_solve_proof(Mod, Body, Proof).

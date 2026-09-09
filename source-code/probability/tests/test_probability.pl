@@ -95,4 +95,33 @@ test(wilson_ci_covers_half) :-
     Lo < 0.5,
     Hi > 0.5.
 
+test(z_score_3_returns_z) :-
+    %% z_score/3 uses StdDev = 1.0
+    z_score(5, 3, Z),
+    abs(Z - 2.0) < 0.0001.
+
+test(z_score_3_with_stddev_1) :-
+    %% With StdDev = 1.0, z_score/3 equals the raw difference
+    z_score(13, 3, Z),
+    abs(Z - 10.0) < 0.0001.
+
+test(chi_squared_test_3) :-
+    chi_squared_test([40, 60], [50, 50], result(ChiSq, DF, PVal)),
+    abs(ChiSq - 4.0) < 0.0001,
+    DF =:= 1,
+    PVal < 0.05,
+    PVal > 0.04.
+
+test(chi_squared_test_4_deprecated_wrapper) :-
+    chi_squared_test([40, 60], [50, 50], ChiSq, result(ChiSq, 1, _)),
+    abs(ChiSq - 4.0) < 0.0001.
+
+test(chi_sq_zero_expected_throws,
+     [error(domain_error(non_zero_expected, 0), _)]) :-
+    chi_squared_test([40, 60], [50, 0], _).
+
+test(map_tie_break_deterministic) :-
+    maximum_a_posteriori([b-0.5, a-0.5], Best-_P),
+    Best == a.
+
 :- end_tests(frequentist).

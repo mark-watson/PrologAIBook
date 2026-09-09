@@ -223,11 +223,12 @@ forest_transition(4, 0, FireP, Trans) :-   % Wait at max age -> stay at
 forest_transition(_, 1, _, [0-1.0]).
 
 % forest_reward(+State, +Action, +R1, +R2, -Reward)
-forest_reward(_, 1, R1, R2, R) :-          % Cut
-    R is (R1 + R2) / 2.0.                  % simplified average reward
-                                           % for cutting
-forest_reward(4, 0, R1, _, R1).            % Wait at max age
-forest_reward(S, 0, _, _, 0.0) :- S < 4.  % Wait at younger age
+% Age-dependent per the header comment: cutting at age >= 1 pays R1,
+% cutting a brand-new forest (age 0) pays the lower R2.
+forest_reward(S, 1, R1, _, R1) :- S >= 1.   % Cut at age >= 1
+forest_reward(0, 1, _, R2, R2).             % Cut at age 0
+forest_reward(4, 0, R1, _, R1).             % Wait at max age
+forest_reward(S, 0, _, _, 0.0) :- S < 4.    % Wait at younger age
 
 % forest_q_value(+S, +A, +VList, +Gamma, +FireP, +R1, +R2, -QVal)
 forest_q_value(S, A, VList, Gamma, FireP, R1, R2, QVal) :-
@@ -289,6 +290,9 @@ forest_best_action(VList, Gamma, FireP, R1, R2, S, BestA) :-
 % ============================================================
 
 main :-
+    % Seed for reproducibility (mdp_demo is deterministic, but other
+    % files in this directory are not; keep the two consistent).
+    set_random(seed(42)),
     nl,
     format("~`=t~55|~n"),
     format("Markov Decision Process Demo (Prolog)~n"),

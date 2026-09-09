@@ -1,430 +1,391 @@
-%% sample_data.pl - Example knowledge graph with 200+ assertions
+%% sample_data.pl - Example knowledge graph: 374 static facts
+%% (132 typed entities, 242 binary relations).
+%% All facts are plain static facts (no runtime asserts); loading
+%% this module multiple times never duplicates data.
 :- module(sample_data, [
+    entity/2,
+    relation/3,
     load_sample_data/0
 ]).
 
-:- use_module(kg_reason).
+%% Facts: entity(ID, Type)
+  entity(mark, person).
+  entity(sarah, person).
+  entity(chen, person).
+  entity(alice, person).
+  entity(bob, person).
+  entity(diana, person).
+  entity(erik, person).
+  entity(fatima, person).
+  entity(george, person).
+  entity(hannah, person).
+  entity(ivan, person).
+  entity(julia, person).
+  entity(karl, person).
+  entity(lisa, person).
+  entity(marco, person).
+  entity(nora, person).
+  entity(oscar, person).
+  entity(priya, person).
+  entity(quentin, person).
+  entity(rachel, person).
+  entity(stefan, person).
+  entity(tanya, person).
+  entity(ulrich, person).
+  entity(vera, person).
+  entity(werner, person).
+  entity(xena, person).
+  entity(yuki, person).
+  entity(zara, person).
+  entity(prolog, language).
+  entity(lisp, language).
+  entity(python, language).
+  entity(rust, language).
+  entity(haskell, language).
+  entity(clojure, language).
+  entity(scala, language).
+  entity(julia_lang, language).
+  entity(racket, language).
+  entity(gerbil, language).
+  entity(hy, language).
+  entity(swift, language).
+  entity(kotlin, language).
+  entity(go, language).
+  entity(erlang, language).
+  entity(elm, language).
+  entity(ocaml, language).
+  entity(fsharp, language).
+  entity(ai, field).
+  entity(nlp, field).
+  entity(knowledge_rep, field).
+  entity(robotics, field).
+  entity(cv, field).
+  entity(ml, field).
+  entity(dl, field).
+  entity(rl, field).
+  entity(logic, field).
+  entity(type_theory, field).
+  entity(formal_methods, field).
+  entity(optimization, field).
+  entity(graph_theory, field).
+  entity(crypto, field).
+  entity(distributed_sys, field).
+  entity(concurrent_prog, field).
+  entity(swi, implementation).
+  entity(scheme, implementation).
+  entity(cpython, implementation).
+  entity(jvm, implementation).
+  entity(beam, implementation).
+  entity(llvm, implementation).
+  entity(graal, implementation).
+  entity(dotnet, implementation).
+  entity(chez, implementation).
+  entity(gambit, implementation).
+  entity(erlang_otp, implementation).
+  entity(clang, implementation).
+  entity(rustc, implementation).
+  entity(ghc, implementation).
+  entity(scala_native, implementation).
+  entity(clojure_clr, implementation).
+  entity(swiftc, implementation).
+  entity(goruntime, implementation).
+  entity(google, organization).
+  entity(meta, organization).
+  entity(apple, organization).
+  entity(microsoft, organization).
+  entity(openai, organization).
+  entity(deepmind, organization).
+  entity(huggingface, organization).
+  entity(anthropic, organization).
+  entity(cern, organization).
+  entity(nasa, organization).
+  entity(darpa, organization).
+  entity(ecrf, organization).
+  entity(samsung, organization).
+  entity(intel, organization).
+  entity(neural_net, concept).
+  entity(transformer, concept).
+  entity(attention, concept).
+  entity(backprop, concept).
+  entity(gradient_desc, concept).
+  entity(softmax, concept).
+  entity(fold, concept).
+  entity(monad, concept).
+  entity(curry_howard, concept).
+  entity(pid, concept).
+  entity(actor_model, concept).
+  entity(csp, concept).
+  entity(homoiconicity, concept).
+  entity(tail_call, concept).
+  entity(pattern_match, concept).
+  entity(unification, concept).
+  entity(gpt4, project).
+  entity(llama, project).
+  entity(gemma, project).
+  entity(bert, project).
+  entity(roberta, project).
+  entity(t5, project).
+  entity(dalle, project).
+  entity(whisper, project).
+  entity(alpha_go, project).
+  entity(watson, project).
+  entity(rosette, project).
+  entity(coq, project).
+  entity(isabelle, project).
+  entity(lean, project).
+  entity(attention_paper, publication).
+  entity(gpt_paper, publication).
+  entity(bert_paper, publication).
+  entity(resnet_paper, publication).
+  entity(batchnorm_paper, publication).
+  entity(dropout_paper, publication).
+  entity(word2vec_paper, publication).
+  entity(alpha_go_paper, publication).
 
-load_sample_data :-
-    load_entities,
-    load_relations.
+%% Facts: relation(From, Predicate, To)
+  relation(mark, writes_about, ai).
+  relation(mark, writes_about, nlp).
+  relation(mark, writes_about, knowledge_rep).
+  relation(sarah, researches, ml).
+  relation(sarah, researches, dl).
+  relation(chen, researches, nlp).
+  relation(chen, researches, knowledge_rep).
+  relation(alice, researches, cv).
+  relation(alice, researches, dl).
+  relation(bob, researches, robotics).
+  relation(bob, researches, rl).
+  relation(diana, researches, logic).
+  relation(diana, researches, type_theory).
+  relation(erik, researches, formal_methods).
+  relation(fatima, researches, distributed_sys).
+  relation(fatima, researches, concurrent_prog).
+  relation(george, researches, optimization).
+  relation(george, researches, graph_theory).
+  relation(hannah, researches, crypto).
+  relation(ivan, researches, ml).
+  relation(ivan, researches, optimization).
+  relation(julia, researches, nlp).
+  relation(julia, researches, logic).
+  relation(karl, researches, type_theory).
+  relation(lisa, researches, ai).
+  relation(lisa, researches, robotics).
+  relation(marco, researches, concurrent_prog).
+  relation(marco, researches, distributed_sys).
+  relation(mark, uses, prolog).
+  relation(mark, uses, python).
+  relation(mark, uses, clojure).
+  relation(sarah, uses, python).
+  relation(sarah, uses, julia_lang).
+  relation(chen, uses, python).
+  relation(chen, uses, prolog).
+  relation(chen, uses, racket).
+  relation(alice, uses, python).
+  relation(alice, uses, swift).
+  relation(bob, uses, rust).
+  relation(bob, uses, python).
+  relation(diana, uses, haskell).
+  relation(diana, uses, ocaml).
+  relation(erik, uses, ocaml).
+  relation(erik, uses, haskell).
+  relation(fatima, uses, erlang).
+  relation(fatima, uses, go).
+  relation(george, uses, python).
+  relation(george, uses, julia_lang).
+  relation(hannah, uses, rust).
+  relation(hannah, uses, go).
+  relation(ivan, uses, python).
+  relation(ivan, uses, clojure).
+  relation(julia, uses, lisp).
+  relation(julia, uses, prolog).
+  relation(karl, uses, haskell).
+  relation(karl, uses, ocaml).
+  relation(lisa, uses, clojure).
+  relation(lisa, uses, python).
+  relation(marco, uses, erlang).
+  relation(marco, uses, scala).
+  relation(prolog, implemented_by, swi).
+  relation(lisp, implemented_by, scheme).
+  relation(lisp, implemented_by, chez).
+  relation(python, implemented_by, cpython).
+  relation(rust, implemented_by, rustc).
+  relation(haskell, implemented_by, ghc).
+  relation(clojure, implemented_by, jvm).
+  relation(clojure, implemented_by, graal).
+  relation(scala, implemented_by, jvm).
+  relation(scala, implemented_by, scala_native).
+  relation(clojure, implemented_by, clojure_clr).
+  relation(erlang, implemented_by, beam).
+  relation(erlang, implemented_by, erlang_otp).
+  relation(swift, implemented_by, swiftc).
+  relation(go, implemented_by, goruntime).
+  relation(racket, implemented_by, chez).
+  relation(gerbil, implemented_by, gambit).
+  relation(kotlin, implemented_by, jvm).
+  relation(fsharp, implemented_by, dotnet).
+  relation(ocaml, implemented_by, llvm).
+  relation(scheme, implemented_by, chez).
+  relation(scheme, implemented_by, gambit).
+  relation(ai, uses, neural_net).
+  relation(ai, uses, gradient_desc).
+  relation(ai, uses, backprop).
+  relation(nlp, uses, transformer).
+  relation(nlp, uses, attention).
+  relation(ml, uses, neural_net).
+  relation(ml, uses, gradient_desc).
+  relation(ml, uses, softmax).
+  relation(dl, uses, neural_net).
+  relation(dl, uses, backprop).
+  relation(dl, uses, attention).
+  relation(logic, uses, unification).
+  relation(logic, uses, pattern_match).
+  relation(type_theory, uses, curry_howard).
+  relation(concurrent_prog, uses, actor_model).
+  relation(concurrent_prog, uses, csp).
+  relation(distributed_sys, uses, actor_model).
+  relation(optimization, uses, gradient_desc).
+  relation(optimization, uses, softmax).
+  relation(robotics, uses, pid).
+  relation(ai, uses, python).
+  relation(ai, uses, prolog).
+  relation(nlp, uses, python).
+  relation(ml, uses, python).
+  relation(ml, uses, julia_lang).
+  relation(dl, uses, python).
+  relation(logic, uses, prolog).
+  relation(logic, uses, haskell).
+  relation(type_theory, uses, haskell).
+  relation(type_theory, uses, ocaml).
+  relation(concurrent_prog, uses, erlang).
+  relation(concurrent_prog, uses, go).
+  relation(distributed_sys, uses, erlang).
+  relation(distributed_sys, uses, scala).
+  relation(formal_methods, uses, ocaml).
+  relation(formal_methods, uses, haskell).
+  relation(robotics, uses, rust).
+  relation(robotics, uses, python).
+  relation(sarah, works_at, google).
+  relation(chen, works_at, meta).
+  relation(alice, works_at, deepmind).
+  relation(bob, works_at, openai).
+  relation(diana, works_at, ecrf).
+  relation(erik, works_at, cern).
+  relation(fatima, works_at, intel).
+  relation(george, works_at, nasa).
+  relation(hannah, works_at, intel).
+  relation(ivan, works_at, anthropic).
+  relation(julia, works_at, ecrf).
+  relation(karl, works_at, ecrf).
+  relation(lisa, works_at, deepmind).
+  relation(marco, works_at, samsung).
+  relation(nora, works_at, huggingface).
+  relation(priya, works_at, google).
+  relation(quentin, works_at, apple).
+  relation(rachel, works_at, microsoft).
+  relation(stefan, works_at, samsung).
+  relation(tanya, works_at, darpa).
+  relation(ulrich, works_at, cern).
+  relation(werner, works_at, nasa).
+  relation(google, develops, gemma).
+  relation(google, develops, bert).
+  relation(google, develops, t5).
+  relation(meta, develops, llama).
+  relation(openai, develops, gpt4).
+  relation(openai, develops, dalle).
+  relation(openai, develops, whisper).
+  relation(deepmind, develops, alpha_go).
+  relation(microsoft, develops, watson).
+  relation(anthropic, develops, claude).
+  relation(huggingface, develops, transformers_lib).
+  relation(apple, develops, mlx_framework).
+  relation(nasa, develops, curiosity).
+  relation(cern, develops, root_framework).
+  relation(samsung, develops, knox).
+  relation(intel, develops, openvino).
+  relation(darpa, develops, darpa_xai).
+  relation(ecrf, develops, rosette).
+  relation(gpt4, based_on, transformer).
+  relation(gpt4, based_on, attention).
+  relation(llama, based_on, transformer).
+  relation(bert, based_on, transformer).
+  relation(bert, based_on, attention).
+  relation(roberta, based_on, transformer).
+  relation(t5, based_on, transformer).
+  relation(dalle, based_on, transformer).
+  relation(whisper, based_on, transformer).
+  relation(alpha_go, based_on, rl).
+  relation(alpha_go, based_on, neural_net).
+  relation(coq, based_on, curry_howard).
+  relation(isabelle, based_on, logic).
+  relation(lean, based_on, type_theory).
+  relation(attention_paper, introduces, attention).
+  relation(gpt_paper, introduces, transformer).
+  relation(bert_paper, introduces, transformer).
+  relation(resnet_paper, introduces, neural_net).
+  relation(batchnorm_paper, introduces, neural_net).
+  relation(dropout_paper, introduces, neural_net).
+  relation(word2vec_paper, introduces, nlp).
+  relation(attention_paper, published_at, nips).
+  relation(gpt_paper, published_at, nips).
+  relation(bert_paper, published_at, naacl).
+  relation(resnet_paper, published_at, cvpr).
+  relation(word2vec_paper, published_at, nips).
+  relation(mark, collaborates_with, chen).
+  relation(mark, collaborates_with, julia).
+  relation(sarah, collaborates_with, ivan).
+  relation(alice, collaborates_with, lisa).
+  relation(bob, collaborates_with, nora).
+  relation(diana, collaborates_with, karl).
+  relation(diana, collaborates_with, julia).
+  relation(erik, collaborates_with, ulrich).
+  relation(fatima, collaborates_with, marco).
+  relation(george, collaborates_with, werner).
+  relation(hannah, collaborates_with, quentin).
+  relation(ivan, collaborates_with, priya).
+  relation(karl, collaborates_with, erik).
+  relation(lisa, collaborates_with, sarah).
+  relation(marco, collaborates_with, stefan).
+  relation(nora, collaborates_with, rachel).
+  relation(sarah, author_of, attention_paper).
+  relation(sarah, author_of, gpt_paper).
+  relation(chen, author_of, bert_paper).
+  relation(alice, author_of, resnet_paper).
+  relation(bob, author_of, dropout_paper).
+  relation(ivan, author_of, bert_paper).
+  relation(lisa, author_of, alpha_go_paper).
+  relation(nora, author_of, word2vec_paper).
+  relation(rachel, author_of, batchnorm_paper).
+  relation(priya, author_of, attention_paper).
+  relation(clojure, dialect_of, lisp).
+  relation(scheme, dialect_of, lisp).
+  relation(racket, dialect_of, scheme).
+  relation(gerbil, dialect_of, scheme).
+  relation(hy, dialect_of, python).
+  relation(scala, runs_on, jvm).
+  relation(kotlin, runs_on, jvm).
+  relation(clojure, runs_on, jvm).
+  relation(elm, compiles_to, javascript).
+  relation(ocaml, compiles_to, native).
+  relation(attention, builds_on, neural_net).
+  relation(transformer, builds_on, attention).
+  relation(backprop, enables, gradient_desc).
+  relation(curry_howard, relates, logic).
+  relation(curry_howard, relates, type_theory).
+  relation(actor_model, alternative_to, csp).
+  relation(monad, used_in, haskell).
+  relation(fold, used_in, haskell).
+  relation(fold, used_in, clojure).
+  relation(unification, used_in, prolog).
+  relation(tail_call, used_in, scheme).
+  relation(homoiconicity, property_of, lisp).
+  relation(robotics, overlaps_with, ai).
+  relation(cv, overlaps_with, dl).
+  relation(nlp, overlaps_with, ai).
+  relation(ml, subfield_of, ai).
+  relation(dl, subfield_of, ml).
+  relation(rl, subfield_of, ml).
+  relation(nlp, subfield_of, ai).
+  relation(knowledge_rep, subfield_of, ai).
 
-load_entities :-
-    % People (28 entities)
-    assert(entity(mark, person)),
-    assert(entity(sarah, person)),
-    assert(entity(chen, person)),
-    assert(entity(alice, person)),
-    assert(entity(bob, person)),
-    assert(entity(diana, person)),
-    assert(entity(erik, person)),
-    assert(entity(fatima, person)),
-    assert(entity(george, person)),
-    assert(entity(hannah, person)),
-    assert(entity(ivan, person)),
-    assert(entity(julia, person)),
-    assert(entity(karl, person)),
-    assert(entity(lisa, person)),
-    assert(entity(marco, person)),
-    assert(entity(nora, person)),
-    assert(entity(oscar, person)),
-    assert(entity(priya, person)),
-    assert(entity(quentin, person)),
-    assert(entity(rachel, person)),
-    assert(entity(stefan, person)),
-    assert(entity(tanya, person)),
-    assert(entity(ulrich, person)),
-    assert(entity(vera, person)),
-    assert(entity(werner, person)),
-    assert(entity(xena, person)),
-    assert(entity(yuki, person)),
-    assert(entity(zara, person)),
-
-    % Programming languages (18 entities)
-    assert(entity(prolog, language)),
-    assert(entity(lisp, language)),
-    assert(entity(python, language)),
-    assert(entity(rust, language)),
-    assert(entity(haskell, language)),
-    assert(entity(clojure, language)),
-    assert(entity(scala, language)),
-    assert(entity(julia_lang, language)),
-    assert(entity(racket, language)),
-    assert(entity(gerbil, language)),
-    assert(entity(hy, language)),
-    assert(entity(swift, language)),
-    assert(entity(kotlin, language)),
-    assert(entity(go, language)),
-    assert(entity(erlang, language)),
-    assert(entity(elm, language)),
-    assert(entity(ocaml, language)),
-    assert(entity(fsharp, language)),
-
-    % Fields and domains (16 entities)
-    assert(entity(ai, field)),
-    assert(entity(nlp, field)),
-    assert(entity(knowledge_rep, field)),
-    assert(entity(robotics, field)),
-    assert(entity(cv, field)),
-    assert(entity(ml, field)),
-    assert(entity(dl, field)),
-    assert(entity(rl, field)),
-    assert(entity(logic, field)),
-    assert(entity(type_theory, field)),
-    assert(entity(formal_methods, field)),
-    assert(entity(optimization, field)),
-    assert(entity(graph_theory, field)),
-    assert(entity(crypto, field)),
-    assert(entity(distributed_sys, field)),
-    assert(entity(concurrent_prog, field)),
-
-    % Implementations and tools (18 entities)
-    assert(entity(swi, implementation)),
-    assert(entity(scheme, implementation)),
-    assert(entity(cpython, implementation)),
-    assert(entity(jvm, implementation)),
-    assert(entity(beam, implementation)),
-    assert(entity(llvm, implementation)),
-    assert(entity(graal, implementation)),
-    assert(entity(dotnet, implementation)),
-    assert(entity(chez, implementation)),
-    assert(entity(gambit, implementation)),
-    assert(entity(erlang_otp, implementation)),
-    assert(entity(clang, implementation)),
-    assert(entity(rustc, implementation)),
-    assert(entity(ghc, implementation)),
-    assert(entity(scala_native, implementation)),
-    assert(entity(clojure_clr, implementation)),
-    assert(entity(swiftc, implementation)),
-    assert(entity(goruntime, implementation)),
-
-    % Organizations (14 entities)
-    assert(entity(google, organization)),
-    assert(entity(meta, organization)),
-    assert(entity(apple, organization)),
-    assert(entity(microsoft, organization)),
-    assert(entity(openai, organization)),
-    assert(entity(deepmind, organization)),
-    assert(entity(huggingface, organization)),
-    assert(entity(anthropic, organization)),
-    assert(entity(cern, organization)),
-    assert(entity(nasa, organization)),
-    assert(entity(darpa, organization)),
-    assert(entity(ecrf, organization)),
-    assert(entity(samsung, organization)),
-    assert(entity(intel, organization)),
-
-    % Concepts (16 entities)
-    assert(entity(neural_net, concept)),
-    assert(entity(transformer, concept)),
-    assert(entity(attention, concept)),
-    assert(entity(backprop, concept)),
-    assert(entity(gradient_desc, concept)),
-    assert(entity(softmax, concept)),
-    assert(entity(fold, concept)),
-    assert(entity(monad, concept)),
-    assert(entity(curry_howard, concept)),
-    assert(entity(pid, concept)),
-    assert(entity(actor_model, concept)),
-    assert(entity(csp, concept)),
-    assert(entity(homoiconicity, concept)),
-    assert(entity(tail_call, concept)),
-    assert(entity(pattern_match, concept)),
-    assert(entity(unification, concept)),
-
-    % Projects and systems (14 entities)
-    assert(entity(gpt4, project)),
-    assert(entity(llama, project)),
-    assert(entity(gemma, project)),
-    assert(entity(bert, project)),
-    assert(entity(roberta, project)),
-    assert(entity(t5, project)),
-    assert(entity(dalle, project)),
-    assert(entity(whisper, project)),
-    assert(entity(alpha_go, project)),
-    assert(entity(watson, project)),
-    assert(entity(rosette, project)),
-    assert(entity(coq, project)),
-    assert(entity(isabelle, project)),
-    assert(entity(lean, project)),
-
-    % Publications (8 entities)
-    assert(entity(attention_paper, publication)),
-    assert(entity(gpt_paper, publication)),
-    assert(entity(bert_paper, publication)),
-    assert(entity(resnet_paper, publication)),
-    assert(entity(batchnorm_paper, publication)),
-    assert(entity(dropout_paper, publication)),
-    assert(entity(word2vec_paper, publication)),
-    assert(entity(alpha_go_paper, publication)).
-
-load_relations :-
-    % People -> fields (28 relations)
-    assert(relation(mark, writes_about, ai)),
-    assert(relation(mark, writes_about, nlp)),
-    assert(relation(mark, writes_about, knowledge_rep)),
-    assert(relation(sarah, researches, ml)),
-    assert(relation(sarah, researches, dl)),
-    assert(relation(chen, researches, nlp)),
-    assert(relation(chen, researches, knowledge_rep)),
-    assert(relation(alice, researches, cv)),
-    assert(relation(alice, researches, dl)),
-    assert(relation(bob, researches, robotics)),
-    assert(relation(bob, researches, rl)),
-    assert(relation(diana, researches, logic)),
-    assert(relation(diana, researches, type_theory)),
-    assert(relation(erik, researches, formal_methods)),
-    assert(relation(fatima, researches, distributed_sys)),
-    assert(relation(fatima, researches, concurrent_prog)),
-    assert(relation(george, researches, optimization)),
-    assert(relation(george, researches, graph_theory)),
-    assert(relation(hannah, researches, crypto)),
-    assert(relation(ivan, researches, ml)),
-    assert(relation(ivan, researches, optimization)),
-    assert(relation(julia, researches, nlp)),
-    assert(relation(julia, researches, logic)),
-    assert(relation(karl, researches, type_theory)),
-    assert(relation(lisa, researches, ai)),
-    assert(relation(lisa, researches, robotics)),
-    assert(relation(marco, researches, concurrent_prog)),
-    assert(relation(marco, researches, distributed_sys)),
-
-    % People -> languages (32 relations)
-    assert(relation(mark, uses, prolog)),
-    assert(relation(mark, uses, python)),
-    assert(relation(mark, uses, clojure)),
-    assert(relation(sarah, uses, python)),
-    assert(relation(sarah, uses, julia_lang)),
-    assert(relation(chen, uses, python)),
-    assert(relation(chen, uses, prolog)),
-    assert(relation(chen, uses, racket)),
-    assert(relation(alice, uses, python)),
-    assert(relation(alice, uses, swift)),
-    assert(relation(bob, uses, rust)),
-    assert(relation(bob, uses, python)),
-    assert(relation(diana, uses, haskell)),
-    assert(relation(diana, uses, ocaml)),
-    assert(relation(erik, uses, ocaml)),
-    assert(relation(erik, uses, haskell)),
-    assert(relation(fatima, uses, erlang)),
-    assert(relation(fatima, uses, go)),
-    assert(relation(george, uses, python)),
-    assert(relation(george, uses, julia_lang)),
-    assert(relation(hannah, uses, rust)),
-    assert(relation(hannah, uses, go)),
-    assert(relation(ivan, uses, python)),
-    assert(relation(ivan, uses, clojure)),
-    assert(relation(julia, uses, lisp)),
-    assert(relation(julia, uses, prolog)),
-    assert(relation(karl, uses, haskell)),
-    assert(relation(karl, uses, ocaml)),
-    assert(relation(lisa, uses, clojure)),
-    assert(relation(lisa, uses, python)),
-    assert(relation(marco, uses, erlang)),
-    assert(relation(marco, uses, scala)),
-
-    % Languages -> implementations (22 relations)
-    assert(relation(prolog, implemented_by, swi)),
-    assert(relation(lisp, implemented_by, scheme)),
-    assert(relation(lisp, implemented_by, chez)),
-    assert(relation(python, implemented_by, cpython)),
-    assert(relation(rust, implemented_by, rustc)),
-    assert(relation(haskell, implemented_by, ghc)),
-    assert(relation(clojure, implemented_by, jvm)),
-    assert(relation(clojure, implemented_by, graal)),
-    assert(relation(scala, implemented_by, jvm)),
-    assert(relation(scala, implemented_by, scala_native)),
-    assert(relation(clojure, implemented_by, clojure_clr)),
-    assert(relation(erlang, implemented_by, beam)),
-    assert(relation(erlang, implemented_by, erlang_otp)),
-    assert(relation(swift, implemented_by, swiftc)),
-    assert(relation(go, implemented_by, goruntime)),
-    assert(relation(racket, implemented_by, chez)),
-    assert(relation(gerbil, implemented_by, gambit)),
-    assert(relation(kotlin, implemented_by, jvm)),
-    assert(relation(fsharp, implemented_by, dotnet)),
-    assert(relation(ocaml, implemented_by, llvm)),
-    assert(relation(scheme, implemented_by, chez)),
-    assert(relation(scheme, implemented_by, gambit)),
-
-    % Fields -> concepts (20 relations)
-    assert(relation(ai, uses, neural_net)),
-    assert(relation(ai, uses, gradient_desc)),
-    assert(relation(ai, uses, backprop)),
-    assert(relation(nlp, uses, transformer)),
-    assert(relation(nlp, uses, attention)),
-    assert(relation(ml, uses, neural_net)),
-    assert(relation(ml, uses, gradient_desc)),
-    assert(relation(ml, uses, softmax)),
-    assert(relation(dl, uses, neural_net)),
-    assert(relation(dl, uses, backprop)),
-    assert(relation(dl, uses, attention)),
-    assert(relation(logic, uses, unification)),
-    assert(relation(logic, uses, pattern_match)),
-    assert(relation(type_theory, uses, curry_howard)),
-    assert(relation(concurrent_prog, uses, actor_model)),
-    assert(relation(concurrent_prog, uses, csp)),
-    assert(relation(distributed_sys, uses, actor_model)),
-    assert(relation(optimization, uses, gradient_desc)),
-    assert(relation(optimization, uses, softmax)),
-    assert(relation(robotics, uses, pid)),
-
-    % Fields -> languages (18 relations)
-    assert(relation(ai, uses, python)),
-    assert(relation(ai, uses, prolog)),
-    assert(relation(nlp, uses, python)),
-    assert(relation(ml, uses, python)),
-    assert(relation(ml, uses, julia_lang)),
-    assert(relation(dl, uses, python)),
-    assert(relation(logic, uses, prolog)),
-    assert(relation(logic, uses, haskell)),
-    assert(relation(type_theory, uses, haskell)),
-    assert(relation(type_theory, uses, ocaml)),
-    assert(relation(concurrent_prog, uses, erlang)),
-    assert(relation(concurrent_prog, uses, go)),
-    assert(relation(distributed_sys, uses, erlang)),
-    assert(relation(distributed_sys, uses, scala)),
-    assert(relation(formal_methods, uses, ocaml)),
-    assert(relation(formal_methods, uses, haskell)),
-    assert(relation(robotics, uses, rust)),
-    assert(relation(robotics, uses, python)),
-
-    % People -> organizations (22 relations)
-    assert(relation(sarah, works_at, google)),
-    assert(relation(chen, works_at, meta)),
-    assert(relation(alice, works_at, deepmind)),
-    assert(relation(bob, works_at, openai)),
-    assert(relation(diana, works_at, ecrf)),
-    assert(relation(erik, works_at, cern)),
-    assert(relation(fatima, works_at, intel)),
-    assert(relation(george, works_at, nasa)),
-    assert(relation(hannah, works_at, intel)),
-    assert(relation(ivan, works_at, anthropic)),
-    assert(relation(julia, works_at, ecrf)),
-    assert(relation(karl, works_at, ecrf)),
-    assert(relation(lisa, works_at, deepmind)),
-    assert(relation(marco, works_at, samsung)),
-    assert(relation(nora, works_at, huggingface)),
-    assert(relation(priya, works_at, google)),
-    assert(relation(quentin, works_at, apple)),
-    assert(relation(rachel, works_at, microsoft)),
-    assert(relation(stefan, works_at, samsung)),
-    assert(relation(tanya, works_at, darpa)),
-    assert(relation(ulrich, works_at, cern)),
-    assert(relation(werner, works_at, nasa)),
-
-    % Organizations -> projects (18 relations)
-    assert(relation(google, develops, gemma)),
-    assert(relation(google, develops, bert)),
-    assert(relation(google, develops, t5)),
-    assert(relation(meta, develops, llama)),
-    assert(relation(openai, develops, gpt4)),
-    assert(relation(openai, develops, dalle)),
-    assert(relation(openai, develops, whisper)),
-    assert(relation(deepmind, develops, alpha_go)),
-    assert(relation(microsoft, develops, watson)),
-    assert(relation(anthropic, develops, claude)),
-    assert(relation(huggingface, develops, transformers_lib)),
-    assert(relation(apple, develops, mlx_framework)),
-    assert(relation(nasa, develops, curiosity)),
-    assert(relation(cern, develops, root_framework)),
-    assert(relation(samsung, develops, knox)),
-    assert(relation(intel, develops, openvino)),
-    assert(relation(darpa, develops, darpa_xai)),
-    assert(relation(ecrf, develops, rosette)),
-
-    % Projects -> concepts (14 relations)
-    assert(relation(gpt4, based_on, transformer)),
-    assert(relation(gpt4, based_on, attention)),
-    assert(relation(llama, based_on, transformer)),
-    assert(relation(bert, based_on, transformer)),
-    assert(relation(bert, based_on, attention)),
-    assert(relation(roberta, based_on, transformer)),
-    assert(relation(t5, based_on, transformer)),
-    assert(relation(dalle, based_on, transformer)),
-    assert(relation(whisper, based_on, transformer)),
-    assert(relation(alpha_go, based_on, rl)),
-    assert(relation(alpha_go, based_on, neural_net)),
-    assert(relation(coq, based_on, curry_howard)),
-    assert(relation(isabelle, based_on, logic)),
-    assert(relation(lean, based_on, type_theory)),
-
-    % Publications -> concepts (12 relations)
-    assert(relation(attention_paper, introduces, attention)),
-    assert(relation(gpt_paper, introduces, transformer)),
-    assert(relation(bert_paper, introduces, transformer)),
-    assert(relation(resnet_paper, introduces, neural_net)),
-    assert(relation(batchnorm_paper, introduces, neural_net)),
-    assert(relation(dropout_paper, introduces, neural_net)),
-    assert(relation(word2vec_paper, introduces, nlp)),
-    assert(relation(attention_paper, published_at, nips)),
-    assert(relation(gpt_paper, published_at, nips)),
-    assert(relation(bert_paper, published_at, naacl)),
-    assert(relation(resnet_paper, published_at, cvpr)),
-    assert(relation(word2vec_paper, published_at, nips)),
-
-    % People -> people: collaborations (16 relations)
-    assert(relation(mark, collaborates_with, chen)),
-    assert(relation(mark, collaborates_with, julia)),
-    assert(relation(sarah, collaborates_with, ivan)),
-    assert(relation(alice, collaborates_with, lisa)),
-    assert(relation(bob, collaborates_with, nora)),
-    assert(relation(diana, collaborates_with, karl)),
-    assert(relation(diana, collaborates_with, julia)),
-    assert(relation(erik, collaborates_with, ulrich)),
-    assert(relation(fatima, collaborates_with, marco)),
-    assert(relation(george, collaborates_with, werner)),
-    assert(relation(hannah, collaborates_with, quentin)),
-    assert(relation(ivan, collaborates_with, priya)),
-    assert(relation(karl, collaborates_with, erik)),
-    assert(relation(lisa, collaborates_with, sarah)),
-    assert(relation(marco, collaborates_with, stefan)),
-    assert(relation(nora, collaborates_with, rachel)),
-
-    % People -> publications (10 relations)
-    assert(relation(sarah, author_of, attention_paper)),
-    assert(relation(sarah, author_of, gpt_paper)),
-    assert(relation(chen, author_of, bert_paper)),
-    assert(relation(alice, author_of, resnet_paper)),
-    assert(relation(bob, author_of, dropout_paper)),
-    assert(relation(ivan, author_of, bert_paper)),
-    assert(relation(lisa, author_of, alpha_go_paper)),
-    assert(relation(nora, author_of, word2vec_paper)),
-    assert(relation(rachel, author_of, batchnorm_paper)),
-    assert(relation(priya, author_of, attention_paper)),
-
-    % Language family relations (10 relations)
-    assert(relation(clojure, dialect_of, lisp)),
-    assert(relation(scheme, dialect_of, lisp)),
-    assert(relation(racket, dialect_of, scheme)),
-    assert(relation(gerbil, dialect_of, scheme)),
-    assert(relation(hy, dialect_of, python)),
-    assert(relation(scala, runs_on, jvm)),
-    assert(relation(kotlin, runs_on, jvm)),
-    assert(relation(clojure, runs_on, jvm)),
-    assert(relation(elm, compiles_to, javascript)),
-    assert(relation(ocaml, compiles_to, native)),
-
-    % Concept relationships (12 relations)
-    assert(relation(attention, builds_on, neural_net)),
-    assert(relation(transformer, builds_on, attention)),
-    assert(relation(backprop, enables, gradient_desc)),
-    assert(relation(curry_howard, relates, logic)),
-    assert(relation(curry_howard, relates, type_theory)),
-    assert(relation(actor_model, alternative_to, csp)),
-    assert(relation(monad, used_in, haskell)),
-    assert(relation(fold, used_in, haskell)),
-    assert(relation(fold, used_in, clojure)),
-    assert(relation(unification, used_in, prolog)),
-    assert(relation(tail_call, used_in, scheme)),
-    assert(relation(homoiconicity, property_of, lisp)),
-
-    % Field hierarchy and cross-domain relations (8 relations)
-    assert(relation(robotics, overlaps_with, ai)),
-    assert(relation(cv, overlaps_with, dl)),
-    assert(relation(nlp, overlaps_with, ai)),
-    assert(relation(ml, subfield_of, ai)),
-    assert(relation(dl, subfield_of, ml)),
-    assert(relation(rl, subfield_of, ml)),
-    assert(relation(nlp, subfield_of, ai)),
-    assert(relation(knowledge_rep, subfield_of, ai)).
+%% load_sample_data/0 - retained for backward compatibility;
+%% data is already present as static facts, so this is a no-op.
+load_sample_data.

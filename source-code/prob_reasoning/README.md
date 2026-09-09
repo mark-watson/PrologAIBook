@@ -1,6 +1,6 @@
 # Probabilistic Reasoning
 
-Lightweight probabilistic reasoning with certainty factor propagation. Companion code for the Probabilistic Logic Programming chapter.
+Lightweight probabilistic reasoning using noisy-AND propagation along inference chains. Companion code for the Probabilistic Logic Programming chapter.
 
 ## Running Examples
 
@@ -56,8 +56,8 @@ This example illustrates how deeply chained probabilistic inference causes rapid
 
 ## Architecture
 
-![Probabilistic reasoning with certainty factors and Bayesian probability chains](FIG_prob_reasoning.jpg)
+![Probabilistic reasoning over annotated facts and rules](FIG_prob_reasoning.jpg)
 
 ## Description
 
-Implements a simple probabilistic reasoning system without external pack dependencies. Facts are annotated with probabilities (`prob_fact/2`), and rules specify conditional probabilities (`prob_rule/3`). The `prob_query/2` predicate computes the probability of a goal by multiplying the probabilities along the inference chain. This provides an accessible introduction to reasoning under uncertainty before moving to more sophisticated frameworks like ProbLog or cplint. The example knowledge base models weather relationships: cloudy → rain → storm.
+Implements a simple probabilistic reasoning system without external pack dependencies. Facts are annotated with probabilities (`prob_fact/2`), and rules specify conditional probabilities (`prob_rule/3`). The `prob_query/2` predicate computes the probability of a goal by multiplying the probabilities along the inference chain — i.e., noisy-AND propagation, NOT MYCIN certainty factors. The multiplication is performed in log space (a `foldl` over `log/1`, then `exp/1`) so that deep chains do not underflow to 0.0, and a visited-goal list makes cyclic rule bases terminate by failing rather than looping. The module loads with an empty knowledge base; `load.pl` calls `load_example_kb/0` (idempotent, retract-first) to populate the weather examples. This provides an accessible introduction to reasoning under uncertainty before moving to more sophisticated frameworks like ProbLog or cplint.

@@ -13,10 +13,13 @@
     split_data/4,               % +Rows, -Train, -CV, -Test
     compute_mu/3,               % +Train, +NF, -Mu
     compute_sigma_sq/4,         % +Train, +NF, +Mu, -SigmaSq
+    compute_model/2,            % +Rows, -Report(dict)
+    report_model/1,             % +Report(dict)
     train_model/2,              % +Rows, -Model
     is_anomaly/2,               % +Model, +Row
     evaluate_model/2,           % +Model, +TestRows
     print_histogram/4,          % +Title, +Rows, +Index, +NumBins
+    search_epsilon/5,           % +Start, +Step, +Steps, +PTPs, -Eps
     subsample_rows/3            % +Rows, +MaxN, -Sampled
 ]).
 
@@ -30,6 +33,9 @@
 sqrt_2_pi(2.50662827463).
 
 %% The number of features (9 input features + 1 target = 10 columns).
+%  num_columns/1 is retained for informational parity with the Java
+%  original; gaussian_prob/5 now divides by num_input_features (see
+%  the comment above it).
 num_columns(10).
 num_input_features(9).
 
@@ -49,16 +55,48 @@ load_wisconsin_data(Rows) :-
     once(subsample_rows(AllRows, 200, Rows)).
 
 %% subsample_rows(+Rows, +MaxN, -Sampled) is det.
-%  Randomly sample at most MaxN rows, preserving class balance.
+%  Stratified subsample: split by class label (Wisconsin coding
+%  2=benign, 4=malignant in the last column), sample each class
+%  proportionally to MaxN, then recombine.  This is a genuine
+%  class-balance-preserving scheme (the original Java and a previous
+%  comment here only *claimed* that property).  When MaxN >= length
+%  the input is returned unchanged — an important property the
+%  pipeline relies on to keep every malignant row.
 subsample_rows(Rows, MaxN, Sampled) :-
     length(Rows, Len),
     (   Len =< MaxN
     ->  Sampled = Rows
-    ;   Frac is MaxN / Len,
-        include(keep_row(Frac), Rows, Sampled)
+    ;   partition(is_malignant_row, Rows, Malignant, Benign),
+        length(Malignant, LM), length(Benign, LB),
+        % Preserve the class ratio as closely as integer rounding
+        % allows (LM is kept as the explicitly-named total for the
+        % minority class; referenced via min/3 below so the split can
+        % never ask for more anomalies than exist).
+        MaxB is round(MaxN * LB / Len),
+        MaxM is min(LM, MaxN - MaxB),
+        stratified_pick(Benign, MaxB, PickedB),
+        stratified_pick(Malignant, MaxM, PickedM),
+        append(PickedB, PickedM, Sampled)
     ).
 
-keep_row(Frac, _) :- random(P), P < Frac.
+is_malignant_row(Row) :- last(Row, 4).
+
+% stratified_pick(+Rows, +N, -Picked) — pick N rows, evenly spaced by
+% index so the pick is deterministic given a seeded RNG.
+stratified_pick(Rows, N, Picked) :-
+    length(Rows, Len),
+    (   N >= Len
+    ->  Picked = Rows
+    ;   Stride is Len / N,
+        numlist(0, N, Offsets0),
+        maplist(strides_index(Stride, Len), Offsets0, Indices0),
+        maplist(nth0_pick(Rows), Indices0, Picked)
+    ).
+
+strides_index(Stride, Len, I, Idx) :-
+    Idx is min(Len - 1, floor(I * Stride)).
+
+nth0_pick(List, Idx, Elem) :- nth0(Idx, List, Elem).
 
 row_to_list(Row, List) :-
     Row =.. [_|List].
@@ -173,12 +211,16 @@ sq_diff(FIdx, M, Row, D) :-
 
 %% gaussian_prob(+Row, +Mu, +SigmaSq, +NF, -P) is det.
 %  Average per-feature Gaussian PDF value (matches Java p() method).
+%  NOTE: the Java original divides by the number of *columns* (10,
+%  including the target); the number actually summed is the 9 input
+%  features, so we deliberately correct the divisor to NF here.  This
+%  makes the reported epsilon values change slightly vs the Java
+%  version — the correction is intentional.
 %  Walks three lists in parallel to avoid nth1 lookups.
-gaussian_prob(Row, Mu, SigmaSq, _NF, P) :-
+gaussian_prob(Row, Mu, SigmaSq, NF, P) :-
     sqrt_2_pi(S2P),
-    num_columns(NC),
     gaussian_sum(Row, Mu, SigmaSq, S2P, 0, 0.0, Sum),
-    P is Sum / NC.
+    P is Sum / NF.
 
 %% gaussian_sum(+Row, +Mu, +SigmaSq, +S2P, +Idx, +Acc, -Sum)
 %  Walk the first 9 elements (skip target at position 10).
@@ -216,38 +258,93 @@ count_errors([P-T|Rest], Eps, Errors) :-
     ;   (P < Eps -> Errors is E0 + 1 ; Errors = E0)
     ).
 
-%% search_epsilon(+ProbTargetPairs, -BestEps) is det.
-%  Grid search over 20 epsilon values (coarse but fast).
-search_epsilon(PTPs, BestEps) :-
-    numlist(0, 19, Steps),
-    maplist(step_to_epsilon, Steps, Epsilons),
+%% search_epsilon(+Start, +Step, +Steps, +PTPs, -BestEps) is det.
+%  Grid search: Steps candidate epsilon values, Start + Step*I.
+search_epsilon(Start, Step, Steps, PTPs, BestEps) :-
+    LastStep is Steps - 1,
+    numlist(0, LastStep, StepIdxs),
+    maplist(grid_epsilon(Start, Step), StepIdxs, Epsilons),
     maplist(count_errors(PTPs), Epsilons, ErrorCounts),
     min_list(ErrorCounts, MinErr),
     nth0(BestIdx, ErrorCounts, MinErr), !,
     nth0(BestIdx, Epsilons, BestEps).
 
-step_to_epsilon(Step, Eps) :-
-    Eps is 0.001 + 0.05 * Step.
+grid_epsilon(Start, Step, I, Eps) :-
+    Eps is Start + Step * I.
+
+%% search_epsilon(+PTPs, -BestEps) is det.
+%  Backwards-compatible default grid: 20 steps starting at 0.001 in
+%  steps of 0.05 (the original hard-coded sweep).
+search_epsilon(PTPs, BestEps) :-
+    search_epsilon(0.001, 0.05, 20, PTPs, BestEps).
 
 %% ---------- Model ----------
 
 %% A model is a term:  model(Mu, SigmaSq, NF, Epsilon)
 
-%% train_model(+Rows, -Model) is det.
-%  Preprocess, split, compute statistics, search epsilon, evaluate.
-train_model(Rows, Model) :-
+%% compute_model(+Rows, -Result) is det.
+%  Pure computation: preprocess, split, fit statistics, search epsilon,
+%  evaluate.  Returns a dict of results:
+%    _{model: model(Mu,SigmaSq,NF,Eps), split: split(NT,NCV,NTest),
+%      metrics: metrics(TP,FP,FN,TN,Precision,Recall,F1)}
+compute_model(Rows, Result) :-
+    % Seeded so the pipeline is reproducible end-to-end.
+    set_random(seed(42)),
     preprocess(Rows, Processed),
     once(split_data(Processed, Train, CV, Test)),
     length(Train, NTrain), length(CV, NCV), length(Test, NTest),
-    format('Split: ~w train, ~w cv, ~w test~n', [NTrain, NCV, NTest]),
     num_input_features(NF),
     compute_mu(Train, NF, Mu),
     compute_sigma_sq(Train, NF, Mu, SigmaSq),
     precompute_probs(CV, Mu, SigmaSq, NF, CVProbs),
     once(search_epsilon(CVProbs, BestEps)),
-    format('~n**** Best epsilon value = ~6f~n', [BestEps]),
     Model = model(Mu, SigmaSq, NF, BestEps),
-    evaluate_model(Model, Test), !.
+    eval_counts(Model, Test, metrics(TP, FP, FN, TN, Prec, Rec, F1),
+        NTest),
+    Result = _{ model: Model,
+                split: split(NTrain, NCV, NTest),
+                metrics: metrics(TP, FP, FN, TN, Prec, Rec, F1) }.
+
+%% report_model(+Result) is det.
+%  Print the human-readable report for a computed result dict.
+report_model(Result) :-
+    Result.split = split(NTrain, NCV, NTest),
+    Result.model = model(_, _, _, BestEps),
+    Result.metrics = metrics(TP, FP, FN, TN, Precision, Recall, F1),
+    format('Split: ~w train, ~w cv, ~w test~n', [NTrain, NCV, NTest]),
+    format('~n**** Best epsilon value = ~6f~n', [BestEps]),
+    format('~n -- number of test examples = ~w~n', [NTest]),
+    format(' -- true positives  = ~w~n', [TP]),
+    format(' -- false positives = ~w~n', [FP]),
+    format(' -- false negatives = ~w~n', [FN]),
+    format(' -- true negatives  = ~w~n', [TN]),
+    format(' -- precision = ~6f~n', [Precision]),
+    format(' -- recall    = ~6f~n', [Recall]),
+    format(' -- F1        = ~6f~n', [F1]).
+
+%% eval_counts(+Model, +TestRows, -Metrics, -NTest) is det.
+%  Pure metric computation (no printing).
+eval_counts(Model, TestRows,
+        metrics(TP, FP, FN, TN, Precision, Recall, F1), NTest) :-
+    foldl(classify_row(Model), TestRows,
+          counts(0,0,0,0), counts(TP,FP,FN,TN)),
+    length(TestRows, NTest),
+    (   TP + FP =:= 0 -> Precision = 0.0
+    ;   Precision is TP / (TP + FP)
+    ),
+    (   TP + FN =:= 0 -> Recall = 0.0
+    ;   Recall is TP / (TP + FN)
+    ),
+    (   Precision + Recall =:= 0 -> F1 = 0.0
+    ;   F1 is 2 * Precision * Recall / (Precision + Recall)
+    ).
+
+%% train_model(+Rows, -Model) is det.
+%  Backwards-compatible wrapper: compute then report.
+train_model(Rows, Model) :-
+    compute_model(Rows, Result),
+    report_model(Result),
+    Model = Result.model, !.
 
 %% is_anomaly(+Model, +Row) is semidet.
 %  Succeeds if Row is classified as an anomaly.
@@ -260,18 +357,8 @@ is_anomaly(model(Mu, SigmaSq, NF, Eps), Row) :-
 %% evaluate_model(+Model, +TestRows) is det.
 %  Compute and print precision, recall, F1 on test data.
 evaluate_model(Model, TestRows) :-
-    foldl(classify_row(Model), TestRows,
-          counts(0,0,0,0), counts(TP,FP,FN,TN)),
-    length(TestRows, NTest),
-    (   TP + FP =:= 0 -> Precision = 0.0
-    ;   Precision is TP / (TP + FP)
-    ),
-    (   TP + FN =:= 0 -> Recall = 0.0
-    ;   Recall is TP / (TP + FN)
-    ),
-    (   Precision + Recall =:= 0 -> F1 = 0.0
-    ;   F1 is 2 * Precision * Recall / (Precision + Recall)
-    ),
+    eval_counts(Model, TestRows,
+        metrics(TP, FP, FN, TN, Precision, Recall, F1), NTest),
     format('~n -- number of test examples = ~w~n', [NTest]),
     format(' -- true positives  = ~w~n', [TP]),
     format(' -- false positives = ~w~n', [FP]),

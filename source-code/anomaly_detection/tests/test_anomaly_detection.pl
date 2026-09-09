@@ -39,9 +39,23 @@ test(histogram_no_crash) :-
     Rows = [[0.1, 0.5], [0.3, 0.7], [0.9, 0.2]],
     print_histogram("Test Feature", Rows, 1, 3).
 
+% Capture the printed histogram and sanity-check its shape.
+test(histogram_output_shape, [true((C > 0, sub_string(Output, _, _, _, "Test Feature")))]) :-
+    Rows = [[0.1, 0.5], [0.3, 0.7], [0.9, 0.2]],
+    with_output_to(string(Output),
+        print_histogram("Test Feature", Rows, 1, 3)),
+    string_length(Output, C).
+
+%% --- Epsilon grid search ---
+
+test(search_epsilon_grid_3_steps, [true(member(BestEps, [0.001, 0.051, 0.101]))]) :-
+    PTPs = [0.0-1.0, 0.001-0.0, 0.05-1.0, 0.1-0.0],
+    search_epsilon(0.001, 0.05, 3, PTPs, BestEps).
+
 %% --- Full pipeline ---
 
 test(full_pipeline, [true(nonvar(Model))]) :-
+    set_random(seed(42)),
     load_wisconsin_data(Rows),
     train_model(Rows, Model).
 

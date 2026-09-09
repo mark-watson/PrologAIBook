@@ -9,6 +9,7 @@
 run_tests :-
     test_csv_parse,
     test_key_value,
+    test_extract_emails,
     write('All scryer_dcg tests passed'), nl.
 
 test_csv_parse :-
@@ -20,3 +21,8 @@ test_key_value :-
     parse_key_value("name=Mark", Pair),
     Pair = name-'Mark',
     write('  key_value: passed'), nl, !.
+
+test_extract_emails :-
+    extract_emails("mail mark@site.com now", Es),
+    Es = ['mark@site.com'],
+    write('  extract_emails: passed'), nl, !.

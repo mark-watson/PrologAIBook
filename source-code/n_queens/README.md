@@ -12,8 +12,13 @@ swipl -s load.pl
 ```prolog
 ?- n_queens(8, Queens).
 ?- n_queens(4, Queens).
+?- n_queens(8, [ff_opt(true)], Queens).  % first-fail labeling
 ?- aggregate_all(count, n_queens(8, _), Count).
 ```
+
+`n_queens/3` accepts options; currently `ff_opt(true)` selects
+`labeling([ff], Queens)` (first-fail heuristic) instead of the default
+`label/1`.
 
 ## Running Tests
 

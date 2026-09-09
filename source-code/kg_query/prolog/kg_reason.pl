@@ -1,8 +1,12 @@
 %% kg_reason.pl - Multi-hop reasoning over knowledge graphs
 :- module(kg_reason, [
-    entity/2,
-    relation/3,
+    entity/2,          % deprecated raw accessor (kept for back-compat;
+                       % prefer entity_of_type/2)
+    relation/3,        % deprecated raw accessor (prefer relates/3)
+    entity_of_type/2,
+    relates/3,
     path/3,
+    path/4,
     connected/2,
     neighbors/3,
     path_length/3,
@@ -11,8 +15,18 @@
     relation_count/2
 ]).
 
-:- dynamic entity/2.      % entity(ID, Type)
-:- dynamic relation/3.    % relation(From, Predicate, To)
+:- use_module(sample_data).   % static facts: entity/2, relation/3
+
+%% The entity/2 and relation/3 predicates used throughout this module
+%% come from sample_data as plain static facts, so no dynamic
+%% assertions are needed and re-loading never duplicates data.
+
+%% entity_of_type(?Entity, ?Type) - typed entity accessor
+%% (preferred to calling entity/2 directly).
+entity_of_type(Entity, Type) :- entity(Entity, Type).
+
+%% relates(?S, ?P, ?O) - relation accessor (preferred to relation/3).
+relates(S, P, O) :- relation(S, P, O).
 
 %% path(+Start, +End, -Path) - Find multi-hop path between entities
 %% (cycle-free)
@@ -27,6 +41,26 @@ path(Start, End, Visited, [Start|Rest]) :-
     Mid \= End,
     \+ member(Mid, Visited),
     path(Mid, End, [Mid|Visited], Rest).
+
+%% path(+Start, +End, -Path, +MaxDepth) - depth-limited variant:
+%% only paths with at most MaxDepth edges are found.  Always
+%% terminates, even for cyclic graphs.
+path(Start, End, Path, MaxDepth) :-
+    integer(MaxDepth),
+    MaxDepth >= 1,
+    path_d(Start, End, [Start], Path, MaxDepth).
+
+path_d(Start, End, Visited, [Start, End], MaxDepth) :-
+    MaxDepth >= 1,
+    relation(Start, _, End),
+    \+ member(End, Visited).
+path_d(Start, End, Visited, [Start|Rest], MaxDepth) :-
+    MaxDepth > 1,
+    relation(Start, _, Mid),
+    Mid \= End,
+    \+ member(Mid, Visited),
+    MaxDepth1 is MaxDepth - 1,
+    path_d(Mid, End, [Mid|Visited], Rest, MaxDepth1).
 
 %% connected(+A, +B) - Are two entities connected by any path?
 connected(A, B) :- path(A, B, _).

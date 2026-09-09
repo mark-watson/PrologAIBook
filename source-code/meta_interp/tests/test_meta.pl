@@ -20,4 +20,23 @@ test(bounded_solve) :-
 test(bounded_fail_at_zero, [fail]) :-
     mi_bounded(test_meta, parent_test(tom, bob), 0).
 
+test(vanilla_solve_builtin) :-
+    mi_solve(X is 2+3),
+    X == 5.
+
+test(vanilla_proof_fact) :-
+    mi_solve_proof(test_meta, parent_test(tom, bob), Proof),
+    Proof == parent_test(tom, bob)-true.
+
+test(vanilla_proof_rule_tree) :-
+    mi_solve_proof(test_meta, grandparent_test(tom, ann), Proof),
+    Proof =.. [(-), grandparent_test(tom, ann), BodyProof],
+    BodyProof == (parent_test(tom, bob)-true,
+                  parent_test(bob, ann)-true).
+
+test(vanilla_proof_builtin) :-
+    mi_solve_proof(X is 2+3, Proof),
+    X == 5,
+    Proof == (X is 2+3)-builtin.
+
 :- end_tests(meta_interpreters).

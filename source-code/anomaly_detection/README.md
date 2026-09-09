@@ -11,22 +11,27 @@ cd source-code/anomaly_detection
 make run
 ```
 
-Sample output:
+Sample output (deterministic — the pipeline seeds with `set_random(seed(42))` and the subsample is a stratified, evenly-spaced pick):
 
 ```
-Split: 86 train, 45 cv, 22 test
+Split: 88 train, 56 cv, 22 test
 
-**** Best epsilon value = 0.801000
+**** Best epsilon value = 0.951000
 
  -- number of test examples = 22
- -- true positives  = 6
+ -- true positives  = 5
  -- false positives = 0
  -- false negatives = 3
- -- true negatives  = 13
+ -- true negatives  = 14
  -- precision = 1.000000
- -- recall    = 0.666667
- -- F1        = 0.800000
+ -- recall    = 0.625000
+ -- F1        = 0.769231
 ```
+
+Two intentional deviations from the Java original:
+
+- **Gaussian PDF divisor** — the Java `p()` method divides the summed PDF by the number of *columns* (10, including the class label) while only 9 input features are actually summed; the Prolog version deliberately divides by `num_input_features` (9).
+- **Subsampling** — class balance is now genuinely preserved: rows are split by class label (Wisconsin coding 2=benign / 4=malignant) and each class is sampled proportionally (evenly-spaced index pick under a fixed RNG seed) instead of the Java version's independent coin-flip per row.
 
 ## Running Tests
 

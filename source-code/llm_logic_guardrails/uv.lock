@@ -1,16 +1,15 @@
 version = 1
 revision = 3
-requires-python = ">=3.14"
-
-[options]
-exclude-newer = "2026-05-16T00:36:02.444146Z"
-exclude-newer-span = "P4D"
+requires-python = ">=3.11"
 
 [[package]]
 name = "janus-swi"
-version = "1.5.2"
+version = "1.5.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a4/3e/cb5f1d793c4f13627e57df04ac388de2b9b10797857dcbda749df8f11bfc/janus_swi-1.5.2.tar.gz", hash = "sha256:bfdea2e4933a35744412def927d6e748184a935076e2e51b1fdbbfbdf48d0e47", size = 89652, upload-time = "2025-01-11T13:10:26.861Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/84/4145112cc4e07a4b1e7ec6806cba1a1ca9bf8f68ea8df693c4ff0e0d70d8/janus_swi-1.5.3.tar.gz", hash = "sha256:2ce9867bb1e0cbab7737c8e2a7af3268f2241251e5b0eb955726c829ae995f8d", size = 90117, upload-time = "2026-06-24T08:32:36.26Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/6f/c9924737b5be6a7e634576a7712f4cf2af666b14edb9206093114ebf9423/janus_swi-1.5.3-cp314-cp314-win_amd64.whl", hash = "sha256:29ab9a7afb9fb523fea12c19fb01115c9b1be8e21a40bddd3629c78abdf91dbb", size = 77816, upload-time = "2026-06-24T08:53:11.893Z" },
+]
 
 [[package]]
 name = "llm-logic-guardrails"

@@ -13,6 +13,7 @@ scryer-prolog prolog/text_dcg.pl
 ```prolog
 ?- parse_csv_line("hello,world,test", Fields).
 ?- parse_key_value("name=Mark", Pair).
+?- extract_emails("contact alice@example.org today", Emails).
 ```
 
 ## Running Tests
@@ -20,6 +21,13 @@ scryer-prolog prolog/text_dcg.pl
 ```shell
 scryer-prolog -g "use_module('tests/test_scryer_dcg'), run_tests, halt"
 ```
+
+Or via `make test` (requires `scryer-prolog` on PATH).
+
+## Limitations
+
+- The CSV grammar handles plain and double-quoted fields, but not escaped quotes (`""` inside a quoted field) nor CRLF line endings.
+- `extract_emails/2` matches the common `local@domain` form (letters, digits, `.`, `_`, `-`); it is not full RFC 5322.
 
 
 ## Architecture

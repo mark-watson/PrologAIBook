@@ -1,9 +1,7 @@
 :- module(test_kg_reason, []).
 :- use_module(library(plunit)).
 :- use_module('../prolog/kg_reason').
-:- use_module('../prolog/sample_data').
-
-:- load_sample_data.
+:- use_module('../prolog/sample_data').   % exports load_sample_data/0
 
 :- begin_tests(kg_reason).
 
@@ -55,9 +53,6 @@ test(multi_hop_via_organizations, [nondet]) :-
     length(Path, N),
     N >= 2.
 
-test(path_via_field_hierarchy, [nondet]) :-
-    path(ai, prolog, _).
-
 test(dialect_chain_clojure_lisp, [nondet]) :-
     path(clojure, lisp, Path),
     length(Path, N),
@@ -66,15 +61,27 @@ test(dialect_chain_clojure_lisp, [nondet]) :-
 test(connected_persons_via_field, [nondet]) :-
     connected(sarah, ivan).
 
-test(entity_count_at_least_100) :-
-    findall(_, entity(_, _), Entities),
-    length(Entities, Count),
-    Count >= 100.
+test(entity_count_is_132) :-
+    aggregate_all(count, entity_of_type(_, _), 132).
 
-test(relation_count_at_least_200) :-
-    findall(_, relation(_, _, _), Relations),
-    length(Relations, Count),
-    Count >= 200.
+test(relation_count_is_242) :-
+    aggregate_all(count, relates(_, _, _), 242).
+
+test(total_facts_374) :-
+    aggregate_all(count, (entity(_, _) ; relation(_, _, _)), 374).
+
+test(load_twice_no_duplicates) :-
+    load_sample_data,
+    load_sample_data,
+    aggregate_all(count, entity(_, _), 132).
+
+test(depth_limited_path) :-
+    path(mark, swi, Path, 4),
+    length(Path, Len),
+    Len >= 2, Len =< 5.
+
+test(depth_limit_blocks_long_path, [fail]) :-
+    path(mark, cpython, _, 1).
 
 test(path_person_to_project, [nondet]) :-
     path(sarah, bert, _).

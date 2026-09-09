@@ -57,19 +57,10 @@ format_pval(PVal) :-
     ).
 
 run_frequentist_demo :-
-
-
-
-
-
-                        format('~n================================================================~n'),
+    set_random(seed(42)),
+    format('~n================================================================~n'),
     format('  FREQUENTIST ANALYSIS: Medical Screening Test~n'),
-
-
-
-
-
-                        format('================================================================~n'),
+    format('================================================================~n'),
     %% 1. Simulate
     simulate_screening(100000, TP, FP, TN, FN),
     Total is TP + FP + TN + FN,
@@ -85,7 +76,7 @@ run_frequentist_demo :-
     NF is float(Total),
     ETP is R1*C1/NF, EFP is R1*C2/NF,
     EFN is R2*C1/NF, ETN is R2*C2/NF,
-    chi_squared_test([TP,FP,FN,TN], [ETP,EFP,EFN,ETN], _, result(Chi2,
+    chi_squared_test([TP,FP,FN,TN], [ETP,EFP,EFN,ETN], result(Chi2,
         DF,PVal)),
     format('  chi-squared = ~2f   df = ~w   p-value ', [Chi2, DF]),
     format_pval(PVal), nl,
@@ -124,26 +115,10 @@ run_frequentist_demo :-
     format('  Frequentist PPV from simulation          = ~4f  (~2f%)~n',
            [PPV, PPVPct]),
 
-
-
-
-
                         format('~n  Both frameworks agree: about 2% probability of illness.~n'),
-
-
-
-
 
                         format('================================================================~n'),
 
-
-
-
-
                         format('  Key lesson: statistical significance /= practical significance.~n'),
-
-
-
-
 
                         format('================================================================~n').

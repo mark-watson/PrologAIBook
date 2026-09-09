@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running inference_engine examples ==="
-	$(SWIPL) -g "add_fact(raining), add_rule([raining], wet_ground), forward_chain, (derived_fact(wet_ground) -> format('Derived: wet_ground~n') ; format('Not derived~n')), halt" -s load.pl
+	$(SWIPL) -g "reset_kb, add_fact(raining), add_rule([raining], wet_ground), forward_chain, (derived_fact(wet_ground) -> format('Derived: wet_ground~n') ; format('Not derived~n')), reset_kb, halt" -s load.pl
 
 test:
 	@echo "=== Running inference_engine tests ==="

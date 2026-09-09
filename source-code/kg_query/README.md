@@ -54,4 +54,4 @@ Extends the knowledge graph concept with multi-hop reasoning capabilities. The `
 - `reachable/2` - Find all entities reachable from a given entity
 - `relation_count/2` - Count relations with a given predicate
 
-The sample data (`sample_data.pl`) contains 370+ assertions modeling relationships between people, programming languages, research fields, implementations, organizations, concepts, projects, and publications. This showcases Prolog's natural advantage for graph traversal — recursive path finding with backtracking is trivial to express declaratively.
+The sample data (`sample_data.pl`) contains 374 static facts (132 typed entities, 242 relations) modeling relationships between people, programming languages, research fields, implementations, organizations, concepts, projects, and publications. Facts are plain static facts (not runtime `assert`s), so loading the module twice never duplicates data. This showcases Prolog's natural advantage for graph traversal — recursive path finding with backtracking is trivial to express declaratively. A depth-limited variant `path(Start, End, Path, MaxDepth)` is also provided.

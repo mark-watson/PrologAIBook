@@ -32,7 +32,7 @@ Requires SWI-Prolog compiled with Janus support and `uv` installed for Python de
 
 - **`py_classify(+TrainData, +TestData, -Predictions)`**:
   - `TrainData`: A list of lists where each inner list contains feature values followed by the class label as the last element (e.g., `[[Feature1, Feature2, Label], ...]`).
-  - `TestData`: A list of lists of test samples. Since the Python bridge (`sklearn_bridge.py`) expects the same shape as `TrainData` and slices off the last element via `row[:-1]`, you **must** append a dummy/placeholder label as the last element of each test sample (e.g., `[[Feature1, Feature2, DummyLabel], ...]`).
+  - `TestData`: A list of lists of test samples. You may pass **unlabelled feature vectors** (e.g. `[[Feature1, Feature2], ...]`) — the Prolog wrapper detects the shorter rows and appends a placeholder internally before calling Python.  The old convention of explicitly appending a dummy label is still accepted for backwards compatibility, but is no longer required.
 - **`py_cluster(+Data, +NClusters, -Labels)`**:
   - `Data`: A list of lists of data points to cluster (e.g., `[[Feature1, Feature2], ...]`).
   - `NClusters`: The integer number of clusters to form.

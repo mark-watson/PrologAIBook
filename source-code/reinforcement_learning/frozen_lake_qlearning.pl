@@ -168,21 +168,21 @@ new_epsilon(Eps, Decay, MinEps, NewEps) :-
 % train(+Episodes, +Alpha, +Gamma, +Epsilon, +EpsDecay, +MinEps)
 train(Episodes, Alpha, Gamma, Epsilon, EpsDecay, MinEps) :-
     train_loop(0, Episodes, Alpha, Gamma, Epsilon, EpsDecay, MinEps, 0,
-        0).
+        0, 0).
 
-train_loop(Ep, Total, _, _, _, _, _, Successes, _) :-
+% train_loop/10 carries TotalSuccesses (cumulative across the whole
+% run) in addition to the per-window counters used for the periodic
+% log line; the previously discarded Successes accumulator is gone.
+train_loop(Ep, Total, _, _, _, _, _, WinSuccesses, _WindowCount,
+    TotalSuccesses) :-
     Ep >= Total,
-
-
-
-
-
-                        format("  Training complete. Total successes in last window tracked above.~n"),
-    format("  Total episodes run: ~w~n", [Total]),
-    _ = Successes.
+    TotalSuccesses1 is TotalSuccesses + WinSuccesses,
+    format("  Training complete. Cumulative successes over ~w episodes: ~w~n",
+           [Total, TotalSuccesses1]),
+    format("  Total episodes run: ~w~n", [Total]).
 
 train_loop(Ep, Total, Alpha, Gamma, Epsilon, EpsDecay, MinEps,
-    WinSuccesses, WindowCount) :-
+    WinSuccesses, WindowCount, TotalSuccesses) :-
     Ep < Total,
     run_episode(Alpha, Gamma, Epsilon, Result),
     new_epsilon(Epsilon, EpsDecay, MinEps, NewEps),
@@ -194,11 +194,13 @@ train_loop(Ep, Total, Alpha, Gamma, Epsilon, EpsDecay, MinEps,
     ->  Rate is WinSuccesses1 / WindowCount1,
         format("  Episode ~5|~w: success rate = ~4f  (epsilon=~4f)~n",
                [Ep1, Rate, NewEps]),
+        TotalSuccesses1 is TotalSuccesses + WinSuccesses1,
         ResetSuccesses = 0, ResetWindow = 0
-    ;   ResetSuccesses = WinSuccesses1, ResetWindow = WindowCount1
+    ;   TotalSuccesses1 = TotalSuccesses,
+        ResetSuccesses = WinSuccesses1, ResetWindow = WindowCount1
     ),
     train_loop(Ep1, Total, Alpha, Gamma, NewEps, EpsDecay, MinEps,
-               ResetSuccesses, ResetWindow).
+               ResetSuccesses, ResetWindow, TotalSuccesses1).
 
 % ============================================================
 % Evaluate learned policy (greedy, no exploration)

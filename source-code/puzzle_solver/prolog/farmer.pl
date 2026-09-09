@@ -21,18 +21,29 @@ solve(State, Goal, Visited, [Description|Moves]) :-
     \+ member(NextState, Visited),
     solve(NextState, Goal, [NextState|Visited], Moves).
 
-%% Moves: farmer always crosses, optionally carrying one item
-move(state(left,F,C,G), state(right,F,C,G), farmer_alone).
-move(state(right,F,C,G), state(left,F,C,G), farmer_alone).
-move(state(left,left,C,G), state(right,right,C,G), farmer_fox).
-move(state(right,right,C,G), state(left,left,C,G), farmer_fox).
-move(state(left,F,left,G), state(right,F,right,G), farmer_chicken).
-move(state(right,F,right,G), state(left,F,left,G), farmer_chicken).
-move(state(left,F,C,left), state(right,F,C,right), farmer_grain).
-move(state(right,F,C,right), state(left,F,C,left), farmer_grain).
+%% Moves: farmer always crosses, optionally carrying one item.
+%% Each move is expressed once; opposite/2 supplies the two
+%% directions, so only 4 rules are needed instead of 8.
+move(state(From,F,C,G), state(To,F,C,G), farmer_alone) :-
+    opposite(From, To).
+move(state(From,From,C,G), state(To,To,C,G), farmer_fox) :-
+    opposite(From, To).
+move(state(From,F,From,G), state(To,F,To,G), farmer_chicken) :-
+    opposite(From, To).
+move(state(From,F,C,From), state(To,F,C,To), farmer_grain) :-
+    opposite(From, To).
 
-%% Safety: fox cannot be alone with chicken, chicken cannot be alone
-%% with grain
-safe(state(Farmer, Fox, Chicken, Grain)) :-
-    (Fox == Chicken -> Farmer == Fox ; true),
-    (Chicken == Grain -> Farmer == Chicken ; true).
+%% opposite(+Bank, -OtherBank) — the two river banks.
+opposite(left, right).
+opposite(right, left).
+
+%% Safety: a state is unsafe when the fox and chicken (or chicken
+%% and grain) share a bank while the farmer is on the opposite
+%% bank.  Pure head-pattern matching via opposite/2 — no ==/2.
+safe(State) :-
+    \+ unsafe(State).
+
+unsafe(state(Farmer, Bank, Bank, _)) :-
+    opposite(Farmer, Bank).             % fox left with chicken
+unsafe(state(Farmer, _, Bank, Bank)) :-
+    opposite(Farmer, Bank).             % chicken left with grain

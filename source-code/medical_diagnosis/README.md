@@ -53,8 +53,9 @@ This Prolog code is neither Bayesian nor Frequentist. Instead, it is a Symbolic/
      "RequiredSymptoms" for that disease must be present in the user's list. 
    * Non-Probabilistic: It is "exact." If a patient has 3 out of 4 flu symptoms, the system will fail to diagnose the flu
      entirely rather than saying "75% chance of flu."
-   * Procedural State Management: It uses assert_symptom and retract_symptoms to temporarily store the patient's state in
-     the Prolog database, though the current implementation primarily relies on the list-based subset/2 check.
+   * Pure, Stateless Matching: diagnose/2 is a pure function of the input symptom list — it performs no
+     assert/retract and leaves no residue in the Prolog dynamic database, so repeated consultations are
+     idempotent.
 
   Summary: This is a classic "Toy" Expert System. It is excellent for clear, "if-then" deterministic rules but cannot
   handle the "noisy" or uncertain data that Bayesian or Frequentist models are designed for.

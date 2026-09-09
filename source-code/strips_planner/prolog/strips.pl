@@ -2,7 +2,10 @@
 :- module(strips, [
     plan/3,
     plan_bfs/3,
-    plan_visited/3
+    plan_visited/3,
+    valid_state/1,
+    action/4,
+    holds/2
 ]).
 
 %% holds(+Conditions, +State)
@@ -13,26 +16,38 @@ holds([], _).
 holds([C|Cs], State) :- member(C, State), holds(Cs, State).
 
 %% plan(+InitState, +GoalState, -Plan)
-%% Depth-first search through the state space.
-%% InitState and GoalState are lists of ground atoms (fluents).
-plan(State, Goal, []) :-
+%% Iterative-deepening search: plan_dfs/4 is run with depth limits
+%% 1, 2, ..., 50 in turn.  Unlike plain DFS this always terminates
+%% and finds a shortest plan; on exhaustion (no plan within the
+%% depth bound) it fails cleanly.
+plan(State, Goal, Plan) :-
+    between(1, 50, Depth),
+    plan_dfs(State, Goal, Depth, Plan), !.
+
+%% plan_dfs(+State, +Goal, +DepthLeft, -Plan)
+plan_dfs(State, Goal, _DepthLeft, []) :-
     holds(Goal, State).
-plan(State, Goal, [Action|Plan]) :-
+plan_dfs(State, Goal, DepthLeft, [Action|Plan]) :-
+    DepthLeft > 0,
     action(Action, Preconditions, AddList, DeleteList),
     holds(Preconditions, State),
     subtract(State, DeleteList, TempState),
     union(TempState, AddList, NewState),
-    plan(NewState, Goal, Plan).
+    DepthLeft1 is DepthLeft - 1,
+    plan_dfs(NewState, Goal, DepthLeft1, Plan).
 
 %% plan_bfs(+InitState, +GoalState, -Plan)
 %% Breadth-first search — guaranteed to find the shortest plan.
+%% States are normalized with sort/2 and kept in a visited set so
+%% each distinct state is enqueued at most once.
 plan_bfs(State, Goal, Plan) :-
-    plan_bfs_queue([bfs_node(State, [])], Goal, RevPlan),
+    sort(State, Key),
+    plan_bfs_queue([bfs_node(State, [])], Goal, [bfs_key(Key)], RevPlan),
     reverse(RevPlan, Plan).
 
-plan_bfs_queue([bfs_node(State, Actions)|_], Goal, Actions) :-
+plan_bfs_queue([bfs_node(State, Actions)|_], Goal, _Seen, Actions) :-
     holds(Goal, State), !.
-plan_bfs_queue([bfs_node(State, Actions)|Rest], Goal, Plan) :-
+plan_bfs_queue([bfs_node(State, Actions)|Rest], Goal, Seen, Plan) :-
     findall(
         bfs_node(NewState, [Action|Actions]),
         (   action(Action, Preconditions, AddList, DeleteList),
@@ -42,27 +57,52 @@ plan_bfs_queue([bfs_node(State, Actions)|Rest], Goal, Plan) :-
         ),
         Children
     ),
-    append(Rest, Children, NewQueue),
-    plan_bfs_queue(NewQueue, Goal, Plan).
+    % Normalize each child state with sort/2 and enqueue only
+    % distinct states that have not been seen before.
+    bfs_enqueue_unseen(Children, Seen, Fresh, Seen1),
+    append(Rest, Fresh, NewQueue),
+    plan_bfs_queue(NewQueue, Goal, Seen1, Plan).
+
+%% Drop children whose sort/2-normalized state (wrapped in
+%% bfs_key/1) has already been seen; add the kept states' keys.
+bfs_enqueue_unseen([], Seen, [], Seen).
+bfs_enqueue_unseen([bfs_node(S, _)|Nodes], Seen, Fresh, Seen1) :-
+    sort(S, K),
+    memberchk(bfs_key(K), Seen),
+    !,
+    bfs_enqueue_unseen(Nodes, Seen, Fresh, Seen1).
+bfs_enqueue_unseen([bfs_node(S, A)|Nodes], Seen,
+                   [bfs_node(S, A)|Fresh], Seen1) :-
+    sort(S, K),
+    bfs_enqueue_unseen(Nodes, [bfs_key(K)|Seen], Fresh, Seen1).
 
 %% plan_visited(+InitState, +GoalState, -Plan)
-%% DFS with cycle detection — avoids revisiting states.
+%% DFS with cycle detection — avoids revisiting states.  The
+%% visited set is passed as an explicit argument, so backtracking
+%% automatically unwinds it (no surviving assertz leaks) and every
+%% top-level call starts from a fresh set.
 plan_visited(State, Goal, Plan) :-
-    retractall(plan_visited_state(_)),
-    plan_visited_dfs(State, Goal, [], Plan).
+    sort(State, Key),
+    plan_visited_dfs(State, Goal, [Key], Plan).
 
-:- dynamic plan_visited_state/1.
-
-plan_visited_dfs(State, Goal, _ActionPath, []) :-
+plan_visited_dfs(State, Goal, _Visited, []) :-
     holds(Goal, State), !.
-plan_visited_dfs(State, Goal, ActionPath, [Action|Plan]) :-
+plan_visited_dfs(State, Goal, Visited, [Action|Plan]) :-
     action(Action, Preconditions, AddList, DeleteList),
     holds(Preconditions, State),
     subtract(State, DeleteList, TempState),
     union(TempState, AddList, NewState),
-    \+ plan_visited_state(NewState),
-    assert(plan_visited_state(NewState)),
-    plan_visited_dfs(NewState, Goal, [Action|ActionPath], Plan).
+    sort(NewState, Key),
+    \+ memberchk(Key, Visited),
+    plan_visited_dfs(NewState, Goal, [Key|Visited], Plan).
+
+%% valid_state(+State)
+%% True when State (a list of fluents) contains no basic
+%% contradictions: nothing may be both clear and have a block on
+%% it, and nothing may be held while the hand is empty.
+valid_state(State) :-
+    \+ ( member(on(_, Y), State), member(clear(Y), State) ),
+    \+ ( member(holding(_), State), member(hand_empty, State) ).
 
 
 %% ============================================================

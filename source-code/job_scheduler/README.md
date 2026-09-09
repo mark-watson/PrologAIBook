@@ -25,6 +25,12 @@ A more complex scheduling problem with tighter deadlines and more tasks:
 swipl -g "['tests/test_scheduler.pl'], run_tests, halt" -s load.pl
 ```
 
+## Notes
+
+- The solver chains adjacent tasks with `chain(Starts, #=<)`, which fixes the execution order to the order jobs appear in the input list. To let the solver pick the best ordering, permute the job list before calling `schedule_jobs/2`.
+- The search horizon is derived from the input (largest deadline, or sum of durations when no deadlines are given), so arbitrarily large schedules work without code changes.
+- `schedule_valid/1` verifies a fully ground schedule pairwise with plain numeric comparisons; `no_overlap/1` is the constraint-posting predicate used while building a schedule.
+
 
 ## Sample Data Problem
 

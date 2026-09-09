@@ -22,5 +22,29 @@ ollama_generate(Prompt, Response, Options) :-
         prompt=Prompt,
         stream= @(false)
     ]),
-    http_post(URL, json(Payload), Result, [json_object(dict)]),
-    Response = Result.response.
+    catch(
+        http_post(URL, json(Payload), Result, [json_object(dict)]),
+        E,
+        (   log_ollama_error(E),
+            fail
+        )),
+    (   is_dict(Result),
+        get_dict(response, Result, Response)
+    ->  true
+    ;   log_ollama_error(unexpected_response(Result)),
+        fail
+    ).
+
+log_ollama_error(Error) :-
+    print_message(warning, ollama_error(Error)).
+
+:- multifile prolog:message//1.
+
+%% Connection-refused style transport errors: hint at starting Ollama.
+prolog:message(ollama_error(error(socket_error(econnrefused,_), _))) -->
+    [ 'ollama: connection refused - is the Ollama server running?'-[],
+      nl,
+      '  Start it with: ollama serve'-[]
+    ].
+prolog:message(ollama_error(Error)) -->
+    ['ollama: request failed: ~w'-[Error]].

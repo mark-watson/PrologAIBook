@@ -1,6 +1,6 @@
 # Knowledge Graph Creator
 
-Build knowledge graphs from text and export to RDF or Cypher formats. Companion code for the Knowledge Graphs chapter.
+Build knowledge graphs programmatically, store them as Prolog facts, and export to RDF (N-Triples) or Neo4j Cypher formats. Companion code for the Knowledge Graphs chapter.
 
 ## Running Examples
 

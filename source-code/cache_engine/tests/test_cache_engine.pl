@@ -1,9 +1,16 @@
 :- module(test_cache_engine, []).
 :- use_module(library(plunit)).
+
+prosqlite_available :-
+    catch(use_module(library(prosqlite)), _, fail).
+
+:- if(prosqlite_available).
 :- use_module(library(prosqlite)).
+:- endif.
 :- use_module('../prolog/cache_engine').
 
-:- begin_tests(cache_engine).
+:- begin_tests(cache_engine,
+               [condition(prosqlite_available)]).
 
 %% Helper to create a fresh cache for testing
 setup_cache(Conn) :-

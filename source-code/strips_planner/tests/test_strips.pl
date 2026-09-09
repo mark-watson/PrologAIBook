@@ -74,4 +74,42 @@ test(blocks_three_tower_bfs, [nondet]) :-
     length(Plan, Len),
     Len =:= 4.  % pickup(b), stack(b,c), pickup(a), stack(a,b)
 
+test(blocks_swap_terminates, [nondet]) :-
+    % Regression test: plain DFS did not terminate on this
+    % 2-block swap; iterative deepening solves it in 4 steps
+    % (unstack, putdown, pickup, stack).
+    InitState = [on(a, b), on_table(b), clear(a), hand_empty],
+    GoalState = [on(b, a)],
+    plan(InitState, GoalState, Plan),
+    length(Plan, Len),
+    Len =:= 4.
+
+test(visited_idempotent, [nondet]) :-
+    % Two successive top-level calls must start from fresh visited
+    % sets and return identical plans (no leaked asserts).
+    InitState = [on_table(a), on_table(b), clear(a), clear(b), hand_empty],
+    GoalState = [on(a, b)],
+    plan_visited(InitState, GoalState, Plan1),
+    plan_visited(InitState, GoalState, Plan2),
+    Plan1 == Plan2.
+
+test(plan_trace_valid_states, [nondet]) :-
+    % Every state along a plan trace must satisfy valid_state/1.
+    InitState = [on_table(a), on_table(b), clear(a), clear(b), hand_empty],
+    GoalState = [on(a, b)],
+    plan(InitState, GoalState, Plan),
+    valid_state(InitState),
+    plan_trace(InitState, Plan, Trace),
+    forall(member(S, Trace), valid_state(S)).
+
 :- end_tests(strips_planner).
+
+%% plan_trace(+State, +Plan, -States)
+%% Simulate Plan from State, collecting the full state sequence.
+plan_trace(State, [], [State]).
+plan_trace(State, [Action|Plan], [State|States]) :-
+    action(Action, Preconditions, AddList, DeleteList),
+    holds(Preconditions, State),
+    subtract(State, DeleteList, TempState),
+    union(TempState, AddList, NewState),
+    plan_trace(NewState, Plan, States).

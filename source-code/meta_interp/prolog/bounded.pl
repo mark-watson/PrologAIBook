@@ -1,4 +1,9 @@
 %% bounded.pl - Bounded depth meta-interpreter
+%%
+%% Depth semantics: the depth counter is decremented once per RULE
+%% APPLICATION (each clause/2 expansion), NOT per subgoal.  Conjunction
+%% members share the current depth budget.  A goal that arrives with
+%% depth 0 fails immediately.
 :- module(bounded, [
     mi_bounded/2,
     mi_bounded/3

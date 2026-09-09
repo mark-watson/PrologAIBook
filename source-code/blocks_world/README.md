@@ -9,9 +9,9 @@ swipl -s load.pl
 ```
 
 ```prolog
-?- blocks_plan([on_table(a), on_table(b), clear(a), clear(b)],
+?- blocks_plan([on_table(a), on_table(b)],
                [on(a, b)], Moves).
-?- print_state([on(a, b), on_table(b), clear(a)]).
+?- print_state([on(a, b), on_table(b)]).
 ```
 
 ## Running Tests

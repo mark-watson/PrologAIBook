@@ -1,8 +1,8 @@
 # Makefile for scryer_dcg - DCG examples for Scryer Prolog
 # Usage: make [all|run|test]
-# Note: Full examples require Scryer Prolog (not SWI-Prolog)
+# Uses Scryer Prolog (not SWI-Prolog)
 
-SWIPL = swipl
+SCRYER = scryer-prolog
 
 .PHONY: all run test tests
 
@@ -10,11 +10,10 @@ all: run test
 
 run:
 	@echo "=== Running scryer_dcg examples ==="
-	@echo "Note: Full DCG examples require Scryer Prolog"
-	$(SWIPL) -g "format('scryer_dcg: module loaded~n'), halt" -s load.pl
+	$(SCRYER) -g "use_module('prolog/text_dcg'), parse_csv_line(\"a,b,c\", F), write(F), nl, halt"
 
 test:
 	@echo "=== Running scryer_dcg tests ==="
-	$(SWIPL) -g "['tests/test_scryer_dcg.pl'], run_tests, halt" -s load.pl
+	$(SCRYER) -g "use_module('tests/test_scryer_dcg'), run_tests, halt"
 
 tests: test

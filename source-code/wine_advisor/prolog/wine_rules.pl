@@ -4,10 +4,13 @@
 ]).
 
 %% recommend_wine(+MealType, +Preference, -Wine)
+%% Preference may be a body atom (bold, moderate, light), a sweetness
+%% atom (sweet, dry), or 'any' matching all wines on both dimensions.
 recommend_wine(MealType, Preference, Wine) :-
-    wine(Wine, Color, Body, _Sweetness),
+    wine(Wine, Color, Body, Sweetness),
     meal_pairs_with(MealType, Color),
-    preference_matches(Preference, Body).
+    preference_matches(Preference, Body),
+    sweetness_matches(Preference, Sweetness).
 
 %% Wine database: wine(Name, Color, Body, Sweetness)
 wine(cabernet_sauvignon, red, full, dry).
@@ -30,8 +33,20 @@ meal_pairs_with(pasta, red).
 meal_pairs_with(dessert, white).
 meal_pairs_with(cheese, red).
 
-%% Preference matching
+%% Preference matching: body dimension.
+%% Sweetness preferences (sweet, dry) do not constrain body.
 preference_matches(bold, full).
 preference_matches(moderate, medium).
 preference_matches(light, light).
+preference_matches(sweet, _).
+preference_matches(dry, _).
 preference_matches(any, _).
+
+%% Sweetness matching.
+%% Body preferences (bold, moderate, light) do not constrain sweetness.
+sweetness_matches(sweet, sweet).
+sweetness_matches(dry, dry).
+sweetness_matches(bold, _).
+sweetness_matches(moderate, _).
+sweetness_matches(light, _).
+sweetness_matches(any, _).

@@ -34,9 +34,26 @@ uv run verify_llm.py
 ```
 
 ### Expected Output
-The script will run two simulated LLM recommendations through the Prolog guardrails and print the results:
+The script runs two simulated LLM recommendations through the Prolog guardrails and prints the results (asserted programmatically; the script exits with code 1 if a check fails). Note: the rules genuinely fire — the risk-tolerance comparison is canonicalised so it works whether JSON string values arrive as Prolog atoms (`json_read_dict/2` default) or as strings (Janus):
 
 ```text
+Consulting Prolog guardrail rules...
+
+Testing recommendation: Valid Senior Low-Risk Portfolio
+LLM Output JSON:
+{
+  "client_age": 70,
+  "risk_tolerance": "low",
+  "allocations": {
+    "stocks": 10,
+    "bonds": 60,
+    "crypto": 0,
+    "cash": 30
+  }
+}
+Guardrail Check Passed: Recommendation is SAFE.
+  [PASS] valid recommendation produces no violations
+
 Testing recommendation: Invalid Senior Low-Risk Portfolio
 LLM Output JSON:
 {
@@ -49,9 +66,24 @@ LLM Output JSON:
     "cash": 10
   }
 }
-❌ Guardrail Check Failed! Violations found:
+Guardrail Check Failed! Violations found:
   - Total allocation must sum to exactly 100%
   - Senior client (age 72) has 50% in high-risk assets (max: 30%)
   - Low risk tolerance portfolio cannot contain speculative crypto assets
   - Low risk tolerance requires at least 50% in conservative assets (currently 40%)
+  [PASS] violation: total allocation sum
+  [PASS] violation: senior high-risk allocation
+  [PASS] violation: crypto with low risk tolerance
+  [PASS] violation: low-risk conservative minimum
+  [PASS] exactly four violations reported (asset negativity not triggered)
+
+All assertions passed.
+```
+
+## Running Tests
+
+The pure-Prolog policy rules are covered by offline plunit tests:
+
+```shell
+make test
 ```

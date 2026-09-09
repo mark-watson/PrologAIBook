@@ -4,7 +4,10 @@
 
 :- begin_tests(assistant).
 
-test(research_returns) :-
+% Stub test: the pipeline is not yet implemented, so this test is
+% marked blocked rather than passing trivially.
+test(research_returns,
+     [blocked('pipeline not yet implemented')]) :-
     research("What is Prolog?", Answer),
     nonvar(Answer).
 

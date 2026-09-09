@@ -49,12 +49,7 @@ update(Model, _Evidence, LikelihoodPred, Updated) :-
     sumlist(UnnormProbs, Marginal),
     (   Marginal =:= 0.0
     ->  throw(error(zero_marginal,
-
-
-
-
-
-                                  'Marginal likelihood is zero — evidence impossible under all hypotheses.'))
+                    'Marginal likelihood is zero — evidence impossible under all hypotheses.'))
     ;   maplist(normalise_pair(Marginal), Unnormalised, Updated)
     ).
 
@@ -76,8 +71,12 @@ posteriors(Model, Model).
 
 %% maximum_a_posteriori(+Model, -Best)
 %% Return the Hypothesis-Probability pair with the highest posterior.
+%% Ties are broken deterministically by standard term order: among
+%% hypotheses with an equal maximum probability, the one that is
+%% smallest under @</2 (i.e. first in canonical term order) wins.
 maximum_a_posteriori([First|Rest], Best) :-
     foldl(pick_max, Rest, First, Best).
 
 pick_max(H-P, _-BestP, H-P) :- P > BestP, !.
+pick_max(H-P, BH-BP, H-P) :- P =:= BP, H @< BH, !.
 pick_max(_, Best, Best).

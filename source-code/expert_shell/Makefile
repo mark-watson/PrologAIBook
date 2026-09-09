@@ -1,6 +1,6 @@
 # Makefile for expert_shell - Expert system shell
 # Usage: make [all|run|test]
-# Note: 'run' starts an interactive session
+# Note: 'run' demos the sample wine KB non-interactively
 
 SWIPL = swipl
 
@@ -9,9 +9,8 @@ SWIPL = swipl
 all: run test
 
 run:
-	@echo "=== Running expert_shell (interactive) ==="
-	@echo "Type: consult_expert(Conclusion). then explain(Conclusion)."
-	$(SWIPL) -s load.pl
+	@echo "=== Running expert_shell sample KB demo ==="
+	$(SWIPL) -g "load_kb('prolog/sample_kb.pl'), provide_answer(meal, red_meat), provide_answer(bold_preference, yes), consult_expert(C), explain(C), halt" -s load.pl
 
 test:
 	@echo "=== Running expert_shell tests ==="

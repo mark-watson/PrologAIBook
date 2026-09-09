@@ -13,6 +13,7 @@
 :- module(frequentist, [
     z_score/3,
     z_test_proportion/4,
+    chi_squared_test/3,
     chi_squared_test/4,
     confidence_interval_proportion/4,
     phi_approx/2
@@ -70,10 +71,10 @@ chi_squared_cdf(X, DF, CDF) :-
 %%  Z-score
 %% =====================================================================
 
-%% z_score(+Observed, +Expected, +StdDev, -Z)
-z_score(Observed, Expected, StdDev) :-
-    StdDev > 0,
-    _ is (float(Observed) - float(Expected)) / float(StdDev).
+%% z_score(+Observed, +Expected, -Z)
+%% Convenience form for the single-observation case (StdDev = 1.0).
+z_score(Observed, Expected, Z) :-
+    z_score(Observed, Expected, 1.0, Z).
 
 %% z_score(+Observed, +Expected, +StdDev, -Z)
 z_score(Observed, Expected, StdDev, Z) :-
@@ -101,11 +102,11 @@ z_test_proportion(Successes, N, HypP, result(Z, PVal)) :-
 %%  Pearson's chi-squared test (goodness-of-fit)
 %% =====================================================================
 
-%% chi_squared_test(+Observed, +Expected, -ChiSq, -result(ChiSq, DF,
-%% PValue))
-%% Observed and Expected are equal-length lists of non-negative counts.
-%% H₀: observed counts follow the expected distribution.
-chi_squared_test(Observed, Expected, _, result(ChiSq, DF, PVal)) :-
+%% chi_squared_test(+Observed, +Expected, -result(ChiSq, DF, PValue))
+%% Observed and Expected are equal-length lists of non-negative counts
+%% with positive expectations.  H0: observed counts follow the
+%% expected distribution.
+chi_squared_test(Observed, Expected, result(ChiSq, DF, PVal)) :-
     length(Observed, Len),
     length(Expected, Len),   % assert same length
     maplist(chi_sq_term, Observed, Expected, Terms),
@@ -114,13 +115,21 @@ chi_squared_test(Observed, Expected, _, result(ChiSq, DF, PVal)) :-
     chi_squared_cdf(ChiSq, DF, CCDF),
     PVal is max(1.0 - CCDF, 0.0).
 
+%% chi_squared_test(+Observed, +Expected, -ChiSq, -result(ChiSq, DF,
+%% PValue))
+%% Deprecated: kept for backward compatibility; use chi_squared_test/3.
+chi_squared_test(Observed, Expected, ChiSq, Result) :-
+    chi_squared_test(Observed, Expected, Result),
+    Result = result(ChiSq, _, _).
+
+chi_sq_term(_, E, _) :-
+    float(E) =:= 0.0,
+    !,
+    throw(error(domain_error(non_zero_expected, E), _)).
 chi_sq_term(O, E, T) :-
     OF is float(O),
     EF is float(E),
-    (   EF =:= 0.0
-    ->  T = 0.0
-    ;   T is (OF - EF)^2 / EF
-    ).
+    T is (OF - EF)^2 / EF.
 
 %% =====================================================================
 %%  Wilson score confidence interval for a proportion

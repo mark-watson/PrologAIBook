@@ -1,5 +1,12 @@
 %% lists.pl - List processing examples
 %% Demonstrates: head/tail, recursion, list predicates
+%%
+%% NOTE: this file is named lists.pl, but its module is `my_lists`.
+%% Keeping the module name `my_lists` (rather than `lists`) is a
+%% deliberate workaround: naming a module `lists` shadows SWI-Prolog's
+%% own library(lists), which breaks library(plunit) and library(clpfd)
+%% (they depend on library(lists) internally).  All public predicates
+%% keep their original names and arities (my_length/2 etc.).
 
 :- module(my_lists, [
     my_length/2,
@@ -9,11 +16,20 @@
     my_last/2
 ]).
 
-%% Length of a list
-my_length([], 0).
-my_length([_|T], N) :-
-    my_length(T, N1),
-    N is N1 + 1.
+:- use_module(library(clpfd)).
+
+%% my_length(?List, ?N) - bidirectional length using CLP(FD)
+%% Works in both directions: my_length([a,b,c], 3) succeeds, and
+%% my_length(L, 3) binds L to a list of three fresh variables.
+my_length(List, N) :-
+    N #>= 0,
+    my_length_(List, N).
+
+my_length_([], 0).
+my_length_([_|T], N) :-
+    N #> 0,
+    N1 #= N - 1,
+    my_length_(T, N1).
 
 %% Membership
 my_member(X, [X|_]).

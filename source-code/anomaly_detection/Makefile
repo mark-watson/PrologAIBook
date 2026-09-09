@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running anomaly detection on Wisconsin cancer data ==="
-	$(SWIPL) -g "once((load_wisconsin_data(R), train_model(R, _))), halt" -s load.pl
+	$(SWIPL) -g "set_random(seed(42)), once((load_wisconsin_data(R), train_model(R, _))), halt" -s load.pl
 
 test:
 	@echo "=== Running anomaly_detection tests ==="

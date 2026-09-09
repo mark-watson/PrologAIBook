@@ -1,15 +1,19 @@
 # Research Assistant
 
+**Status: experimental skeleton.** The predicates load and the placeholder `research/2` returns a `placeholder_answer(Question)` term, but the real web-search → LLM-summarise → Prolog-knowledge-base pipeline is not yet implemented.
+
 An agent combining web search, LLM summarization, and Prolog reasoning. Companion code for the Building AI Agents chapter.
 
 ## Running Examples
+
+The module loads, but only the placeholder is runnable:
 
 ```shell
 swipl -s load.pl
 ```
 
 ```prolog
-?- research("What is Prolog?", Answer).
+?- research("What is Prolog?", Answer).   % returns placeholder_answer(...) only
 ```
 
 ## Running Tests
@@ -17,6 +21,8 @@ swipl -s load.pl
 ```shell
 swipl -g "['tests/test_assistant.pl'], run_tests, halt" -s load.pl
 ```
+
+The single test is marked `blocked('pipeline not yet implemented')`, so the run reports zero passing tests — this is intentional.
 
 
 ## Architecture

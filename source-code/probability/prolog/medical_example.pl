@@ -37,12 +37,7 @@ run_bayesian_analysis :-
     maximum_a_posteriori(Updated, BestH-_),
     format('~nMAP hypothesis: ~w~n', [BestH]),
     format('~nKey insight: despite 99% sensitivity, a positive test~n'),
-
-
-
-
-
-                        format('only yields about 1.9% probability of disease because the~n'),
+    format('only yields about 1.9% probability of disease because the~n'),
     format('disease is so rare (0.1% prevalence).~n').
 
 print_model([]).
@@ -69,15 +64,11 @@ run_correlation_analysis :-
     pearson_r(Tests, Diagnoses, R),
     format('~n=== Correlation Analysis (N = ~d) ===~n', [N]),
     format('Pearson r(test-result, disease) = ~4f~n', [R]),
-
-
-
-
-
-                        format('~nCorrelation is real but modest — individual prediction~n'),
+    format('~nCorrelation is real but modest — individual prediction~n'),
     format('requires Bayesian reasoning with the base rate.~n').
 
 run_medical_example :-
+    set_random(seed(42)),
     run_bayesian_analysis,
     run_correlation_analysis,
     format('~n=== Done. ===~n').

@@ -1,3 +1,0 @@
-% Fact status file.  Managed by package manager.
-archive('/Users/markwatson/GITHUB/PrologAIBook/source-code/tutorial_basics/','file:///Users/markwatson/GITHUB/PrologAIBook/source-code/tutorial_basics/').
-automatic(false).

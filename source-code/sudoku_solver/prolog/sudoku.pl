@@ -26,8 +26,13 @@ blocks([N1,N2,N3|Ns1], [N4,N5,N6|Ns2], [N7,N8,N9|Ns3]) :-
     all_distinct([N1,N2,N3,N4,N5,N6,N7,N8,N9]),
     blocks(Ns1, Ns2, Ns3).
 
-%% print_board(+Rows) - Pretty-print a solved board
+%% print_board(+Rows) - Pretty-print the board
+%% Uninstantiated cells are rendered as '.', solved cells as digits.
 print_board([]).
 print_board([Row|Rows]) :-
-    format("~w~n", [Row]),
+    maplist(render_cell, Row, Chars),
+    format("~w~n", [Chars]),
     print_board(Rows).
+
+render_cell(Cell, '.') :- var(Cell), !.
+render_cell(Cell, Cell).

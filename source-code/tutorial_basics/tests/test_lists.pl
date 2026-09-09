@@ -10,6 +10,15 @@ test(length_empty) :-
 test(length_three) :-
     my_length([a, b, c], 3).
 
+test(length_generate, [nondet]) :-
+    my_length(L, 3),
+    length(L, 3),
+    maplist(var, L).
+
+test(length_generate_ground, [nondet]) :-
+    my_length([_, _, _], N),
+    N == 3.
+
 test(member_found, [nondet]) :-
     my_member(b, [a, b, c]).
 
