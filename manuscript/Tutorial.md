@@ -7,7 +7,7 @@ This chapter provides a hands-on introduction to Prolog for readers who are new 
 
 ## Facts, Rules, and Queries
 
-Prolog, which stands for *Programming in Logic*, is based on a subset of first-order predicate calculus. Unlike imperative languages where you specify *how* to compute something, Prolog is declarative: you describe the *what*—the facts and rules governing a problem domain—and let the execution engine deduce the answers to your queries.
+Prolog, which stands for *Programming in Logic*, is based on a subset of first-order predicate calculus. Unlike imperative languages where you specify *how* to compute something, Prolog is declarative: you describe the *what*, the facts and rules governing a problem domain, and let the execution engine deduce the answers to your queries.
 
 The fundamental building blocks of a Prolog program are **terms**, which make up the data model:
 - **Atoms**: Constant values representing specific objects or relations. They are written starting with a lowercase letter (e.g., `tom`, `bob`, `parent`) or enclosed in single quotes.
@@ -354,7 +354,7 @@ You can also selectively import specific predicates to avoid polluting your name
 :- use_module(library(lists), [member/2, append/3]).
 ```
 
-## Definite Clause Grammars (DCGs) — A First Look
+## Definite Clause Grammars (DCGs), A First Look
 
 Definite Clause Grammars (DCGs) are a built-in Prolog syntax designed for parsing and generating sequences (most commonly lists of tokens or characters). DCGs provide a clean, readable notation that automatically translates into standard Prolog clauses using **difference lists**.
 

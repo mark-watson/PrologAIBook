@@ -1,6 +1,6 @@
 # Search Algorithms in Prolog
 
-Prolog's backtracking mechanism is, at its core, a search engine. In this chapter we build on that foundation to implement classic AI search algorithms — taking advantage of Prolog's natural representation of graphs, states, and goals.
+Prolog's backtracking mechanism is, at its core, a search engine. In this chapter we build on that foundation to implement classic AI search algorithms, taking advantage of Prolog's natural representation of graphs, states, and goals.
 
 ## Loading Graph Data from a File
 
@@ -123,7 +123,7 @@ bfs_queue([[Current|Visited]|Rest], Goal, Path) :-
 
 
 {width: "80%"}
-![Sample directed graph used in search examples — 20 city nodes from Albany (start) to Reno (goal)](graph_search_sample.jpg)
+![Sample directed graph used in search examples, 20 city nodes from Albany (start) to Reno (goal)](graph_search_sample.jpg)
 
 
 Running these on our 20-node city graph:
@@ -232,7 +232,7 @@ astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Closed, Path) :-
     sort(1, @=<, Unsorted, Sorted),
     astar_loop(Sorted, Goal, Heuristic, [best_g(Current, G)|Closed], Path).
 
-%% best_g(+Node, +Closed, -G) — G is the best g recorded for Node.
+%% best_g(+Node, +Closed, -G), G is the best g recorded for Node.
 best_g(Node, [best_g(Node, G)|_], G) :- !.
 best_g(Node, [_|Closed], G) :- best_g(Node, Closed, G).
 
@@ -250,7 +250,7 @@ safe_call(Callable, Node, Value) :-
 zero_heuristic(_, 0).
 
 %% Example heuristic: estimated remaining distance to goal (reno).
-%% Rough estimates for the sample_graph cities — admissible for
+%% Rough estimates for the sample_graph cities, admissible for
 %% uniform-weight graph.
 distance_heuristic(reno,      0).
 distance_heuristic(portland,  1).
@@ -337,13 +337,13 @@ move(state(From,F,From,G), state(To,F,To,G), farmer_chicken) :-
 move(state(From,F,C,From), state(To,F,C,To), farmer_grain) :-
     opposite(From, To).
 
-%% opposite(+Bank, -OtherBank) — the two river banks.
+%% opposite(+Bank, -OtherBank), the two river banks.
 opposite(left, right).
 opposite(right, left).
 
 %% Safety: a state is unsafe when the fox and chicken (or chicken
 %% and grain) share a bank while the farmer is on the opposite
-%% bank.  Pure head-pattern matching via opposite/2 — no ==/2.
+%% bank.  Pure head-pattern matching via opposite/2, no ==/2.
 safe(State) :-
     \+ unsafe(State).
 

@@ -13,7 +13,7 @@ Three design priorities distinguish Scryer from other implementations:
 
 1. **Strict ISO Compliance**: Scryer aims to be the most standards-conformant Prolog available. It faithfully implements the ISO Prolog standard (ISO/IEC 13211-1), including correct handling of the occurs check, arithmetic exceptions, and module semantics. Code written against the ISO specification is more likely to run unmodified on Scryer than on any other system.
 
-2. **Memory-Efficient Strings**: Unlike most Prolog systems that represent strings as linked lists of character codes (consuming 16–24 bytes per character), Scryer uses a compact, packed byte representation internally. This makes string-intensive workloads—especially Definite Clause Grammars applied to large text—dramatically more memory-efficient, often by an order of magnitude.
+2. **Memory-Efficient Strings**: Unlike most Prolog systems that represent strings as linked lists of character codes (consuming 16–24 bytes per character), Scryer uses a compact, packed byte representation internally. This makes string-intensive workloads, especially Definite Clause Grammars applied to large text, dramatically more memory-efficient, often by an order of magnitude.
 
 3. **Rust Foundation**: Scryer's runtime is built on a Warren Abstract Machine (WAM) implemented in Rust. This gives it predictable performance, safe memory management without a garbage collector pause storm, and the ability to integrate with the Rust ecosystem for extensions.
 
@@ -72,7 +72,7 @@ $ scryer-prolog
    X = 5.
 ```
 
-Note the different output formatting compared to SWI-Prolog—Scryer indents answers with three spaces and uses a period-terminated style consistent with the ISO standard.
+Note the different output formatting compared to SWI-Prolog, Scryer indents answers with three spaces and uses a period-terminated style consistent with the ISO standard.
 
 ## Differences from SWI-Prolog
 
@@ -92,11 +92,11 @@ X = "hello".         % A string object
    X = "hello".      % A list of chars: [h,e,l,l,o]
 ```
 
-Scryer's approach is exactly what DCGs expect—a list that can be consumed element by element—which is why DCG-based text processing works so naturally without conversion steps.
+Scryer's approach is exactly what DCGs expect, a list that can be consumed element by element, which is why DCG-based text processing works so naturally without conversion steps.
 
 #### Constraint Libraries: CLP(Z) vs CLP(FD)
 
-SWI-Prolog provides `library(clpfd)` for finite domain constraint solving. Scryer ships with `library(clpz)`, Markus Triska's successor library. The API is largely compatible—predicates like `ins`, `all_different/1`, `label/1`, and constraint operators (`#=`, `#\=`, `#<`, etc.) work the same way. The key differences are:
+SWI-Prolog provides `library(clpfd)` for finite domain constraint solving. Scryer ships with `library(clpz)`, Markus Triska's successor library. The API is largely compatible, predicates like `ins`, `all_different/1`, `label/1`, and constraint operators (`#=`, `#\=`, `#<`, etc.) work the same way. The key differences are:
 
 - Import `library(clpz)` instead of `library(clpfd)`.
 - CLP(Z) operates over arbitrary-precision integers (the "Z" stands for the integers `\mathbb{Z}`$), not just machine-bounded finite domains.
@@ -130,9 +130,9 @@ SWI-Prolog has a vast ecosystem of packs and built-in libraries (HTTP server, JS
 
 ## DCG Processing of Large Text with Scryer
 
-The killer feature of Scryer Prolog for text processing is its memory-efficient string representation. In a traditional Prolog system, the string `"hello world"` stored as a list of character codes occupies roughly 11 cons cells × 16 bytes = 176 bytes of heap memory. Scryer stores the same string in approximately 11 bytes—a 16× improvement. This difference is negligible for small inputs, but becomes decisive when processing megabytes of text.
+The killer feature of Scryer Prolog for text processing is its memory-efficient string representation. In a traditional Prolog system, the string `"hello world"` stored as a list of character codes occupies roughly 11 cons cells × 16 bytes = 176 bytes of heap memory. Scryer stores the same string in approximately 11 bytes, a 16× improvement. This difference is negligible for small inputs, but becomes decisive when processing megabytes of text.
 
-Consider parsing a 10 MB CSV log file. In SWI-Prolog, loading this file as a character list would consume approximately 160 MB of heap memory just for the string representation, before any parsing data structures are allocated. In Scryer, the same file occupies roughly 10 MB—close to the raw file size. This makes it practical to load entire documents into memory and process them with DCGs in a single pass.
+Consider parsing a 10 MB CSV log file. In SWI-Prolog, loading this file as a character list would consume approximately 160 MB of heap memory just for the string representation, before any parsing data structures are allocated. In Scryer, the same file occupies roughly 10 MB, close to the raw file size. This makes it practical to load entire documents into memory and process them with DCGs in a single pass.
 
 The DCG approach to text processing has several advantages over regex-based alternatives:
 
@@ -141,7 +141,7 @@ The DCG approach to text processing has several advantages over regex-based alte
 3. **Integrated Logic**: Semantic actions inside `{ ... }` allow you to validate, transform, and annotate data during the parse without a separate post-processing step.
 4. **Backtracking for Ambiguity**: When the input is ambiguous (multiple valid parses), Prolog's backtracking explores all alternatives automatically.
 
-The example below shows how the `text_dcg` module parses CSV lines and key-value pairs. The `parse_csv_line/2` predicate handles both quoted and unquoted fields, and `parse_key_value/2` splits `key=value` strings into structured pairs—tasks that are common in log processing, configuration file parsing, and data ingestion pipelines.
+The example below shows how the `text_dcg` module parses CSV lines and key-value pairs. The `parse_csv_line/2` predicate handles both quoted and unquoted fields, and `parse_key_value/2` splits `key=value` strings into structured pairs, tasks that are common in log processing, configuration file parsing, and data ingestion pipelines.
 
 The **scryer_dcg** project demonstrates text processing DCGs designed for Scryer. The loader file **scryer_dcg/load.pl** sets the flag before importing the module, following the convention that strings are lists of one-character atoms:
 

@@ -1,6 +1,6 @@
 # Anomaly Detection
 
-Anomaly detection is a machine learning technique for finding data points that differ significantly from the majority of observations. Unlike classification — where we train on balanced examples of each class — anomaly detection works well when we have many normal examples and only a few (or zero) anomalous ones. The algorithm learns what "normal" looks like, then flags anything that deviates from that profile.
+Anomaly detection is a machine learning technique for finding data points that differ significantly from the majority of observations. Unlike classification, where we train on balanced examples of each class, anomaly detection works well when we have many normal examples and only a few (or zero) anomalous ones. The algorithm learns what "normal" looks like, then flags anything that deviates from that profile.
 
 This chapter implements a Gaussian anomaly detector in SWI-Prolog, ported from a Java implementation. We apply it to the Wisconsin Diagnostic Breast Cancer dataset, where benign samples define the normal distribution and malignant samples appear as statistical outliers.
 
@@ -12,7 +12,7 @@ The core idea is straightforward. For each feature in the training data, we fit 
 p(x_i) = \frac{1}{\sqrt{2\pi}\sigma_i} \exp\left(-\frac{(x_i - \mu_i)^2}{2\sigma_i^2}\right)
 {/$$}
 
-If the average per-feature probability falls below a learned threshold `\epsilon`$ (epsilon), the data point is flagged as anomalous — it lies too far from the centre of the normal distribution.
+If the average per-feature probability falls below a learned threshold `\epsilon`$ (epsilon), the data point is flagged as anomalous, it lies too far from the centre of the normal distribution.
 
 This approach has two appealing properties:
 
@@ -77,7 +77,7 @@ load_wisconsin_data(Rows) :-
     once(subsample_rows(AllRows, 200, Rows)).
 ~~~~~~~~
 
-The `source_file/2` call locates the module's own source directory, making the data path relative and portable. We wrap it in `once/1` because `source_file/2` returns one solution per exported predicate — without the cut, Prolog would backtrack through all of them.
+The `source_file/2` call locates the module's own source directory, making the data path relative and portable. We wrap it in `once/1` because `source_file/2` returns one solution per exported predicate, without the cut, Prolog would backtrack through all of them.
 
 We subsample to approximately 200 rows to keep runtime fast in an interpreted language. The `subsample_rows/3` predicate takes a stratified subsample:
 
@@ -102,7 +102,7 @@ subsample_rows(Rows, MaxN, Sampled) :-
 
 is_malignant_row(Row) :- last(Row, 4).
 
-% stratified_pick(+Rows, +N, -Picked) — pick N rows, evenly spaced by
+% stratified_pick(+Rows, +N, -Picked), pick N rows, evenly spaced by
 % index so the pick is deterministic given a seeded RNG.
 stratified_pick(Rows, N, Picked) :-
     length(Rows, Len),
@@ -149,12 +149,12 @@ normalise(Min, Span, X, Y) :- Y is (X - Min) / Span.
 
 Four transformations happen in sequence:
 
-1. **Scale by 0.1** — Maps integer features from [1, 10] to [0.1, 1.0].
-2. **Log-transform** — `log(x + 1.2)` compresses the right tail, making the distribution more bell-shaped. The offset 1.2 prevents `log(0)`.
-3. **Min-max normalise** — Rescales each row's features to [0, 1]. This per-row normalisation removes scale differences between samples.
-4. **Target remapping** — The original target encodes benign as 2 and malignant as 4. The formula `(x - 2) * 0.5` maps these to 0.0 (normal) and 1.0 (anomaly).
+1. **Scale by 0.1**: Maps integer features from [1, 10] to [0.1, 1.0].
+2. **Log-transform**: `log(x + 1.2)` compresses the right tail, making the distribution more bell-shaped. The offset 1.2 prevents `log(0)`.
+3. **Min-max normalise**: Rescales each row's features to [0, 1]. This per-row normalisation removes scale differences between samples.
+4. **Target remapping**: The original target encodes benign as 2 and malignant as 4. The formula `(x - 2) * 0.5` maps these to 0.0 (normal) and 1.0 (anomaly).
 
-Notice how `maplist/3` applies each transform in a declarative, functional style. The `normalise/4` predicate takes `Min` and `Span` as its first two arguments — a partial application pattern that works naturally with `maplist`.
+Notice how `maplist/3` applies each transform in a declarative, functional style. The `normalise/4` predicate takes `Min` and `Span` as its first two arguments, a partial application pattern that works naturally with `maplist`.
 
 ## Data Splitting
 
@@ -198,11 +198,11 @@ untag(_-Row, Row).
 
 The assignment logic mirrors the Java original:
 
-- **60% chance** of going to training — but only if the row is normal (target < 0.5). Anomalous rows are mostly skipped, with ~10% leaking through. This ensures the training set is dominated by normal examples, which is the key requirement for anomaly detection.
+- **60% chance** of going to training, but only if the row is normal (target < 0.5). Anomalous rows are mostly skipped, with ~10% leaking through. This ensures the training set is dominated by normal examples, which is the key requirement for anomaly detection.
 - **28% to cross-validation**, **12% to test**.
 - Skipped anomalies are simply dropped.
 
-The tag-then-filter pattern deserves comment. An earlier version used direct recursive splitting with Prolog disjunctions (`;`), but this left choicepoints that caused backtracking across the entire pipeline. The `maplist/assign_row` approach is fully deterministic — each row gets exactly one tag, and `include/3` partitions without any choicepoints.
+The tag-then-filter pattern deserves comment. An earlier version used direct recursive splitting with Prolog disjunctions (`;`), but this left choicepoints that caused backtracking across the entire pipeline. The `maplist/assign_row` approach is fully deterministic, each row gets exactly one tag, and `include/3` partitions without any choicepoints.
 
 ## Computing Statistics
 
@@ -241,7 +241,7 @@ sq_diff(FIdx, M, Row, D) :-
 
 ## The Gaussian PDF
 
-The Gaussian Probability Density Function (PDF) is the heart of the algorithm. For each feature in a data point, we compute how likely that value is under the learned normal distribution. The implementation walks three lists in parallel — the row's features, the means, and the variances — accumulating the sum of per-feature PDF values:
+The Gaussian Probability Density Function (PDF) is the heart of the algorithm. For each feature in a data point, we compute how likely that value is under the learned normal distribution. The implementation walks three lists in parallel, the row's features, the means, and the variances, accumulating the sum of per-feature PDF values:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
@@ -265,7 +265,7 @@ gaussian_sum([X|Xs], [M|Ms], [S2|Ss], S2P, I, Acc, Sum) :-
     gaussian_sum(Xs, Ms, Ss, S2P, I1, Acc1, Sum).
 ~~~~~~~~
 
-The parallel list walk (`[X|Xs], [M|Ms], [S2|Ss]`) is a deliberate performance choice. An earlier version used `nth1/3` to extract each feature by index — but `nth1` is O(n) on linked lists, and calling it 3 times per feature × 9 features × every row added up badly. Walking the lists in parallel is O(1) per element.
+The parallel list walk (`[X|Xs], [M|Ms], [S2|Ss]`) is a deliberate performance choice. An earlier version used `nth1/3` to extract each feature by index, but `nth1` is O(n) on linked lists, and calling it 3 times per feature × 9 features × every row added up badly. Walking the lists in parallel is O(1) per element.
 
 The base case `gaussian_sum(_, _, _, _, 9, Acc, Acc)` stops after 9 features, skipping the target column at position 10. The cut prevents backtracking into the recursive clause.
 
@@ -311,8 +311,8 @@ search_epsilon(PTPs, BestEps) :-
 
 We test 20 epsilon values from 0.001 to 0.951, spaced at 0.05 intervals. For each epsilon, an error occurs when:
 
-- An **anomaly** (target > 0.5) has probability **above** epsilon — a false negative (missed anomaly)
-- A **normal** point (target <= 0.5) has probability **below** epsilon — a false positive (false alarm)
+- An **anomaly** (target > 0.5) has probability **above** epsilon, a false negative (missed anomaly)
+- A **normal** point (target <= 0.5) has probability **below** epsilon, a false positive (false alarm)
 
 The epsilon with the fewest total cross-validation errors wins.
 
@@ -381,7 +381,7 @@ is_anomaly(model(Mu, SigmaSq, NF, Eps), Row) :-
     P < Eps.
 ~~~~~~~~
 
-This succeeds (returns `true`) if the row is an anomaly, and fails otherwise — a natural fit for Prolog's success/failure semantics.
+This succeeds (returns `true`) if the row is an anomaly, and fails otherwise, a natural fit for Prolog's success/failure semantics.
 
 ## Evaluation
 
@@ -397,9 +397,9 @@ evaluate_model(Model, TestRows) :-
 
 The accumulator is a `counts(TP, FP, FN, TN)` term that threads through the fold, updating one counter per test row. The final counts yield:
 
-- **Precision** = TP / (TP + FP) — of the points we called anomalies, how many actually were?
-- **Recall** = TP / (TP + FN) — of the actual anomalies, how many did we catch?
-- **F1** = 2 * Precision * Recall / (Precision + Recall) — harmonic mean of precision and recall.
+- **Precision** = TP / (TP + FP), of the points we called anomalies, how many actually were?
+- **Recall** = TP / (TP + FN), of the actual anomalies, how many did we catch?
+- **F1** = 2 * Precision * Recall / (Precision + Recall), harmonic mean of precision and recall.
 
 ## Running the Example
 
@@ -442,15 +442,15 @@ $ make test
 
 We addressed these with `once/1` wrappers and a tag-then-filter strategy for `split_data`. The final `!` in `train_model` commits to the first successful training run.
 
-**Lists vs. arrays.** Prolog lists are linked lists — `nth1/3` is O(n) per access. The Gaussian PDF needs to access three parallel lists (row, means, variances) for each of 9 features. Using `nth1` would mean 27 * O(n) lookups per row. Instead, we walk the three lists in parallel via pattern matching (`[X|Xs], [M|Ms], [S2|Ss]`), giving O(1) per element. This alone gave us a large speedup.
+**Lists vs. arrays.** Prolog lists are linked lists, `nth1/3` is O(n) per access. The Gaussian PDF needs to access three parallel lists (row, means, variances) for each of 9 features. Using `nth1` would mean 27 * O(n) lookups per row. Instead, we walk the three lists in parallel via pattern matching (`[X|Xs], [M|Ms], [S2|Ss]`), giving O(1) per element. This alone gave us a large speedup.
 
-**Precomputed probabilities.** The Java version recomputes the Gaussian PDF for every epsilon candidate. In Prolog, where arithmetic is slower than in the JVM, we precompute all PDF values before the epsilon sweep. The 20-step grid search then just compares precomputed floats to the epsilon threshold — pure arithmetic with no list traversal.
+**Precomputed probabilities.** The Java version recomputes the Gaussian PDF for every epsilon candidate. In Prolog, where arithmetic is slower than in the JVM, we precompute all PDF values before the epsilon sweep. The 20-step grid search then just compares precomputed floats to the epsilon threshold, pure arithmetic with no list traversal.
 
 **Subsampling.** The full 648-row dataset with 200 epsilon steps would be impractical in interpreted Prolog. We subsample to ~200 rows and use 20 epsilon steps, reducing the workload by roughly 65x. The model quality remains strong thanks to the class-balanced sampling and the dataset's clear separation between benign and malignant clusters.
 
 ## Wrap Up
 
-This example demonstrates that statistical machine learning algorithms can be implemented naturally in Prolog. The Gaussian anomaly detector uses only standard SWI-Prolog libraries — no external packs — and fits comfortably into Prolog's declarative style. The key techniques — `maplist` for transforms, `foldl` for accumulators, parallel list walking for performance, and tag-then-filter for deterministic splitting — are broadly useful patterns for any numerical computation in Prolog.
+This example demonstrates that statistical machine learning algorithms can be implemented naturally in Prolog. The Gaussian anomaly detector uses only standard SWI-Prolog libraries, no external packs, and fits comfortably into Prolog's declarative style. The key techniques, `maplist` for transforms, `foldl` for accumulators, parallel list walking for performance, and tag-then-filter for deterministic splitting, are broadly useful patterns for any numerical computation in Prolog.
 
 ## Optional Practice Problems
 

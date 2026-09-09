@@ -160,7 +160,7 @@ prove_all([C|Rest], [P|Proofs], Visited) :-
 
 While deriving conclusions is useful, in many AI applications (such as expert systems) we must also explain *why* a conclusion was reached. A **proof tree** is a tree-like data structure that records the steps, rules, and facts used to satisfy a goal.
 
-Prolog is well-suited for building proof trees because we can easily write a **meta-interpreter**—a Prolog program that reads and executes other Prolog programs.
+Prolog is well-suited for building proof trees because we can easily write a **meta-interpreter**: a Prolog program that reads and executes other Prolog programs.
 
 
 {width: "80%"}
@@ -339,7 +339,7 @@ Abductive reasoning is the process of reasoning from **observations** to the mos
 - **Induction**: Given examples of `A`$ and `B`$, derive the rule `A \Rightarrow B`$.
 - **Abduction**: Given `B`$ and `A \Rightarrow B`$, hypothesize `A`$ as the explanation for `B`$.
 
-In Prolog, we can implement abductive reasoning by defining a set of **abducible predicates**—facts that we are allowed to assume true if they help explain the observation.
+In Prolog, we can implement abductive reasoning by defining a set of **abducible predicates**: facts that we are allowed to assume true if they help explain the observation.
 
 Here is a simple abductive meta-interpreter:
 
@@ -391,7 +391,7 @@ If we query the database:
 - `?- flies(tweety).` succeeds because `bird(tweety)` is true and `abnormal(tweety)` cannot be proven (fails).
 - `?- flies(pingu).` fails because `penguin(pingu)` is asserted, which proves `abnormal(pingu)`, thereby causing `\+ abnormal(pingu)` to fail.
 
-If we later learn that Tweety is actually a penguin and assert `penguin(tweety).`, the previous conclusion `flies(tweety)` is automatically retracted—demonstrating non-monotonic behavior.
+If we later learn that Tweety is actually a penguin and assert `penguin(tweety).`, the previous conclusion `flies(tweety)` is automatically retracted, demonstrating non-monotonic behavior.
 
 ## Case Study: A Medical Diagnosis Reasoner
 

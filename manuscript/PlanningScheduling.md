@@ -62,7 +62,7 @@ plan_dfs(State, Goal, DepthLeft, [Action|Plan]) :-
     plan_dfs(NewState, Goal, DepthLeft1, Plan).
 
 %% plan_bfs(+InitState, +GoalState, -Plan)
-%% Breadth-first search — guaranteed to find the shortest plan.
+%% Breadth-first search, guaranteed to find the shortest plan.
 %% States are normalized with sort/2 and kept in a visited set so
 %% each distinct state is enqueued at most once.
 plan_bfs(State, Goal, Plan) :-
@@ -102,7 +102,7 @@ bfs_enqueue_unseen([bfs_node(S, A)|Nodes], Seen,
     bfs_enqueue_unseen(Nodes, [bfs_key(K)|Seen], Fresh, Seen1).
 
 %% plan_visited(+InitState, +GoalState, -Plan)
-%% DFS with cycle detection — avoids revisiting states.  The
+%% DFS with cycle detection, avoids revisiting states.  The
 %% visited set is passed as an explicit argument, so backtracking
 %% automatically unwinds it (no surviving assertz leaks) and every
 %% top-level call starts from a fresh set.
@@ -144,7 +144,7 @@ The module also exports `valid_state/1`, which reports whether a fluent list is 
 
 ### The `holds/2` Predicate
 
-A subtle but critical detail: we define `holds/2` using `member/2` rather than SWI-Prolog's built-in `subset/2`. The built-in uses `memberchk/2`, which is semi-deterministic — it commits to the first matching element in the state. This means a variable like `X` in an action schema `pickup(X)` would always bind to the first block found, and `findall` would never discover actions for other blocks. By using `member/2`, we allow Prolog to backtrack and try every possible binding for action-schema variables.
+A subtle but critical detail: we define `holds/2` using `member/2` rather than SWI-Prolog's built-in `subset/2`. The built-in uses `memberchk/2`, which is semi-deterministic, it commits to the first matching element in the state. This means a variable like `X` in an action schema `pickup(X)` would always bind to the first block found, and `findall` would never discover actions for other blocks. By using `member/2`, we allow Prolog to backtrack and try every possible binding for action-schema variables.
 
 ### Running the Planner
 
@@ -202,7 +202,7 @@ action(drive(Truck, From, To),
     [truck_at(Truck, From)]).
 ```
 
-A logistics query — shipping a package from `loc_a` to `loc_b` using a truck:
+A logistics query, shipping a package from `loc_a` to `loc_b` using a truck:
 
 ```prolog
 ?- plan_bfs([pkg_at(pkg1, loc_a), truck_at(truck1, loc_a), free(truck1),
@@ -296,7 +296,7 @@ Several choices distinguish this dedicated planner from the generic STRIPS versi
 
 **The `clear/2` rule.** A block is clear when nothing is stacked on it. The rule `clear(X, State) :- \+ member(on(_, X), State)` uses negation-as-failure: X is clear if there is no block Y such that `on(Y, X)` holds. The merged `blocks_move/3` clause uses `from_fact/4` so moving from the table or from another block shares one rule.
 
-**State representation.** States are simple lists of `on(X, Y)` and `on_table(X)` atoms. The goal is a list of atoms that must all be present in the final state — typically just the desired `on/2` relationships, ignoring table facts.
+**State representation.** States are simple lists of `on(X, Y)` and `on_table(X)` atoms. The goal is a list of atoms that must all be present in the final state, typically just the desired `on/2` relationships, ignoring table facts.
 
 ### Example Queries
 
@@ -333,7 +333,7 @@ The CLP(FD) approach models each action's start time as a finite-domain variable
 - **Deadlines**: If an action must finish by time *T*, constrain `End #=< T`.
 - **Duration**: `End #= Start + Duration`.
 
-These integer constraints propagate through the constraint network. When a start time's domain is reduced, the solver automatically tightens the domains of linked actions — pruning the search space before any concrete time is assigned.
+These integer constraints propagate through the constraint network. When a start time's domain is reduced, the solver automatically tightens the domains of linked actions, pruning the search space before any concrete time is assigned.
 
 ### Hybrid Planning and Scheduling
 
@@ -467,9 +467,9 @@ Adding a causal link can create a **threat**: an action *C* that deletes the lin
 
 POP produces **least-commitment** plans. By not imposing unnecessary orderings, the resulting plan admits many valid linearizations. This matters when:
 
-- **Multiple agents** execute the plan concurrently — independent actions can truly run in parallel.
+- **Multiple agents** execute the plan concurrently, independent actions can truly run in parallel.
 - **Uncertain durations** mean a later action might become ready before an earlier one completes.
-- **Replanning** is needed mid-execution — an unordered action pair can be swapped without invalidating the plan.
+- **Replanning** is needed mid-execution, an unordered action pair can be swapped without invalidating the plan.
 
 ### Implementing POP in Prolog
 
@@ -479,7 +479,7 @@ Prolog's unification and backtracking map cleanly onto the POP algorithm. A part
 plan(Actions, Orderings, CausalLinks, OpenPreconditions)
 ```
 
-The main loop selects an open precondition, nondeterministically chooses a resolver, adds the necessary ordering and causal-link constraints, checks for and resolves threats, and recurses. Prolog's backtracking handles the nondeterministic choice of resolver — when threat resolution fails, the system automatically tries the next option.
+The main loop selects an open precondition, nondeterministically chooses a resolver, adds the necessary ordering and causal-link constraints, checks for and resolves threats, and recurses. Prolog's backtracking handles the nondeterministic choice of resolver, when threat resolution fails, the system automatically tries the next option.
 
 While a full POP implementation is beyond the scope of this chapter, the key data structures sketch the approach:
 
@@ -499,7 +499,7 @@ resolve_threat(Threat, Plan, NewPlan) :-
     ).
 ```
 
-The central insight is that partial-order planning generates a *family* of linear plans in a single search — every topological sort of the final plan graph is a valid execution. This compact representation is one of POP's main advantages over total-order search.
+The central insight is that partial-order planning generates a *family* of linear plans in a single search, every topological sort of the final plan graph is a valid execution. This compact representation is one of POP's main advantages over total-order search.
 
 
 ## Practical Job Scheduling Applications
@@ -519,7 +519,7 @@ Construction projects, software releases, and manufacturing pipelines all share 
 
 ### Timetabling
 
-University course scheduling, conference programs, and employee shift assignment are all instances of timetabling — assigning events to time slots and rooms while respecting hard constraints (no room double-booking, instructor availability) and soft preferences (consecutive lectures in the same building).
+University course scheduling, conference programs, and employee shift assignment are all instances of timetabling, assigning events to time slots and rooms while respecting hard constraints (no room double-booking, instructor availability) and soft preferences (consecutive lectures in the same building).
 
 Prolog approaches timetabling by generating candidate assignments and using CLP(FD) to check feasibility. The constraint model captures rules like "Professor Smith cannot teach before 10 AM" (domain restriction on start-time variables) and "Room 101 seats 50, so classes with more than 50 students cannot be assigned there" (reification: if enrollment > 50 then room ≠ 101).
 
@@ -532,14 +532,14 @@ For industrial-scale scheduling, Prolog often serves as the **modeling and orche
 3. For production, exports the model to a dedicated solver (OR-Tools, CPLEX, Gurobi) via a file interface or foreign function binding.
 4. Reads back the solution and validates it against the original constraints.
 
-This architecture combines Prolog's strengths — readable constraint formulation, rapid iteration, built-in search — with the raw speed of C++ solvers for large problem instances. The SWI-Prolog ecosystem supports this pattern through its C foreign interface and libraries for common data exchange formats.
+This architecture combines Prolog's strengths, readable constraint formulation, rapid iteration, built-in search, with the raw speed of C++ solvers for large problem instances. The SWI-Prolog ecosystem supports this pattern through its C foreign interface and libraries for common data exchange formats.
 
 ### The Prolog Advantage
 
 Why use Prolog for scheduling at all? Three reasons stand out:
 
-1. **Declarative constraints** read like the problem description. "Task A ends before Task B starts" becomes `EndA #=< StartB` — no manual implementation of search or propagation.
-2. **Backtracking is built in**. When a partial schedule proves infeasible, Prolog automatically unwinds to the last choice point and tries an alternative — no hand-coded backtracking stack.
+1. **Declarative constraints** read like the problem description. "Task A ends before Task B starts" becomes `EndA #=< StartB`, no manual implementation of search or propagation.
+2. **Backtracking is built in**. When a partial schedule proves infeasible, Prolog automatically unwinds to the last choice point and tries an alternative, no hand-coded backtracking stack.
 3. **Rapid prototyping**. A working scheduler can be built in under 50 lines of Prolog. While a C++/CPLEX solution may run faster on 10,000 tasks, the Prolog version is running and validated long before the C++ version compiles.
 
 ## Optional Practice Problems

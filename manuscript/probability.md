@@ -2,7 +2,7 @@
 
 Probability theory provides the mathematical foundation for quantifying uncertainty. While classical frequentist approaches treat probability as the long-run frequency of repeatable events, Bayesian probability reframes it as a dynamic measure of belief. Through Bayes' Theorem, initial prior assumptions are systematically updated with incoming evidence to compute a posterior distribution, enabling rigorous inference even with sparse or evolving data.
 
-Standard probabilistic models map correlations rather than causality. While observational probability can determine the likelihood of variables co-occurring, causal inference — often formalized through structural causal models — is required to understand directional influence. This distinction is critical: calculating the likelihood of observing a specific system state requires entirely different mathematical machinery than predicting the outcome of an intervention upon that system.
+Standard probabilistic models map correlations rather than causality. While observational probability can determine the likelihood of variables co-occurring, causal inference, often formalized through structural causal models, is required to understand directional influence. This distinction is critical: calculating the likelihood of observing a specific system state requires entirely different mathematical machinery than predicting the outcome of an intervention upon that system.
 
 The source code for this chapter is in the directory **source-code/probability**.
 
@@ -10,49 +10,49 @@ The source code for this chapter is in the directory **source-code/probability**
 
 Professor Carissa Véliz says in her book "Prophecy" that when you read a percentage you should first ask yourself if you are being told a fact or a prediction. If a percentage is a prediction, consciously tag it as "not a fact."
 
-The danger of conflating the two lies in the illusion of precision that numbers naturally provide. A percentage representing a historical measurement is a grounded, verifiable reality. A predictive percentage is fundamentally an artifact of a specific model — heavily dependent on the chosen priors, the limits of the training data, and the structural assumptions baked into the algorithm. Consciously tagging a predictive percentage as "not a fact" forces a shift from passive acceptance to active critique: What variables is the model blind to? How fragile is this prediction to out-of-distribution events?
+The danger of conflating the two lies in the illusion of precision that numbers naturally provide. A percentage representing a historical measurement is a grounded, verifiable reality. A predictive percentage is fundamentally an artifact of a specific model, heavily dependent on the chosen priors, the limits of the training data, and the structural assumptions baked into the algorithm. Consciously tagging a predictive percentage as "not a fact" forces a shift from passive acceptance to active critique: What variables is the model blind to? How fragile is this prediction to out-of-distribution events?
 
 ## Glossary of Terms
 
 Before diving into the library and the worked examples, here is a reference for the statistical vocabulary used throughout this chapter.
 
-**Prior (prior probability)** — Your initial belief about how likely a hypothesis is *before* you observe any new evidence. In the medical example below, the prior probability of disease is the prevalence rate (0.1 %). Priors can be informative (based on domain knowledge) or uninformative (deliberately vague).
+**Prior (prior probability)**: Your initial belief about how likely a hypothesis is *before* you observe any new evidence. In the medical example below, the prior probability of disease is the prevalence rate (0.1 %). Priors can be informative (based on domain knowledge) or uninformative (deliberately vague).
 
-**Posterior (posterior probability)** — Your updated belief about a hypothesis *after* incorporating observed evidence via Bayes' Theorem: P(Hypothesis | Data). In the medical example, the posterior probability of disease given a positive test is approximately 1.9 %.
+**Posterior (posterior probability)**: Your updated belief about a hypothesis *after* incorporating observed evidence via Bayes' Theorem: P(Hypothesis | Data). In the medical example, the posterior probability of disease given a positive test is approximately 1.9 %.
 
-**Likelihood** — The probability of observing the evidence *assuming a specific hypothesis is true*: P(Evidence | Hypothesis). In the medical example, the likelihood of a positive test result given disease is 0.99 (the sensitivity).
+**Likelihood**: The probability of observing the evidence *assuming a specific hypothesis is true*: P(Evidence | Hypothesis). In the medical example, the likelihood of a positive test result given disease is 0.99 (the sensitivity).
 
-**Marginal likelihood (evidence)** — The total probability of the observed evidence across all hypotheses: Σ P(Evidence | H) · P(H). It acts as the normalising constant in Bayes' Theorem.
+**Marginal likelihood (evidence)**: The total probability of the observed evidence across all hypotheses: Σ P(Evidence | H) · P(H). It acts as the normalising constant in Bayes' Theorem.
 
-**Bayes' Theorem** — The mathematical rule connecting prior, likelihood, and posterior: P(H | E) = P(E | H) · P(H) / P(E).
+**Bayes' Theorem**: The mathematical rule connecting prior, likelihood, and posterior: P(H | E) = P(E | H) · P(H) / P(E).
 
-**Maximum a posteriori (MAP)** — The hypothesis with the highest posterior probability — the Bayesian "best guess." `maximum_a_posteriori/2` breaks ties deterministically by standard term order, so among hypotheses with equal maximum probability the `@<`-smallest wins.
+**Maximum a posteriori (MAP)**: The hypothesis with the highest posterior probability, the Bayesian "best guess." `maximum_a_posteriori/2` breaks ties deterministically by standard term order, so among hypotheses with equal maximum probability the `@<`-smallest wins.
 
-**Prevalence (base rate)** — The proportion of a population that has a particular condition. When the base rate is very low, even a highly accurate test produces many false positives relative to true positives.
+**Prevalence (base rate)**: The proportion of a population that has a particular condition. When the base rate is very low, even a highly accurate test produces many false positives relative to true positives.
 
-**Sensitivity (true-positive rate)** — The probability that a test correctly identifies a positive case: P(Test+ | Condition+).
+**Sensitivity (true-positive rate)**: The probability that a test correctly identifies a positive case: P(Test+ | Condition+).
 
-**Specificity (true-negative rate)** — The probability that a test correctly identifies a negative case: P(Test− | Condition−).
+**Specificity (true-negative rate)**: The probability that a test correctly identifies a negative case: P(Test− | Condition−).
 
-**False-positive rate** — The probability that a test incorrectly flags a healthy individual as positive: P(Test+ | Condition−).
+**False-positive rate**: The probability that a test incorrectly flags a healthy individual as positive: P(Test+ | Condition−).
 
-**Positive predictive value (PPV)** — Among everyone who tested positive, the fraction who actually have the condition: TP / (TP + FP).
+**Positive predictive value (PPV)**: Among everyone who tested positive, the fraction who actually have the condition: TP / (TP + FP).
 
-**Z-score (standard score)** — The number of standard deviations a data point lies from the mean: z = (x − μ) / σ.
+**Z-score (standard score)**: The number of standard deviations a data point lies from the mean: z = (x − μ) / σ.
 
-**P-value** — The probability of observing data *at least as extreme* as what was measured, *assuming the null hypothesis is true*. Crucially, the p-value is **not** the probability that the hypothesis is true or false.
+**P-value**: The probability of observing data *at least as extreme* as what was measured, *assuming the null hypothesis is true*. Crucially, the p-value is **not** the probability that the hypothesis is true or false.
 
-**Null hypothesis (H₀)** — The default assumption of "no effect" that a frequentist test tries to reject.
+**Null hypothesis (H₀)**: The default assumption of "no effect" that a frequentist test tries to reject.
 
-**Chi-squared test** — A test that compares observed counts against expected counts: Σ (O − E)² / E.
+**Chi-squared test**: A test that compares observed counts against expected counts: Σ (O − E)² / E.
 
-**Confidence interval (CI)** — A frequentist range estimate. A 95 % CI means: if you repeated the experiment many times, 95 % of the computed intervals would contain the true parameter.
+**Confidence interval (CI)**: A frequentist range estimate. A 95 % CI means: if you repeated the experiment many times, 95 % of the computed intervals would contain the true parameter.
 
-**Wilson score interval** — A method for computing a confidence interval for a binomial proportion that is more accurate than the simple Wald interval, especially for small samples or proportions near 0 or 1.
+**Wilson score interval**: A method for computing a confidence interval for a binomial proportion that is more accurate than the simple Wald interval, especially for small samples or proportions near 0 or 1.
 
-**Pearson correlation coefficient (r)** — A measure of linear association between two variables, ranging from −1 to +1. It measures *association*, not causation.
+**Pearson correlation coefficient (r)**: A measure of linear association between two variables, ranging from −1 to +1. It measures *association*, not causation.
 
-**Spearman rank correlation (ρ)** — A non-parametric measure of monotonic association. More robust to outliers than Pearson-r.
+**Spearman rank correlation (ρ)**: A non-parametric measure of monotonic association. More robust to outliers than Pearson-r.
 
 ## A SWI-Prolog Library to Explore Probability
 
@@ -60,13 +60,13 @@ Before diving into the library and the worked examples, here is a reference for 
 
 The library provides four modules spanning both Bayesian and Frequentist reasoning:
 
-1. **Bayesian Inference (`bayes.pl`)** — Model construction from hypothesis-probability pairs, Bayes' Theorem updates via `update/4`, posterior queries, and MAP estimation.
+1. **Bayesian Inference (`bayes.pl`)**: Model construction from hypothesis-probability pairs, Bayes' Theorem updates via `update/4`, posterior queries, and MAP estimation.
 
-2. **Correlation helpers (`correlation.pl`)** — Pearson-r, Spearman rank correlation, and correlation matrices. These functions explicitly measure *association*, not causation.
+2. **Correlation helpers (`correlation.pl`)**: Pearson-r, Spearman rank correlation, and correlation matrices. These functions explicitly measure *association*, not causation.
 
-3. **Frequentist Statistics (`frequentist.pl`)** — z-tests, chi-squared tests, and Wilson confidence intervals for classical hypothesis testing.
+3. **Frequentist Statistics (`frequentist.pl`)**: z-tests, chi-squared tests, and Wilson confidence intervals for classical hypothesis testing.
 
-4. **Worked examples** — `medical_example.pl` demonstrates Bayesian reasoning on a screening test; `frequentist_demo.pl` revisits the same scenario from the frequentist standpoint.
+4. **Worked examples**: `medical_example.pl` demonstrates Bayesian reasoning on a screening test; `frequentist_demo.pl` revisits the same scenario from the frequentist standpoint.
 
 ### File layout
 
@@ -137,7 +137,7 @@ normalise_pair(Total, H-P, H-NP) :-
     NP is P / Total.
 ~~~~~~~~
 
-Prolog's `-` operator creates pairs naturally: `disease-0.001` is a term `-(disease, 0.001)`. The `maplist/normalise_pair` pattern applies partial application — `normalise_pair(Total)` is a goal with one argument already bound, and `maplist` supplies the remaining two.
+Prolog's `-` operator creates pairs naturally: `disease-0.001` is a term `-(disease, 0.001)`. The `maplist/normalise_pair` pattern applies partial application, `normalise_pair(Total)` is a goal with one argument already bound, and `maplist` supplies the remaining two.
 
 ### Updating with Evidence
 
@@ -169,13 +169,13 @@ unnormalised_posterior(LikelihoodPred, H-Prior, H-UPost) :-
     UPost is Lik * Prior.
 ~~~~~~~~
 
-The `call/3` invocation is the key: `call(LikelihoodPred, H, Lik)` calls the likelihood predicate with the hypothesis and binds the likelihood value. This is Prolog's idiomatic higher-order pattern — the `meta_predicate` declaration ensures proper module resolution when the likelihood predicate is defined in a different module.
+The `call/3` invocation is the key: `call(LikelihoodPred, H, Lik)` calls the likelihood predicate with the hypothesis and binds the likelihood value. This is Prolog's idiomatic higher-order pattern, the `meta_predicate` declaration ensures proper module resolution when the likelihood predicate is defined in a different module.
 
-The `Marginal` variable is the denominator in Bayes' Theorem — dividing by it gives proper posterior probabilities that sum to one.
+The `Marginal` variable is the denominator in Bayes' Theorem, dividing by it gives proper posterior probabilities that sum to one.
 
 ### The Medical Screening Example
 
-The worked example makes Bayes' Theorem concrete. A rare disease affects 0.1 % of the population. A screening test has 99 % sensitivity and a 5 % false-positive rate. A patient tests positive — what is the probability they are actually sick?
+The worked example makes Bayes' Theorem concrete. A rare disease affects 0.1 % of the population. A screening test has 99 % sensitivity and a 5 % false-positive rate. A patient tests positive, what is the probability they are actually sick?
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
@@ -194,7 +194,7 @@ run_bayesian_analysis :-
     ...
 ~~~~~~~~
 
-The likelihood predicate is a clean two-clause definition — one clause per hypothesis. Prolog's pattern matching dispatches to the correct clause automatically. Passing `likelihood` (the predicate name) to `update/4` lets the Bayes engine call it via `call/3` for each hypothesis.
+The likelihood predicate is a clean two-clause definition, one clause per hypothesis. Prolog's pattern matching dispatches to the correct clause automatically. Passing `likelihood` (the predicate name) to `update/4` lets the Bayes engine call it via `call/3` for each hypothesis.
 
 The answer is approximately **1.9 %**. Despite 99 % sensitivity, the disease is so rare that the vast majority of positive results come from the 5 % false-positive rate applied to the enormous healthy population.
 
@@ -256,7 +256,7 @@ The deepest fault-line in probability runs between two camps that disagree on wh
 | **Definition** | Long-run frequency over infinite trials | Degree of belief, updated with evidence |
 | **Parameters** | Fixed but unknown constants | Random variables with distributions |
 | **Data** | Random sample from infinite population | Fixed once observed |
-| **Core question** | P(Data \| H) — "how likely is this data?" | P(H \| Data) — "how likely is this hypothesis?" |
+| **Core question** | P(Data \| H), "how likely is this data?" | P(H \| Data), "how likely is this hypothesis?" |
 
 ### Strengths and weaknesses
 
@@ -274,12 +274,12 @@ The deepest fault-line in probability runs between two camps that disagree on wh
 
 ### Frequentist module API
 
-- `phi_approx(+Z, -CDF)` — standard normal CDF using the Abramowitz & Stegun 26.2.17 rational approximation.
-- `z_score(+Observed, +Expected, -Z)` — convenience form with `StdDev = 1.0`, returning the raw difference.
-- `z_score(+Observed, +Expected, +StdDev, -Z)` — compute the standard z-score.
-- `z_test_proportion(+Successes, +N, +HypP, -Result)` — one-sample z-test for a proportion. Returns `result(Z, PValue)`.
-- `chi_squared_test(+Observed, +Expected, -Result)` — Pearson's chi-squared goodness-of-fit test, returning `result(ChiSq, DF, PValue)`. The legacy `chi_squared_test(+Observed, +Expected, -ChiSq, -Result)` is deprecated but kept for backward compatibility. A zero expected value now throws `domain_error(non_zero_expected, E)`; previously it silently contributed 0.0.
-- `confidence_interval_proportion(+Successes, +N, +Confidence, -Result)` — Wilson score interval. Returns `result(Lower, Upper)`.
+- `phi_approx(+Z, -CDF)`, standard normal CDF using the Abramowitz & Stegun 26.2.17 rational approximation.
+- `z_score(+Observed, +Expected, -Z)`, convenience form with `StdDev = 1.0`, returning the raw difference.
+- `z_score(+Observed, +Expected, +StdDev, -Z)`, compute the standard z-score.
+- `z_test_proportion(+Successes, +N, +HypP, -Result)`, one-sample z-test for a proportion. Returns `result(Z, PValue)`.
+- `chi_squared_test(+Observed, +Expected, -Result)`, Pearson's chi-squared goodness-of-fit test, returning `result(ChiSq, DF, PValue)`. The legacy `chi_squared_test(+Observed, +Expected, -ChiSq, -Result)` is deprecated but kept for backward compatibility. A zero expected value now throws `domain_error(non_zero_expected, E)`; previously it silently contributed 0.0.
+- `confidence_interval_proportion(+Successes, +N, +Confidence, -Result)`, Wilson score interval. Returns `result(Lower, Upper)`.
 
 ### Walking Through the Frequentist Code
 
@@ -326,14 +326,14 @@ confidence_interval_proportion(Successes, N, Confidence, result(Lower,
     Upper is min(1.0, Centre + Margin).
 ~~~~~~~~
 
-### Worked Example — Frequentist Medical Screening
+### Worked Example, Frequentist Medical Screening
 
 The frequentist demo revisits the same scenario:
 
-1. **Simulates a clinical trial** — 100,000 individuals screened.
-2. **Chi-squared test** — rejects independence (p < 10⁻¹⁵), but this tells you nothing about individual risk.
-3. **Wilson CI for PPV** — the 95 % interval shows PPV is only about 1–3 %.
-4. **Side-by-side comparison** — the Bayesian posterior and frequentist PPV agree.
+1. **Simulates a clinical trial**: 100,000 individuals screened.
+2. **Chi-squared test**: rejects independence (p < 10⁻¹⁵), but this tells you nothing about individual risk.
+3. **Wilson CI for PPV**: the 95 % interval shows PPV is only about 1–3 %.
+4. **Side-by-side comparison**: the Bayesian posterior and frequentist PPV agree.
 
 {linenos=off}
 ~~~~~~~~
@@ -377,11 +377,11 @@ $ make test
 
 ## Prolog-Specific Design Decisions
 
-**Higher-order predicates.** The `update/4` predicate accepts a likelihood predicate name and invokes it via `call/3`. The `:- meta_predicate update(+, +, 2, -)` declaration ensures SWI-Prolog resolves the predicate in the caller's module context — essential when the likelihood is defined in a different module than the Bayes engine.
+**Higher-order predicates.** The `update/4` predicate accepts a likelihood predicate name and invokes it via `call/3`. The `:- meta_predicate update(+, +, 2, -)` declaration ensures SWI-Prolog resolves the predicate in the caller's module context, essential when the likelihood is defined in a different module than the Bayes engine.
 
 **Pair representation.** Prolog's `-` operator provides a lightweight pair syntax: `disease-0.001`. Combined with `maplist` and partial application (`normalise_pair(Total)`), this gives a functional-programming flavour without external libraries.
 
-**Result terms.** The frequentist predicates return structured `result(...)` terms rather than multiple output arguments. This bundles related values into a single unifiable term — cleaner than threading three separate variables through the caller.
+**Result terms.** The frequentist predicates return structured `result(...)` terms rather than multiple output arguments. This bundles related values into a single unifiable term, cleaner than threading three separate variables through the caller.
 
 **Determinism.** The simulation loop in `frequentist_demo.pl` uses explicit recursion with a cut in the base case (`simulate_loop(0, ...) :- !.`) to prevent choicepoint accumulation over 100,000 iterations.
 

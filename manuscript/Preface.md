@@ -12,9 +12,9 @@ If you would like to support my work please consider purchasing my books on [Lea
 
 # Preface
 
-I have used Prolog intermittently since 1986 and have always appreciated its elegant approach to expressing computational problems as logical relationships. Prolog is not merely a programming language — it is a way of thinking about computation that is fundamentally different from imperative and functional paradigms. In a world increasingly driven by AI, Prolog's core strengths in symbolic reasoning, knowledge representation, and search make it more relevant than ever.
+I have used Prolog intermittently since 1986 and have always appreciated its elegant approach to expressing computational problems as logical relationships. Prolog is not merely a programming language, it is a way of thinking about computation that is fundamentally different from imperative and functional paradigms. In a world increasingly driven by AI, Prolog's core strengths in symbolic reasoning, knowledge representation, and search make it more relevant than ever.
 
-This book is a practical guide to building AI applications with Prolog. We primarily use SWI-Prolog, the de facto standard for serious Prolog development, with a closing chapter on the exciting modern Scryer Prolog system. My goal is to show you how Prolog's unique strengths — unification, backtracking, and declarative logic — can be combined with modern tools like large language models, knowledge graphs, and the semantic web to build real AI systems.
+This book is a practical guide to building AI applications with Prolog. We primarily use SWI-Prolog, the de facto standard for serious Prolog development, with a closing chapter on the exciting modern Scryer Prolog system. My goal is to show you how Prolog's unique strengths, unification, backtracking, and declarative logic, can be combined with modern tools like large language models, knowledge graphs, and the semantic web to build real AI systems.
 
 **Note: Dear reader, although I have been a Prolog enthusiast since the 1980s I have only four or five months of professional Prolog development experience. I relied heavily on DeepSeek v4 (with some use of Gemini 3, and Claude Opus models) in developing and debugging the example programs and for editing and improving the text for this book.**
 

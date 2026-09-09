@@ -167,7 +167,7 @@ By passing semantic variables up the parse tree and executing constraints inside
 
 Named Entity Recognition (NER) is an information extraction task that identifies and classifies key entities in text into predefined categories such as person names, geographic locations, and organizations.
 
-In Prolog, this can be efficiently implemented using a **gazetteer**—a lookup database of known names. By asserting these names as facts (e.g., `person_name('Einstein').`), we can use Prolog's high-speed indexing and pattern matching to scan tokenized word lists and extract typed entity structures.
+In Prolog, this can be efficiently implemented using a **gazetteer**: a lookup database of known names. By asserting these names as facts (e.g., `person_name('Einstein').`), we can use Prolog's high-speed indexing and pattern matching to scan tokenized word lists and extract typed entity structures.
 
 The **text_analyzer** project implements NER with gazetteer lookup. Here is the file **text_analyzer/prolog/ner.pl**:
 

@@ -17,7 +17,7 @@ Prolog is a natural fit for agent architectures because its inference engine alr
 
 ## A Simple Reactive Agent
 
-A **reactive agent** responds directly to its current perceptions without maintaining an internal model of the world. It maps observations to actions using simple rules. While limited, a reactive agent is fast, predictable, and easy to debug — making it the right starting point before adding the complexity of planning, memory, or tool use.
+A **reactive agent** responds directly to its current perceptions without maintaining an internal model of the world. It maps observations to actions using simple rules. While limited, a reactive agent is fast, predictable, and easy to debug, making it the right starting point before adding the complexity of planning, memory, or tool use.
 
 The **reactive_agent** project implements a reusable reactive agent framework with a perception-reasoning-action loop. Here is the file **reactive_agent/prolog/agent.pl**:
 
@@ -131,16 +131,16 @@ test(define_goal) :-
 
 ## Goal-Directed Agents
 
-A reactive agent responds to the immediate situation. A **goal-directed agent** goes further: it maintains an explicit representation of what it wants to achieve and uses that goal to guide every decision. The distinction matters because the same observation — "the disk is at 5% free space" — might lead to different actions depending on whether the goal is `keep_system_running` or `minimize_cost`.
+A reactive agent responds to the immediate situation. A **goal-directed agent** goes further: it maintains an explicit representation of what it wants to achieve and uses that goal to guide every decision. The distinction matters because the same observation, "the disk is at 5% free space", might lead to different actions depending on whether the goal is `keep_system_running` or `minimize_cost`.
 
-In our framework, goals are first-class. The `goal/1` predicate stores the current objective, and `run_agent/1` checks it at the top of every loop iteration. When `goal(G), belief(G)` succeeds, the agent stops — the goal is achieved. This pattern generalizes to multiple goals by extending the check:
+In our framework, goals are first-class. The `goal/1` predicate stores the current objective, and `run_agent/1` checks it at the top of every loop iteration. When `goal(G), belief(G)` succeeds, the agent stops, the goal is achieved. This pattern generalizes to multiple goals by extending the check:
 
 ```prolog
 all_goals_satisfied :-
     forall(goal(G), belief(G)).
 ```
 
-Goal priorities are also straightforward to add. If goals conflict — say, `save_disk_space` and `keep_logs_verbose` — you order them with a priority argument:
+Goal priorities are also straightforward to add. If goals conflict, say, `save_disk_space` and `keep_logs_verbose`, you order them with a priority argument:
 
 ```prolog
 :- dynamic goal/2.   % goal(Priority, GoalTerm)
@@ -210,9 +210,9 @@ receive_messages(Agent, Messages) :-
     findall(Msg, (retract(message(_, Agent, Msg))), Messages).
 ```
 
-Each agent periodically calls `receive_messages/2` in its perception step, processing messages and updating its beliefs accordingly. Because messages are retracted when read, each is consumed exactly once — a simple but effective protocol.
+Each agent periodically calls `receive_messages/2` in its perception step, processing messages and updating its beliefs accordingly. Because messages are retracted when read, each is consumed exactly once, a simple but effective protocol.
 
-For more sophisticated coordination, agents can use a **blackboard architecture**: a shared data structure (the blackboard) to which any agent can post partial results or hypotheses. Other agents watch the blackboard for data relevant to their expertise. Prolog's assert/retract mechanism implements a blackboard directly — agents assert findings as facts and other agents query those facts in their perception steps.
+For more sophisticated coordination, agents can use a **blackboard architecture**: a shared data structure (the blackboard) to which any agent can post partial results or hypotheses. Other agents watch the blackboard for data relevant to their expertise. Prolog's assert/retract mechanism implements a blackboard directly, agents assert findings as facts and other agents query those facts in their perception steps.
 
 ```prolog
 %% Agent A: researcher
@@ -224,7 +224,7 @@ perceive :-
     ;   true
     ).
 
-%% Agent B: summarizer — watches the blackboard
+%% Agent B: summarizer, watches the blackboard
 perceive :-
     findall(Topic, blackboard(search_done(Topic)), Topics),
     maplist(summarize_and_store, Topics).

@@ -123,7 +123,7 @@ bt_chars([C|Cs], [C|Esc]) :- bt_chars(Cs, Esc).
 
 ### Adding Triples with Deduplication
 
-The `add_triple/3` predicate uses a simple pattern: first check whether the triple already exists, and only `assert` it if it does not. This prevents duplicate entries and is safe to call repeatedly — the predicate always succeeds:
+The `add_triple/3` predicate uses a simple pattern: first check whether the triple already exists, and only `assert` it if it does not. This prevents duplicate entries and is safe to call repeatedly, the predicate always succeeds:
 
 ```prolog
 ?- add_triple(john, works_at, acme).
@@ -132,7 +132,7 @@ The `add_triple/3` predicate uses a simple pattern: first check whether the trip
    length(Results, 1).                  % still just one
 ```
 
-The if-then-else construct `( Condition -> Then ; Else )` is classic Prolog control flow. When `triple(S, P, O)` succeeds, the branch `-> true` simply succeeds without modification. When it fails — meaning the triple is new — the `; assert(triple(S, P, O))` branch fires, adding it to the dynamic database.
+The if-then-else construct `( Condition -> Then ; Else )` is classic Prolog control flow. When `triple(S, P, O)` succeeds, the branch `-> true` simply succeeds without modification. When it fails, meaning the triple is new, the `; assert(triple(S, P, O))` branch fires, adding it to the dynamic database.
 
 ### Querying with Pattern Matching
 
@@ -148,7 +148,7 @@ X = acme.
 ?- query_triples(X, _, Y).              % all triples
 ```
 
-Prolog's built-in backtracking yields every matching fact — no explicit iteration required.
+Prolog's built-in backtracking yields every matching fact, no explicit iteration required.
 
 ### Exporting to RDF and Cypher
 
@@ -175,7 +175,7 @@ CREATE (`john`)-[:`works_at`]->(`acme`)
 CREATE (`acme`)-[:`located_in`]->(`london`)
 ```
 
-These exports make the Prolog knowledge graph interoperable with the wider world of graph databases and Semantic Web tools — a topic we explore further in the Semantic Web chapter.
+These exports make the Prolog knowledge graph interoperable with the wider world of graph databases and Semantic Web tools, a topic we explore further in the Semantic Web chapter.
 
 ### Running the kg_creator Examples
 
@@ -207,7 +207,7 @@ make test
 
 ## Multi-Hop Reasoning Over Knowledge Graphs
 
-While `kg_creator` focuses on building and exporting knowledge graphs, the **kg_query** project focuses on *reasoning* over them — finding paths, checking connectivity, and discovering what is reachable from a given entity. This is where Prolog truly shines: recursive path finding with backtracking is trivial to express declaratively, yet would require significant effort in a general-purpose language.
+While `kg_creator` focuses on building and exporting knowledge graphs, the **kg_query** project focuses on *reasoning* over them, finding paths, checking connectivity, and discovering what is reachable from a given entity. This is where Prolog truly shines: recursive path finding with backtracking is trivial to express declaratively, yet would require significant effort in a general-purpose language.
 
 The **kg_query** project uses a richer schema with typed entities and named relations. The file **kg_query/prolog/kg_reason.pl** implements the reasoning engine:
 
@@ -262,7 +262,7 @@ connected(A, B) :- path(A, B, _).
 connected(A, B) :- path(B, A, _).
 ```
 
-The `reachable/2` predicate finds *all* entities reachable from a given starting point, using bidirectional breadth-first search — it expands forward along outgoing edges and backward along incoming edges:
+The `reachable/2` predicate finds *all* entities reachable from a given starting point, using bidirectional breadth-first search, it expands forward along outgoing edges and backward along incoming edges:
 
 ```prolog
 reachable(Entity, Reachable) :-
@@ -272,7 +272,7 @@ reachable(Entity, Reachable) :-
     sort(All, Reachable).
 ```
 
-The BFS implementation uses a queue of nodes to visit, accumulating visited nodes to avoid revisiting. `findall/3` collects all next-step neighbors at each level, which means each BFS "level" is expanded fully before moving to the next — breadth-first rather than depth-first.
+The BFS implementation uses a queue of nodes to visit, accumulating visited nodes to avoid revisiting. `findall/3` collects all next-step neighbors at each level, which means each BFS "level" is expanded fully before moving to the next, breadth-first rather than depth-first.
 
 ### Neighbors, Path Lengths, and Relation Counts
 
@@ -292,7 +292,7 @@ path_length(Start, End, Length) :-
     length(P, Length).
 ```
 
-Note the cut (`!`) in `path_length/3` — once a path is found, we commit to it rather than trying alternatives. This is appropriate when any shortest-or-longer path suffices, and the length of the first found path is returned. The `all_paths/3` predicate, by contrast, uses `findall/3` to collect every cycle-free path.
+Note the cut (`!`) in `path_length/3`, once a path is found, we commit to it rather than trying alternatives. This is appropriate when any shortest-or-longer path suffices, and the length of the first found path is returned. The `all_paths/3` predicate, by contrast, uses `findall/3` to collect every cycle-free path.
 
 {width: "80%"}
 ![Architecture diagram for the Knowledge Graph Query example](FIG_kg_query.jpg)
@@ -379,7 +379,7 @@ test(field_subfield_chain, [nondet]) :-
 
 ## Generating RDF and Neo4j Cypher Data from Prolog
 
-The `export_rdf/1` and `export_cypher/1` predicates in **kg_creator** bridge Prolog's knowledge graph to the wider ecosystem of graph tools. N-Triples RDF is the simplest RDF serialization — each line is a triple formatted as `<subject> <predicate> "object" .`. This format can be loaded by any RDF-compliant tool: Apache Jena, RDF4J, or SWI-Prolog's own semweb library (covered in the Semantic Web chapter).
+The `export_rdf/1` and `export_cypher/1` predicates in **kg_creator** bridge Prolog's knowledge graph to the wider ecosystem of graph tools. N-Triples RDF is the simplest RDF serialization, each line is a triple formatted as `<subject> <predicate> "object" .`. This format can be loaded by any RDF-compliant tool: Apache Jena, RDF4J, or SWI-Prolog's own semweb library (covered in the Semantic Web chapter).
 
 Cypher is Neo4j's query language, and the `CREATE` statements generated by `export_cypher/1` can be pasted directly into a Neo4j browser session to reconstruct the graph in a production graph database.
 

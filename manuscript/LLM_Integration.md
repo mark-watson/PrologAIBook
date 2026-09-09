@@ -1,6 +1,6 @@
 # LLM Integration
 
-Large Language Models are transforming AI, and Prolog can serve as a powerful orchestration layer — combining LLM-generated text with symbolic reasoning, structured knowledge, and explainable inference.
+Large Language Models are transforming AI, and Prolog can serve as a powerful orchestration layer, combining LLM-generated text with symbolic reasoning, structured knowledge, and explainable inference.
 
 ## Calling LLM APIs from Prolog
 
@@ -10,7 +10,7 @@ SWI-Prolog's HTTP client libraries (covered in the Web Clients chapter) make it 
 3. Send an HTTP POST request with `http_post/4`, which automatically serialises the payload and deserialises the JSON response into a SWI-Prolog dict.
 4. Extract the generated text from the response dict using dot notation.
 
-Because `http_post/4` is synchronous, the call blocks until the model returns its full response. For streaming responses (where tokens arrive incrementally), you would use `http_open/3` with a read loop — but for most Prolog applications, the simpler synchronous approach is sufficient.
+Because `http_post/4` is synchronous, the call blocks until the model returns its full response. For streaming responses (where tokens arrive incrementally), you would use `http_open/3` with a read loop, but for most Prolog applications, the simpler synchronous approach is sufficient.
 
 {width: "80%"}
 ![Architecture diagram for the LLM Client example](FIG_llm_client.jpg)
@@ -267,10 +267,10 @@ Type = "city".
 The most powerful pattern in this book is the **hybrid AI pipeline**: use an LLM for tasks it excels at (natural language understanding, summarisation, information extraction) and use Prolog for tasks where it excels (structured reasoning, constraint satisfaction, explainable inference). Each system handles what it does best.
 
 A typical hybrid pipeline has four stages:
-1. **LLM Extraction** — The LLM processes unstructured text and returns structured JSON (entities, relations, classifications).
-2. **Fact Assertion** — The JSON is parsed and asserted into Prolog's dynamic database as facts.
-3. **Symbolic Reasoning** — Prolog rules fire over the asserted facts, producing conclusions, classifications, or recommendations.
-4. **Explanation** — Prolog's proof-tree facilities (covered in the Reasoning chapter) explain *why* each conclusion was reached — something LLMs cannot reliably do.
+1. **LLM Extraction**: The LLM processes unstructured text and returns structured JSON (entities, relations, classifications).
+2. **Fact Assertion**: The JSON is parsed and asserted into Prolog's dynamic database as facts.
+3. **Symbolic Reasoning**: Prolog rules fire over the asserted facts, producing conclusions, classifications, or recommendations.
+4. **Explanation**: Prolog's proof-tree facilities (covered in the Reasoning chapter) explain *why* each conclusion was reached, something LLMs cannot reliably do.
 
 {width: "80%"}
 ![Architecture diagram for the Hybrid Pipeline example](FIG_hybrid_pipeline.jpg)

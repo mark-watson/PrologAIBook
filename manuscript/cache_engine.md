@@ -1,6 +1,6 @@
 # Cache Engine
 
-Caching LLM responses is a practical optimization that reduces API costs, lowers latency for repeated queries, and makes your applications more resilient to network interruptions. The cache engine presented here stores text responses in a local SQLite database, supports keyword-based retrieval, and automatically cleans up stale entries — a pattern directly applicable to any Prolog system that calls external LLM APIs.
+Caching LLM responses is a practical optimization that reduces API costs, lowers latency for repeated queries, and makes your applications more resilient to network interruptions. The cache engine presented here stores text responses in a local SQLite database, supports keyword-based retrieval, and automatically cleans up stale entries, a pattern directly applicable to any Prolog system that calls external LLM APIs.
 
 This chapter is a SWI-Prolog port of the Common Lisp `cache-engine` library. The Prolog version uses the `prosqlite` pack for native SQLite access and exposes a clean, modular API.
 
@@ -16,12 +16,12 @@ The cache engine is built around a single SQLite table:
 
 The API provides six core operations:
 
-- **cache_open/2** — Create or open a SQLite database file
-- **cache_add/2** — Insert a text string into the cache
-- **cache_lookup/3,4** — Retrieve matching entries by keyword search
-- **cache_count/2** — Count total cached items
-- **cache_clear/1** — Remove all entries
-- **cache_clear_older_one_week/1** — Remove entries older than 7 days
+- **cache_open/2**: Create or open a SQLite database file
+- **cache_add/2**: Insert a text string into the cache
+- **cache_lookup/3,4**: Retrieve matching entries by keyword search
+- **cache_count/2**: Count total cached items
+- **cache_clear/1**: Remove all entries
+- **cache_clear_older_one_week/1**: Remove entries older than 7 days
 
 ## Implementation
 
@@ -116,8 +116,8 @@ cache_lookup(Connection, SearchTerms, Results) :-
 
 %% cache_lookup(+Connection, +SearchTerms, -Results, +Options)
 %% Options: limit(N), match_any(true/false)
-%%   limit(N)         — max number of results (default 3)
-%%   match_any(true)  — OR matching (default: AND)
+%%   limit(N)         max number of results (default 3)
+%%   match_any(true)  OR matching (default: AND)
 cache_lookup(Connection, [], Results, Options) :-
     option_limit(Options, Limit),
     format(atom(SQL),
@@ -274,11 +274,11 @@ Clean up old entries and close:
 
 ## Key Design Decisions
 
-**Why prosqlite?** SWI-Prolog does not ship with a built-in SQLite interface, but the `prosqlite` pack provides native C bindings to `libsqlite3`. This gives us proper SQL semantics, ACID transactions, and the full power of SQLite's query language — including `LIKE` for fuzzy matching and `datetime()` functions for timestamp arithmetic.
+**Why prosqlite?** SWI-Prolog does not ship with a built-in SQLite interface, but the `prosqlite` pack provides native C bindings to `libsqlite3`. This gives us proper SQL semantics, ACID transactions, and the full power of SQLite's query language, including `LIKE` for fuzzy matching and `datetime()` functions for timestamp arithmetic.
 
 **SQL construction vs. parameterized queries.** The `prosqlite` pack does not support parameterized queries (prepared statements with `?` placeholders). We construct SQL strings using `format/2` and protect them with two escapers: `escape_sql/2` escapes single quotes, backslashes, and NUL characters for plain values, and `escape_sql_like/2` additionally escapes the LIKE wildcards `%` and `_` for search terms inside `LIKE` patterns. For a cache engine handling LLM responses, this is sufficient and keeps the code straightforward.
 
-**Connection management.** Each call to `cache_open/2` generates a unique connection alias via `gensym/2`. This allows multiple independent caches to be open simultaneously — useful when different subsystems (e.g., an LLM client and a web scraper) maintain separate caches.
+**Connection management.** Each call to `cache_open/2` generates a unique connection alias via `gensym/2`. This allows multiple independent caches to be open simultaneously, useful when different subsystems (e.g., an LLM client and a web scraper) maintain separate caches.
 
 ## Practical Applications
 

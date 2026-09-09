@@ -19,9 +19,9 @@ The REPL supports six commands:
 
 The architecture layers three components:
 
-1. **Keyword extraction** — Splits user queries into meaningful terms by removing stop words, punctuation, and short tokens.
-2. **Cache context builder** — Uses extracted keywords to retrieve relevant cached entries via the `cache_engine` library, then prepends them as context to the Gemini prompt.
-3. **Gemini API client** — Sends prompts to the Google Generative Language API, with optional Google Search grounding via the `tools` parameter.
+1. **Keyword extraction**: Splits user queries into meaningful terms by removing stop words, punctuation, and short tokens.
+2. **Cache context builder**: Uses extracted keywords to retrieve relevant cached entries via the `cache_engine` library, then prepends them as context to the Gemini prompt.
+3. **Gemini API client**: Sends prompts to the Google Generative Language API, with optional Google Search grounding via the `tools` parameter.
 
 ## Keyword Extraction
 
@@ -40,7 +40,7 @@ Before looking up the cache, we need to identify meaningful terms in the user's 
 :- use_module(library(readutil)).
 ~~~~~~~~
 
-Stop words are declared as unit clauses — a natural Prolog idiom that makes lookups efficient via first-argument indexing (partial list, edited for brevity):
+Stop words are declared as unit clauses, a natural Prolog idiom that makes lookups efficient via first-argument indexing (partial list, edited for brevity):
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
@@ -116,7 +116,7 @@ format_context_items([Item|Rest], Formatted) :-
     format(atom(Formatted), "- ~w\n~w", [Item, RestFmt]).
 ~~~~~~~~
 
-The key design decision is using `match_any(true)` — OR matching across keywords. This casts a wider net, retrieving any cached entry that mentions at least one of the query's keywords, rather than requiring all terms to match.
+The key design decision is using `match_any(true)`, OR matching across keywords. This casts a wider net, retrieving any cached entry that mentions at least one of the query's keywords, rather than requiring all terms to match.
 
 ## Gemini API Integration
 
@@ -156,7 +156,7 @@ build_payload(Prompt, true, Payload) :-
     ]).
 ~~~~~~~~
 
-Notice how Prolog's multi-clause predicates eliminate the need for `if/else` branching — the two `build_payload/3` clauses pattern-match on the `SearchP` argument.
+Notice how Prolog's multi-clause predicates eliminate the need for `if/else` branching, the two `build_payload/3` clauses pattern-match on the `SearchP` argument.
 
 ## The REPL Loop
 
@@ -185,7 +185,7 @@ repl_iteration :-
     ).
 ~~~~~~~~
 
-Each command is a separate `process_input/1` clause. This is cleaner than the Common Lisp version's `cond` block — each clause is self-contained and the cut (`!`) prevents fallthrough:
+Each command is a separate `process_input/1` clause. This is cleaner than the Common Lisp version's `cond` block, each clause is self-contained and the cut (`!`) prevents fallthrough:
 
 {lang="prolog",linenos=off}
 ~~~~~~~~
@@ -196,7 +196,7 @@ process_input(exit) :- !, format("Goodbye.~n"), halt(0).
 process_input(h)    :- !, print_help.
 process_input(help) :- !, print_help.
 
-% ">" — cache last answer
+% ">", cache last answer
 process_input('>') :- !,
     ( last_answer(Ans) ->
         cache_connection(Conn),
@@ -207,7 +207,7 @@ process_input('>') :- !,
         format("  [No answer to cache yet]~n")
     ).
 
-% "!" alone — clear old cache entries
+% "!" alone, clear old cache entries
 process_input('!') :- !,
     cache_connection(Conn),
     cache_engine:cache_count(Conn, Before),
@@ -260,7 +260,7 @@ Goodbye.
   [Cache closed]
 ~~~~~~~~
 
-Notice in the second query, the cached weather information was automatically included as context — the keyword "Sedona" matched the cached entry, giving Gemini the local conditions without needing another search.
+Notice in the second query, the cached weather information was automatically included as context, the keyword "Sedona" matched the cached entry, giving Gemini the local conditions without needing another search.
 
 ## Wrap Up
 
@@ -269,7 +269,7 @@ This REPL demonstrates several Prolog strengths applied to a practical tool:
 - **Clause-based dispatch** replaces procedural `switch`/`cond` statements with clean, self-documenting pattern matching.
 - **Higher-order predicates** (`maplist`, `include`) provide the same functional pipeline as Common Lisp's `mapcar` and `remove-if`.
 - **Dynamic predicates** (`last_answer/1`, `cache_connection/1`) provide mutable state where needed, while keeping the rest of the code purely declarative.
-- **Module composition** — the daily_use module imports `cache_engine` for persistence and uses the standard HTTP libraries for API calls, demonstrating how Prolog modules compose cleanly.
+- **Module composition**: the daily_use module imports `cache_engine` for persistence and uses the standard HTTP libraries for API calls, demonstrating how Prolog modules compose cleanly.
 
 ## Optional Practice Problems
 

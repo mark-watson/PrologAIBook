@@ -110,7 +110,7 @@ This editor integrates tightly with the runtime engine, enabling semantic highli
 
 ## The SWI-Prolog Interactive Top Level
 
-The interactive top level—often referred to as the REPL (Read-Eval-Print Loop)—is where you query and test your code.
+The interactive top level, often referred to as the REPL (Read-Eval-Print Loop), is where you query and test your code.
 
 ### Starting and Exiting the REPL
 

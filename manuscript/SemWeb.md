@@ -1,6 +1,6 @@
 # Semantic Web Tools
 
-Prolog's logic-based foundation makes it a natural fit for working with Semantic Web technologies — RDF, RDFS, OWL, and SPARQL. SWI-Prolog provides mature libraries for all of these.
+Prolog's logic-based foundation makes it a natural fit for working with Semantic Web technologies, RDF, RDFS, OWL, and SPARQL. SWI-Prolog provides mature libraries for all of these.
 
 ## Loading and Querying RDF Data
 
