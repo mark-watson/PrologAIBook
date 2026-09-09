@@ -87,24 +87,8 @@ Emacs provides a classic, keyboard-driven environment with first-class support f
 - **Features**: Auto-indentation, syntax coloring, query execution, and the ability to run an interactive sub-process (`M-x run-prolog`) that compiles buffers dynamically.
 - **Configuration**: Add the following setup code to your Emacs init file (`init.el`):
   ```elisp
-  (setq prolog-system 'swi)
+  (setq prolog-system 'swipl)
   ```
-
-### The Built-in SWI-Prolog Editor (PceEmacs)
-
-SWI-Prolog features a built-in GUI text editor based on its native graphical toolkit (XPCE). You can start the editor directly from the REPL shell:
-
-```prolog
-?- emacs.
-```
-
-To edit a specific file directly, run:
-
-```prolog
-?- edit(my_file).
-```
-
-This editor integrates tightly with the runtime engine, enabling semantic highlighting, immediate compilation error feedback, and quick navigation to predicate definitions.
 
 ---
 

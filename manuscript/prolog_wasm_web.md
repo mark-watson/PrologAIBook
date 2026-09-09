@@ -34,8 +34,7 @@ Our advisor is defined by a Prolog database containing wine facts, food pairing 
 
 Here is the code in **source-code/prolog_wasm_web/rules.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 % rules.pl - Wine Recommendation Expert System for WASM
 
 % Database of Wines: wine(Name, Color, Body, Sweetness)
@@ -78,7 +77,7 @@ generate_explanation(Wine, Color, Body, Sweetness, Food, Explanation) :-
     format(string(Explanation), 
            "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.",
            [Food, Color, Wine, Body, Sweetness, Color]).
-~~~~~~~~
+```
 
 The recommendation logic matches the user's food selection with compatible wine colors, verifies matching body and sweetness preferences (using the fallback term `any`), and calls `format/3` to return a customized justification sentence.
 

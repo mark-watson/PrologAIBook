@@ -32,8 +32,7 @@ The core engine uses recursive pattern matching to traverse the tree nodes. We d
 
 Here is the implementation in **source-code/agent_behavior_trees/prolog/behavior_trees.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 :- module(behavior_trees, [
     tick/2,
     define_tree/2
@@ -126,7 +125,7 @@ call_condition(CondName) :-
     user_condition(CondName).
 
 call_action(ActionName, Status) :-
-~~~~~~~~
+```
 
 ---
 
@@ -139,8 +138,7 @@ Now, we use our engine to program a cleaning robot. The robot has a battery leve
 
 Here is the implementation in **source-code/agent_behavior_trees/prolog/robot_agent.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 :- module(robot_agent, [
     run_simulation/1
 ]).
@@ -251,7 +249,7 @@ run_ticks(Current, Max) :-
     format('[BT] Root execution status: ~w~n', [Status]),
     Next is Current + 1,
     run_ticks(Next, Max).
-~~~~~~~~
+```
 
 ---
 

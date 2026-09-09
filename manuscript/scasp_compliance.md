@@ -32,8 +32,7 @@ We will model a corporate travel expense reimbursement policy. Under this policy
 
 Here is the implementation in **source-code/scasp_compliance/compliance_check.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 :- module(compliance_check, [
     eligible_for_reimbursement/1,
     run_compliance_check/1
@@ -93,7 +92,7 @@ run_compliance_check(Person) :-
     ;   format('~w is NOT eligible or compliance check failed.~n',
         [Person])
     ).
-~~~~~~~~
+```
 
 Note how the `#pred` declarations use the `@(Variable)` syntax to map variables to their text representations. The `not` prefix represents default negation, meaning the rule succeeds if no evidence exists to prove the negative case.
 

@@ -34,8 +34,7 @@ The cache engine module uses `prosqlite` for SQLite access. Install it with:
 
 Here is the file **cache_engine/prolog/cache_engine.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 :- module(cache_engine, [
     cache_open/2,
     cache_close/1,
@@ -166,12 +165,11 @@ cache_clear_older_one_week(Connection) :-
         (   print_message(error, cache_engine_error(clear_old(E))),
             fail
         )).
-~~~~~~~~
+```
 
 The helper predicates handle SQL construction and escaping:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 option_limit(Options, Limit) :-
     (   member(limit(Limit), Options)
     ->  (   integer(Limit), Limit > 0
@@ -235,14 +233,13 @@ escape_sql_like_codes([C|Cs], [0'\\, C|Es]) :-
 escape_sql_like_codes([0'\'|Cs], [0'\', 0'\'|Es]) :-
     !, escape_sql_like_codes(Cs, Es).
 escape_sql_like_codes([C|Cs], [C|Es]) :- escape_sql_like_codes(Cs, Es).
-~~~~~~~~
+```
 
 ## Usage Examples
 
 Open a cache, add entries, and look them up:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 ?- cache_open(my_cache, C),
    cache_add(C, 'The quick brown fox jumps over the lazy dog'),
    cache_add(C, 'Common Lisp is powerful'),
@@ -253,24 +250,22 @@ Results = ['The quick brown fox jumps over the lazy dog'].
 
 ?- cache_lookup(C, ['Lisp', powerful], R).
 R = ['Common Lisp is powerful'].
-~~~~~~~~
+```
 
 Use OR matching to broaden the search:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 ?- cache_lookup(C, [fox, database], R, [match_any(true)]).
 R = ['SQLite is a great database',
      'The quick brown fox jumps over the lazy dog'].
-~~~~~~~~
+```
 
 Clean up old entries and close:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 ?- cache_clear_older_one_week(C).
 ?- cache_close(C).
-~~~~~~~~
+```
 
 ## Key Design Decisions
 

@@ -27,8 +27,7 @@ The architecture layers three components:
 
 Before looking up the cache, we need to identify meaningful terms in the user's query. The `extract_keywords/2` predicate handles this pipeline:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 :- module(daily_use, [
     main/0,
     extract_keywords/2,
@@ -38,12 +37,11 @@ Before looking up the cache, we need to identify meaningful terms in the user's 
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_json)).
 :- use_module(library(readutil)).
-~~~~~~~~
+```
 
 Stop words are declared as unit clauses, a natural Prolog idiom that makes lookups efficient via first-argument indexing (partial list, edited for brevity):
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 stop_word(a).
 stop_word(an).
 stop_word(the).
@@ -54,12 +52,11 @@ stop_word(no).
 stop_word(nor). stop_word(so). stop_word(yet).
 stop_word(this). stop_word(that). stop_word(these). stop_word(those).
 stop_word(what). stop_word(which). stop_word(who). stop_word(whom).
-~~~~~~~~
+```
 
 The extraction pipeline downcases, splits, strips punctuation, and filters:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 extract_keywords(Text, Keywords) :-
     downcase_atom(Text, Lower),
     atom_string(Lower, LowerStr),
@@ -83,7 +80,7 @@ meaningful_word(W) :-
     Len > 2,
     atom_string(A, W),
     \+ stop_word(A).
-~~~~~~~~
+```
 
 This approach mirrors the Common Lisp version's `extract-keywords` function, but uses Prolog's `maplist/3` and `include/3` higher-order predicates instead of `mapcar` and `remove-if`.
 
@@ -91,8 +88,7 @@ This approach mirrors the Common Lisp version's `extract-keywords` function, but
 
 The context builder bridges keyword extraction and the cache engine:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 build_context_from_cache(Connection, Query, Context) :-
     extract_keywords(Query, Keywords),
     ( Keywords = [] ->
@@ -114,7 +110,7 @@ format_context_items([], '').
 format_context_items([Item|Rest], Formatted) :-
     format_context_items(Rest, RestFmt),
     format(atom(Formatted), "- ~w\n~w", [Item, RestFmt]).
-~~~~~~~~
+```
 
 The key design decision is using `match_any(true)`, OR matching across keywords. This casts a wider net, retrieving any cached entry that mentions at least one of the query's keywords, rather than requiring all terms to match.
 
@@ -122,8 +118,7 @@ The key design decision is using `match_any(true)`, OR matching across keywords.
 
 The module calls the Gemini API directly using SWI-Prolog's HTTP libraries, following the same pattern as the `llm_client` project:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 call_gemini_api(Prompt, SearchP, Response) :-
     getenv('GOOGLE_API_KEY', ApiKey),
     model(Model),
@@ -133,12 +128,11 @@ call_gemini_api(Prompt, SearchP, Response) :-
     build_payload(Prompt, SearchP, Payload),
     http_post(URL, json(Payload), Result, [json_object(dict)]),
     extract_text_response(Result, Response).
-~~~~~~~~
+```
 
 When search grounding is enabled (`!<query>`), the payload includes a `tools` array with `google_search`:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 build_payload(Prompt, false, Payload) :-
     Payload = json([
         contents=[json([
@@ -154,7 +148,7 @@ build_payload(Prompt, true, Payload) :-
             google_search=json([])
         ])]
     ]).
-~~~~~~~~
+```
 
 Notice how Prolog's multi-clause predicates eliminate the need for `if/else` branching, the two `build_payload/3` clauses pattern-match on the `SearchP` argument.
 
@@ -162,8 +156,7 @@ Notice how Prolog's multi-clause predicates eliminate the need for `if/else` bra
 
 The REPL reads lines from standard input and dispatches on the input pattern using Prolog's clause-based dispatch:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 repl_loop :-
     format("~n  Gemini Daily-Use REPL  (type 'h' for help)~n~n"),
     repl_iteration.
@@ -183,12 +176,11 @@ repl_iteration :-
         process_input(Trimmed),
         repl_iteration
     ).
-~~~~~~~~
+```
 
 Each command is a separate `process_input/1` clause. This is cleaner than the Common Lisp version's `cond` block, each clause is self-contained and the cut (`!`) prevents fallthrough:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 process_input(quit) :- !, format("Goodbye.~n"), halt(0).
 process_input(exit) :- !, format("Goodbye.~n"), halt(0).
 
@@ -216,7 +208,7 @@ process_input('!') :- !,
     Cleared is Before - After,
     format("  [Cleared ~w old entries. ~w items remain]~n", [Cleared,
         After]).
-~~~~~~~~
+```
 
 ## Running the REPL
 

@@ -120,8 +120,7 @@ Pearson r(test-result, disease) = 0.1319
 
 The core data structure is a normalised list of `Hypothesis-Probability` pairs. The constructor ensures priors sum to one:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 make_bayes_model(PriorPairs, Model) :-
     maplist(pair_value, PriorPairs, Priors),
     sumlist(Priors, Total),
@@ -135,7 +134,7 @@ pair_value(_-V, V).
 
 normalise_pair(Total, H-P, H-NP) :-
     NP is P / Total.
-~~~~~~~~
+```
 
 Prolog's `-` operator creates pairs naturally: `disease-0.001` is a term `-(disease, 0.001)`. The `maplist/normalise_pair` pattern applies partial application, `normalise_pair(Total)` is a goal with one argument already bound, and `maplist` supplies the remaining two.
 
@@ -143,8 +142,7 @@ Prolog's `-` operator creates pairs naturally: `disease-0.001` is a term `-(dise
 
 The `update/4` predicate applies Bayes' Theorem. It uses Prolog's `meta_predicate` facility to accept a likelihood predicate as a higher-order argument:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 :- meta_predicate update(+, +, 2, -).
 
 %% update(+Model, +Evidence, :LikelihoodPred, -Updated)
@@ -167,7 +165,7 @@ update(Model, _Evidence, LikelihoodPred, Updated) :-
 unnormalised_posterior(LikelihoodPred, H-Prior, H-UPost) :-
     call(LikelihoodPred, H, Lik),
     UPost is Lik * Prior.
-~~~~~~~~
+```
 
 The `call/3` invocation is the key: `call(LikelihoodPred, H, Lik)` calls the likelihood predicate with the hypothesis and binds the likelihood value. This is Prolog's idiomatic higher-order pattern, the `meta_predicate` declaration ensures proper module resolution when the likelihood predicate is defined in a different module.
 
@@ -177,8 +175,7 @@ The `Marginal` variable is the denominator in Bayes' Theorem, dividing by it giv
 
 The worked example makes Bayes' Theorem concrete. A rare disease affects 0.1 % of the population. A screening test has 99 % sensitivity and a 5 % false-positive rate. A patient tests positive, what is the probability they are actually sick?
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 prevalence(0.001).
 sensitivity(0.99).
 false_positive_rate(0.05).
@@ -192,7 +189,7 @@ run_bayesian_analysis :-
     make_bayes_model([disease-Prev, healthy-Healthy], Prior),
     update(Prior, positive_test, likelihood, Updated),
     ...
-~~~~~~~~
+```
 
 The likelihood predicate is a clean two-clause definition, one clause per hypothesis. Prolog's pattern matching dispatches to the correct clause automatically. Passing `likelihood` (the predicate name) to `update/4` lets the Bayes engine call it via `call/3` for each hypothesis.
 
@@ -202,8 +199,7 @@ The answer is approximately **1.9 %**. Despite 99 % sensitivity, the disease is 
 
 The example also generates a synthetic population and computes the Pearson correlation between test results and disease status:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 generate_synthetic_population(N, Tests, Diagnoses) :-
     prevalence(Prev), sensitivity(Sens), false_positive_rate(FPR),
     length(Tests, N), length(Diagnoses, N),
@@ -215,7 +211,7 @@ simulate_individual(Prev, Sens, FPR, Test, Diag) :-
     ->  Diag = 1.0, random(R2), (R2 < Sens -> Test = 1.0 ; Test = 0.0)
     ;   Diag = 0.0, random(R3), (R3 < FPR  -> Test = 1.0 ; Test = 0.0)
     ).
-~~~~~~~~
+```
 
 The Pearson-r is positive but modest (~0.13). This illustrates a crucial point: a statistically real association does not translate into reliable individual prediction. You need Bayesian reasoning with the base rate for that.
 
@@ -223,8 +219,7 @@ The Pearson-r is positive but modest (~0.13). This illustrates a crucial point: 
 
 The Pearson correlation coefficient measures linear association. The implementation uses Prolog's `maplist` for the element-wise cross-deviation products:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 pearson_r(Xs, Ys, R) :-
     length(Xs, N),
     length(Ys, N),   % assert equal length
@@ -241,7 +236,7 @@ pearson_r(Xs, Ys, R) :-
 
 cross_dev(MX, MY, X, Y, P) :-
     P is (X - MX) * (Y - MY).
-~~~~~~~~
+```
 
 The Spearman rank correlation converts values to ranks (handling ties by averaging) and then computes Pearson-r on those ranks. This makes it robust to outliers and non-linear but monotonic relationships.
 
@@ -285,8 +280,7 @@ The deepest fault-line in probability runs between two camps that disagree on wh
 
 The normal CDF approximation is the most mathematically dense piece:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 phi_approx(Z, CDF) :-
     P  = 0.2316419,
     B1 = 0.319381530,
@@ -306,12 +300,11 @@ phi_approx(Z, CDF) :-
     ->  CDF = CDF0
     ;   CDF is 1.0 - CDF0
     ).
-~~~~~~~~
+```
 
 The Wilson score confidence interval is more accurate than the simple Wald interval for extreme proportions:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 confidence_interval_proportion(Successes, N, Confidence, result(Lower,
     Upper)) :-
     NF is float(N),
@@ -324,7 +317,7 @@ confidence_interval_proportion(Successes, N, Confidence, result(Lower,
         Denom,
     Lower is max(0.0, Centre - Margin),
     Upper is min(1.0, Centre + Margin).
-~~~~~~~~
+```
 
 ### Worked Example, Frequentist Medical Screening
 

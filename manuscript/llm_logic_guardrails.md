@@ -33,8 +33,7 @@ We define the constraints using a Prolog module that parses the JSON string into
 
 Here is the implementation in **source-code/llm_logic_guardrails/prolog/guardrails.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 :- module(guardrails, [
     validate_portfolio_json/2
 ]).
@@ -170,7 +169,7 @@ get_allocations(Dict, Stocks, Bonds, Crypto, Cash) :-
     Bonds = Allocations.get(bonds, 0),
     Crypto = Allocations.get(crypto, 0),
     Cash = Allocations.get(cash, 0).
-~~~~~~~~
+```
 
 
 

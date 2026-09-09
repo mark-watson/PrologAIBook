@@ -34,8 +34,7 @@ We define basic parental relations and genders.
 
 Here is the code in **source-code/inductive_logic_popper/bk.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 parent(pam, bob).
 parent(tom, bob).
 parent(tom, liz).
@@ -49,15 +48,14 @@ female(pat).
 female(ann).
 male(tom).
 male(bob).
-~~~~~~~~
+```
 
 ### 2. Positive & Negative Examples
 We supply examples of who is and is not a grandparent.
 
 Here is the code in **source-code/inductive_logic_popper/exs.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 pos(grandparent(pam, ann)).
 pos(grandparent(pam, pat)).
 pos(grandparent(tom, ann)).
@@ -68,17 +66,16 @@ neg(grandparent(pam, bob)).
 neg(grandparent(tom, liz)).
 neg(grandparent(bob, pat)).
 neg(grandparent(ann, jim)).
-~~~~~~~~
+```
 
 ### 3. Search Bias Configuration
 To keep the search space finite, we specify the target predicate (the head) and the helper predicates (the body) that Popper is allowed to use to construct candidate rules.
 
 Here is the code in **source-code/inductive_logic_popper/bias.pl**:
 
-{lang="prolog",linenos=off}
-~~~~~~~~
+```prolog
 head_pred(grandparent, 2).
-~~~~~~~~
+```
 
 ---
 
