@@ -89,8 +89,7 @@ The JavaScript layer manages the lifecycle of the WASM engine: downloading the l
 
 Here is the implementation in **source-code/prolog_wasm_web/app.js**:
 
-{lang="javascript",linenos=off}
-~~~~~~~~
+```javascript
 // app.js - SipLogic application to load SWI-Prolog WASM and query recommendations
 
 const SWIPL_WASM_VERSION = '8.1.2';
@@ -254,7 +253,7 @@ function runRecommendation() {
         // ... then render each recommendation with createElement and
         // ... textContent rather than innerHTML. See the complete listing
         // ... in this book's GitHub repository.
-~~~~~~~~
+```
 
 The CDN dependency is pinned to a specific version (`8.1.2`) instead of `@latest`. This prevents supply-chain drift and makes the page reproducible. User selections are validated against the `ALLOWED` whitelist and escaped with `pq()` before they enter the Prolog query string, which prevents query injection. All DOM rendering uses `createElement` and `textContent` rather than `innerHTML`, so Prolog-derived strings cannot inject markup. Consult and query failures are surfaced in the UI by checking `result.error` on the consult result and on every query step.
 
