@@ -13,15 +13,17 @@ The simplest meta-interpreter — sometimes called the "vanilla" meta-interprete
 
 The key built-in predicate is `clause(Head, Body)`, which retrieves the clauses of a predicate from the program database. Given a goal term `Head`, `clause/2` nondeterministically returns each matching clause, binding `Body` to the clause body (or `true` if it's a fact). On backtracking, it returns the next clause. This is the reflective mechanism that lets a meta-interpreter "see" the program it's interpreting.
 
-The vanilla meta-interpreter uses exactly three clauses, corresponding to the three kinds of goals Prolog encounters:
+The vanilla meta-interpreter uses exactly four clauses, corresponding to the four kinds of goals Prolog encounters:
 
 1. **The goal `true`**: always succeeds. The meta-interpreter handles this as a base case with a cut to prevent backtracking into other clauses.
 
 2. **A conjunction `(A, B)`**: the meta-interpreter decomposes it, solving `A` first (which may bind variables), then solving `B` in the resulting environment. The cut ensures this is recognized before the general goal clause.
 
-3. **Any other goal**: the meta-interpreter looks up matching clauses with `clause/2`. For each matching clause body, it recursively interprets the body. If no clauses match, the goal simply fails; if multiple clauses match, Prolog's native backtracking explores each in turn.
+3. **A built-in predicate**: goals like `is/2` or `member/2` are detected with `predicate_property(Mod:Goal, built_in)` and executed directly with `call/1`. This is essential because built-ins have no clauses for `clause/2` to look up.
 
-This three-clause structure is the template from which all other meta-interpreters are derived. Every extension we build (proof trees, depth bounds, uncertainty propagation, custom search) starts by modifying one or more of these clauses.
+4. **Any other goal**: the meta-interpreter looks up matching clauses with `clause/2`. For each matching clause body, it recursively interprets the body. If no clauses match, the goal simply fails; if multiple clauses match, Prolog's native backtracking explores each in turn.
+
+This four-clause structure is the template from which all other meta-interpreters are derived. Every extension we build (proof trees, depth bounds, uncertainty propagation, custom search) starts by modifying one or more of these clauses.
 
 The **meta_interp** project provides both a vanilla and bounded meta-interpreter. Here is the file **meta_interp/prolog/vanilla.pl**:
 
@@ -41,6 +43,10 @@ mi_solve(Goal) :- mi_solve(user, Goal).
 mi_solve(_, true) :- !.
 mi_solve(Mod, (A, B)) :- !, mi_solve(Mod, A), mi_solve(Mod, B).
 mi_solve(Mod, Goal) :-
+    predicate_property(Mod:Goal, built_in),
+    !,
+    call(Mod:Goal).
+mi_solve(Mod, Goal) :-
     clause(Mod:Goal, Body),
     mi_solve(Mod, Body).
 
@@ -53,10 +59,16 @@ mi_solve_proof(_, true, true) :- !.
 mi_solve_proof(Mod, (A, B), (PA, PB)) :- !,
     mi_solve_proof(Mod, A, PA),
     mi_solve_proof(Mod, B, PB).
+mi_solve_proof(Mod, Goal, Goal-builtin) :-
+    predicate_property(Mod:Goal, built_in),
+    !,
+    call(Mod:Goal).
 mi_solve_proof(Mod, Goal, Goal-Proof) :-
+    clause(Mod:Goal, Body),
+    mi_solve_proof(Mod, Body, Proof).
 ```
 
-Notice the module-aware variants (`mi_solve/2` and `mi_solve_proof/3`). By qualifying the `clause/2` lookup with a module prefix (`Mod:Goal`), the meta-interpreter can operate over predicates defined in any module, not just the one it's loaded into. This is essential for building reusable reasoning tools that work across different knowledge bases. The proof-tree variant (`mi_solve_proof`) returns a nested term rather than just succeeding or failing: a preview of the explanation capabilities we'll explore next.
+Notice the module-aware variants (`mi_solve/2` and `mi_solve_proof/3`). By qualifying the `clause/2` lookup with a module prefix (`Mod:Goal`), the meta-interpreter can operate over predicates defined in any module, not just the one it's loaded into. This is essential for building reusable reasoning tools that work across different knowledge bases. The proof-tree variant (`mi_solve_proof`) returns a nested term rather than just succeeding or failing: a preview of the explanation capabilities we'll explore next. Built-in goals are recorded as `Goal-builtin` proof nodes.
 
 ## Adding Proof Trees
 
@@ -132,7 +144,7 @@ print_proof(node(Goal, Children), Indent) :-
 
 One subtlety that emerges when building proof trees is the treatment of built-in predicates. When `prove_with_tree` encounters a goal like `X \= Y` or `\+ sibling(X, Y)`, it cannot use `clause/2` to look up a body — these are system predicates with no user-accessible clause definitions. Attempting `clause/2` on a built-in raises a permission error. The original proof tree code handled only user-defined goals and `true`, which worked for simple examples but broke as soon as predicates like `sibling/2` (which uses `\=`) or `cousin/2` (which uses `\+`) appeared.
 
-The updated version adds explicit clauses for `\+/1` (negation-as-failure) and `\=/2` (not unifiable). Each is treated as a leaf node in the tree, with the built-in executed directly via `call/1`. The leaf carries the original goal term — so when pretty-printed, you see entries like `✓ ann\=bob` and `✓ \+sibling(carol,emma)`, making the reasoning steps visible even though they don't decompose further.
+The updated version adds explicit clauses for `\+/1` (negation-as-failure) and `\=/2` (not unifiable). Each is treated as a leaf node in the tree, with the built-in executed directly via `call/1`. The leaf carries the original goal term, so when pretty-printed, you see entries like `✓ ann\=bob` and `✓ \+sibling(carol,emma)`, making the reasoning steps visible even though they don't decompose further. There is an asymmetry between the two projects worth noting: the vanilla meta-interpreter represents any built-in as a `Goal-builtin` proof node, while `proof_tree.pl` handles `\+/1` and `\=/2` specially as leaf nodes.
 
 ### Proof Trees in Action
 
@@ -367,7 +379,7 @@ A particularly elegant use is **declarative debugging**, also known as algorithm
 
 ## Summary
 
-Meta-interpreters transform Prolog from a logic programming language into a *programmable logic programming language*. Starting from the three-clause vanilla interpreter, we can add proof trees for explainability, depth bounds for safety, certainty propagation for uncertainty reasoning, custom queues for alternative search strategies, and selective instrumentation for debugging — all without changing the underlying knowledge base. Each extension is a few lines of code that composes cleanly with the others.
+Meta-interpreters transform Prolog from a logic programming language into a *programmable logic programming language*. Starting from the four-clause vanilla interpreter, we can add proof trees for explainability, depth bounds for safety, certainty propagation for uncertainty reasoning, custom queues for alternative search strategies, and selective instrumentation for debugging — all without changing the underlying knowledge base. Each extension is a few lines of code that composes cleanly with the others.
 
 The pattern is simple, but the implications are profound. When your inference engine is itself a program you can read, modify, and extend, the boundary between "using" a reasoning system and "building" one disappears. This chapter's companion code — the `meta_interp` and `proof_trees` projects — provides runnable starting points for each pattern discussed here.
 

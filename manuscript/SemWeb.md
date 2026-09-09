@@ -40,33 +40,54 @@ The **rdf_explorer** project wraps SWI-Prolog's semweb library. Here is the comp
     load_rdf_file/1,
     query_rdf/3,
     list_subjects/0,
-    describe_resource/1
+    describe_resource/1,
+    subjects/1,
+    triples_of/2
 ]).
 
 :- use_module(library(semweb/rdf_db)).
-:- use_module(library(semweb/rdfs)).
 :- use_module(library(semweb/turtle)).
 
 %% load_rdf_file(+FilePath) - Load RDF from Turtle or RDF/XML file
+%% Relative paths are resolved against the calling source file's
+%% directory when possible, so tests/examples are CWD-independent.
 load_rdf_file(FilePath) :-
-    rdf_load(FilePath).
+    (   absolute_file_name(FilePath, Abs, [access(read)])
+    ->  true
+    ;   prolog_load_context(source, Source),
+        file_directory_name(Source, Dir),
+        atomic_list_concat([Dir, '/', FilePath], Candidate),
+        absolute_file_name(Candidate, Abs, [access(read)])
+    ),
+    rdf_load(Abs).
 
 %% query_rdf(?S, ?P, ?O) - Query the RDF triplestore
 query_rdf(S, P, O) :- rdf(S, P, O).
 
+%% subjects(-Subjects) - Return the sorted list of unique subjects
+subjects(Subjects) :-
+    setof(S, P^O^rdf(S, P, O), Subjects).
+
+%% triples_of(+URI, -Triples) - Return P-O pairs for a subject
+triples_of(URI, Triples) :-
+    findall(P-O, rdf(URI, P, O), Triples).
+
 %% list_subjects - Print all unique subjects
 list_subjects :-
-    setof(S, P^O^rdf(S, P, O), Subjects),
+    subjects(Subjects),
     forall(member(S, Subjects), format("  ~w~n", [S])).
 
 %% describe_resource(+URI) - Print all triples for a given subject
 describe_resource(URI) :-
     format("Describing: ~w~n", [URI]),
+    triples_of(URI, Triples),
     forall(
-        rdf(URI, P, O),
+        member(P-O, Triples),
         format("  ~w -> ~w~n", [P, O])
     ).
 ```
+
+`subjects/1` and `triples_of/2` return data; `list_subjects/0` and `describe_resource/1` print it.
 
 ## Querying Remote SPARQL Endpoints
 
@@ -83,23 +104,66 @@ The **sparql_client** project provides convenient wrappers for sending queries. 
 %% sparql.pl - SPARQL client for querying remote endpoints
 :- module(sparql, [
     sparql_query_dbpedia/2,
-    sparql_query_wikidata/2,
-    sparql_query/3
+    wikidata_query/2,
+    sparql_query/3,
+    sparql_literal/2,
+    sparql_iri/2
 ]).
 
-:- use_module(library(semweb/sparql_client)).
+:- use_module(library(semweb/sparql_client), []).
+:- use_module(library(semweb/sparql_client),
+              [sparql_query/3 as sparql_client_query]).
+
 :- use_module(library(http/http_client)).
+
+%% sparql_query(+Query, -Results, +Options)
+%% Thin wrapper over sparql_client:sparql_query/3 that supplies an
+%% explicit 30-second default timeout (overridable via Options).
+sparql_query(Query, Results, Options) :-
+    (   memberchk(timeout(_), Options)
+    ->  AllOptions = Options
+    ;   AllOptions = [timeout(30)|Options]
+    ),
+    sparql_client_query(Query, Results, AllOptions).
 
 %% sparql_query_dbpedia(+Query, -Results)
 sparql_query_dbpedia(Query, Results) :-
     sparql_query(Query, Results,
                  [host('dbpedia.org'), path('/sparql')]).
 
-%% sparql_query_wikidata(+Query, -Results)
-sparql_query_wikidata(Query, Results) :-
+%% wikidata_query(+Query, -Results)
+%% Query the Wikidata SPARQL endpoint (www.wikidata.org).
+wikidata_query(Query, Results) :-
     sparql_query(Query, Results,
-                 [host('query.wikidata.org'), path('/sparql')]).
+                 [host('www.wikidata.org'), path('/bigdata/namespace/wdq/sparql')]).
+
+%% sparql_literal(+Atom, -Quoted)
+%% Safely quote an atom as a SPARQL string literal: backslashes and
+%% double quotes are escaped, result wrapped in double quotes.
+sparql_literal(Atom, Quoted) :-
+    atom_string(Atom, Str),
+    string_codes(Str, Codes),
+    escape_literal_codes(Codes, EscapedCodes),
+    string_codes(Escaped, EscapedCodes),
+    format(atom(Quoted), '"~w"', [Escaped]).
+
+escape_literal_codes([], []).
+escape_literal_codes([0'\\|Cs], [0'\\,0'\\|Es]) :-
+    !,
+    escape_literal_codes(Cs, Es).
+escape_literal_codes([0'"|Cs], [0'\\,0'"|Es]) :-
+    !,
+    escape_literal_codes(Cs, Es).
+escape_literal_codes([C|Cs], [C|Es]) :-
+    escape_literal_codes(Cs, Es).
+
+%% sparql_iri(+Atom, -Quoted)
+%% Wrap an atom as a SPARQL IRI reference: <...>.
+sparql_iri(Atom, Quoted) :-
+    format(atom(Quoted), '<~w>', [Atom]).
 ```
+
+The earlier name `sparql_query_wikidata/2` is now `wikidata_query/2`. Update reader code that used the old name. The local `sparql_query/3` is a thin wrapper over the library that injects a default `timeout(30)` unless Options already sets one. Two helpers make query construction safer: `sparql_literal/2` escapes backslash and double-quote inside string literals, and `sparql_iri/2` wraps an atom in `<...>` as an IRI reference.
 
 ## RDFS and OWL Reasoning
 

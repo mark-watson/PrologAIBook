@@ -28,6 +28,7 @@ Here is the file **kg_creator/prolog/kg_builder.pl**:
 :- module(kg_builder, [
     add_triple/3,
     query_triples/3,
+    clear_all_triples/0,
     export_rdf/1,
     export_cypher/1
 ]).
@@ -45,30 +46,79 @@ add_triple(S, P, O) :-
 %% query_triples(?S, ?P, ?O)
 query_triples(S, P, O) :- triple(S, P, O).
 
-%% export_rdf(+FileName) - Export triples as N-Triples RDF
+%% clear_all_triples - remove every triple from the store
+clear_all_triples :-
+    retractall(triple(_, _, _)).
+
+%% export_rdf(+FileName) - Export triples as N-Triples RDF.
+%% Object literals are escaped (" and \ and newlines); subject and
+%% predicate must be minimal IRIs (non-empty, no spaces) -
+%% otherwise export_rdf/1 fails with a message.
 export_rdf(FileName) :-
     setup_call_cleanup(
         open(FileName, write, Stream),
         (   forall(
                 triple(S, P, O),
-                format(Stream, '<~w> <~w> "~w" .~n', [S, P, O])
+                (   valid_iri(S), valid_iri(P)
+                ->  escape_literal(O, EscO),
+                    format(Stream, '<~w> <~w> "~w" .~n', [S, P, EscO])
+                ;   format(user_error,
+                        'export_rdf: invalid IRI in triple ~w~n',
+                        [triple(S, P, O)]),
+                    fail
+                )
             )
         ),
         close(Stream)
     ).
 
+valid_iri(A) :-
+    (   atom(A) -> true ; string(A) ),
+    A \= '',
+    \+ sub_atom(A, _, _, _, ' ').
+
+%% escape_literal(+In, -Out) - escape \ " and newline for N-Triples
+escape_literal(In, Out) :-
+    atom_chars(In, Chars),
+    esc_chars(Chars, EscChars),
+    atom_chars(Out, EscChars).
+
+esc_chars([], []).
+esc_chars(['\\'|Cs], ['\\','\\'|Esc]) :- !, esc_chars(Cs, Esc).
+esc_chars(['"'|Cs], ['\\','"'|Esc]) :- !, esc_chars(Cs, Esc).
+esc_chars(['\n'|Cs], ['\\','n'|Esc]) :- !, esc_chars(Cs, Esc).
+esc_chars([C|Cs], [C|Esc]) :- esc_chars(Cs, Esc).
+
 %% export_cypher(+FileName)
-%% Export triples as Neo4j Cypher CREATE statements
+%% Export triples as Neo4j Cypher CREATE statements.  Node names and
+%% relationship types are backtick-quoted; embedded backticks are
+%% escaped by doubling.
 export_cypher(FileName) :-
     setup_call_cleanup(
         open(FileName, write, Stream),
         (   forall(
                 triple(S, P, O),
-                format(Stream, 'CREATE (~w)-[:~w]->(~w)~n', [S, P, O])
+                (   backtick_quote(S, QS),
+                    backtick_quote(P, QP),
+                    backtick_quote(O, QO),
+                    format(Stream, 'CREATE (~w)-[:~w]->(~w)~n',
+                        [QS, QP, QO])
+                )
             )
         ),
         close(Stream)
     ).
+
+backtick_quote(A, Quoted) :-
+    atom_chars(A, Chars),
+    bt_chars(Chars, EscChars),
+    atom_chars(Esc, EscChars),
+    atom_concat('`', Esc, T),
+    atom_concat(T, '`', Quoted).
+
+bt_chars([], []).
+bt_chars(['`'|Cs], ['`','`'|Esc]) :- !, bt_chars(Cs, Esc).
+bt_chars([C|Cs], [C|Esc]) :- bt_chars(Cs, Esc).
 ```
 
 ### Adding Triples with Deduplication
@@ -102,7 +152,7 @@ Prolog's built-in backtracking yields every matching fact — no explicit iterat
 
 ### Exporting to RDF and Cypher
 
-The `export_rdf/1` and `export_cypher/1` predicates demonstrate a common Prolog pattern: `setup_call_cleanup/3` ensures the output file is always closed, even if an error occurs during writing. The `forall/2` meta-predicate iterates over all triples, formatting each one:
+The `export_rdf/1` and `export_cypher/1` predicates demonstrate a common Prolog pattern: `setup_call_cleanup/3` ensures the output file is always closed, even if an error occurs during writing. The `forall/2` meta-predicate iterates over all triples, formatting each one. `clear_all_triples/0` removes every triple from the store. `export_rdf/1` escapes `\`, `\"` and newline inside object literals and fails on a subject or predicate that is not a minimal IRI:
 
 ```prolog
 ?- add_triple(john, works_at, acme),
@@ -121,8 +171,8 @@ The resulting **output.nt** contains N-Triples RDF:
 And **output.cypher** contains Neo4j Cypher statements:
 
 ```
-CREATE (john)-[:works_at]->(acme)
-CREATE (acme)-[:located_in]->(london)
+CREATE (`john`)-[:`works_at`]->(`acme`)
+CREATE (`acme`)-[:`located_in`]->(`london`)
 ```
 
 These exports make the Prolog knowledge graph interoperable with the wider world of graph databases and Semantic Web tools — a topic we explore further in the Semantic Web chapter.
@@ -163,9 +213,13 @@ The **kg_query** project uses a richer schema with typed entities and named rela
 
 ```prolog
 :- module(kg_reason, [
-    entity/2,
-    relation/3,
+    entity/2,          % deprecated raw accessor (kept for back-compat;
+                       % prefer entity_of_type/2)
+    relation/3,        % deprecated raw accessor (prefer relates/3)
+    entity_of_type/2,
+    relates/3,
     path/3,
+    path/4,
     connected/2,
     neighbors/3,
     path_length/3,
@@ -174,9 +228,10 @@ The **kg_query** project uses a richer schema with typed entities and named rela
     relation_count/2
 ]).
 
-:- dynamic entity/2.      % entity(ID, Type)
-:- dynamic relation/3.    % relation(From, Predicate, To)
+:- use_module(sample_data).   % static facts: entity/2, relation/3
 ```
+
+The data is loaded as static facts from **sample_data.pl**, so re-loading never duplicates assertions. The `entity/2` and `relation/3` accessors are kept for backward compatibility but are deprecated; `entity_of_type/2` and `relates/3` are the preferred typed accessors. `path/4` adds a depth limit so the search always terminates on cyclic graphs.
 
 ### Path Finding with Cycle Detection
 
@@ -244,7 +299,7 @@ Note the cut (`!`) in `path_length/3` — once a path is found, we commit to it 
 
 ### The Sample Knowledge Graph
 
-The **kg_query** project includes a rich sample dataset in **kg_query/prolog/sample_data.pl** with over 350 assertions spanning eight entity types:
+The **kg_query** project includes a rich sample dataset in **kg_query/prolog/sample_data.pl** with 374 assertions (132 entities and 242 relations) spanning eight entity types:
 
 | Type | Count | Examples |
 |------|-------|---------|
@@ -263,10 +318,10 @@ This richly connected graph enables interesting multi-hop queries. For example, 
 
 ```prolog
 ?- path(mark, transformer, Path).
-Path = [mark, ai, nlp, transformer]
+Path = [mark, nlp, transformer]
 ```
 
-Mark works on AI, which uses NLP, which uses the transformer concept — a three-hop inference that no single fact expresses, but that emerges from the graph's connectivity.
+Mark works on NLP, which uses the transformer concept: a two-hop inference that no single fact expresses, but that emerges from the graph's connectivity.
 
 ### Running the kg_query Examples
 
@@ -278,7 +333,7 @@ swipl -s load.pl
 ```prolog
 ?- relation(mark, uses, prolog).       % direct relation
 ?- path(mark, swi, Path).               % multi-hop path
-Path = [mark, prolog, swi].
+Path = [mark, ai, prolog, swi].
 
 ?- connected(mark, swi).                % connectivity check
 ?- reachable(mark, Reachable).          % all reachable entities
@@ -318,7 +373,8 @@ test(dialect_chain_clojure_lisp, [nondet]) :-
 test(field_subfield_chain, [nondet]) :-
     path(dl, ai, Path),
     length(Path, N),
-    N >= 2.
+    N >= 2,
+    !.
 ```
 
 ## Generating RDF and Neo4j Cypher Data from Prolog

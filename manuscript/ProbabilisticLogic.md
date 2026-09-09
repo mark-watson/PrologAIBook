@@ -22,17 +22,33 @@ One of the most popular frameworks for combining logic with probability is **Pro
 ```
 This notation declares that `windy` has a `30\%`$ chance of being true, and `cloudy` has a `50\%`$ chance. Under the **distribution semantics** introduced by Taisuke Sato, a ProbLog program defines a probability distribution over a set of possible worlds. In each possible world, every probabilistic fact is independently chosen to be either true (with probability `p`$) or false (with probability `1-p`$). The probability of a query is the sum of the probabilities of all possible worlds in which the query can be logically proven.
 
-While a full ProbLog solver requires compiling queries into Binary Decision Diagrams (BDDs) to handle dependencies and logical cycles, we can implement a lightweight reasoner using certainty factors in pure Prolog. This approach propagates probabilities recursively through backtracking search.
+While a full ProbLog solver requires compiling queries into Binary Decision Diagrams (BDDs) to handle dependencies and logical cycles, we can implement a lightweight reasoner that multiplies probabilities along the inference chain (noisy-AND style propagation) in pure Prolog. This approach propagates probabilities recursively through backtracking search.
 
 The **prob_reasoning** project implements a lightweight probabilistic reasoner. Here is the file **prob_reasoning/prolog/prob_facts.pl**:
 
 ```prolog
-%% prob_facts.pl - Probabilistic reasoning with certainty factors
-%% A lightweight implementation without external pack dependencies
+%% prob_facts.pl - Probabilistic reasoning over annotated facts/rules
+%%
+%% NOTE: the probability arithmetic below is noisy-AND style
+%% multiplication along the inference chain; it is NOT MYCIN-style
+%% certainty-factor combination.
+%%
+%% Product chains are computed in log space (a foldl of the log of each
+%% factor, then exp/1 of the sum) so that deep chains do not underflow
+%% to 0.0 in floating point.
+%%
+%% prob_query/3 carries a visited-goal list so that cyclic rule bases
+%% terminate: a goal already on the current reasoning branch fails
+%% instead of looping forever.
+%%
+%% The dynamic facts and rules are empty at module load; call
+%% load_example_kb/0 (see load.pl) to populate the weather example.
+
 :- module(prob_facts, [
     prob_fact/2,
     prob_rule/3,
-    prob_query/2
+    prob_query/2,
+    load_example_kb/0
 ]).
 
 :- dynamic prob_fact/2.  % prob_fact(Fact, Probability)
@@ -45,47 +61,69 @@ The **prob_reasoning** project implements a lightweight probabilistic reasoner. 
 %% prob_query(+Goal, -Probability)
 %% Query the probability of a goal given known facts and rules
 prob_query(Goal, Prob) :-
+    prob_query(Goal, Prob, []).
+
+%% prob_query(+Goal, -Probability, +Visited) - Visited guards cycles
+prob_query(Goal, _, Visited) :-
+    member(Goal, Visited),
+    !,
+    fail.
+prob_query(Goal, Prob, _) :-
     prob_fact(Goal, Prob), !.
-prob_query(Goal, Prob) :-
+prob_query(Goal, Prob, Visited) :-
     prob_rule(Conditions, Goal, CondProb),
-    maplist(prob_query, Conditions, CondProbs),
-    foldl(mul, CondProbs, 1.0, JointProb),
-    Prob is JointProb * CondProb.
+    maplist(prob_query_([Goal|Visited]), Conditions, CondProbs),
+    foldl(sum_log, CondProbs, 0.0, LogJoint),
+    Prob is exp(LogJoint) * CondProb.
 
-mul(X, Acc, Result) :- Result is Acc * X.
+%% Bridge for maplist so Visited is threaded into recursive calls
+prob_query_(Visited, Goal, Prob) :-
+    prob_query(Goal, Prob, Visited).
 
-%% Example knowledge base (simple)
-:- assert(prob_fact(cloudy, 0.5)).
-:- assert(prob_fact(windy, 0.3)).
-:- assert(prob_rule([cloudy], rain, 0.8)).
-:- assert(prob_rule([rain, windy], storm, 0.7)).
+%% sum_log(+P, +Acc, -Result)
+%% Accumulate log probabilities; P =:= 0.0 contributes -inf.
+sum_log(P, Acc, Result) :-
+    (   P =:= 0.0
+    ->  Result = -inf
+    ;   Result is Acc + log(P)
+    ).
 
-%% Complex weather knowledge base
-%% 5 base facts, 7 rules, 4 levels of reasoning depth
-%% Chain: low_pressure -> unstable_air -> thick_clouds -> severe_storm
-%% -> tornado_risk
-%%        cold_front + warm_front -> frontal_zone -> storm_system ->
-%%        severe_storm -> flash_flood_risk
-%% Probabilities:
-%%   P(unstable_air)      = 0.5*0.8                       = 0.4
-%%   P(thick_clouds)      = 0.5*0.4*0.5                   = 0.1
-%%   P(frontal_zone)      = 0.5*0.5*0.6                   = 0.15
-%%   P(storm_system)      = 0.15*0.5*0.8                  = 0.06
-%%   P(severe_storm)      = 0.1*0.06*0.5                  = 0.003
-%%   P(tornado_risk)      = 0.003*0.6                     = 0.0018
-%%   P(flash_flood_risk)  = 0.003*0.8                     = 0.0024
-:- assert(prob_fact(low_pressure, 0.5)).
-:- assert(prob_fact(high_humidity, 0.5)).
-:- assert(prob_fact(cold_front, 0.5)).
-:- assert(prob_fact(warm_front, 0.5)).
-:- assert(prob_fact(jet_stream_dip, 0.5)).
-:- assert(prob_rule([low_pressure], unstable_air, 0.8)).
-:- assert(prob_rule([high_humidity, unstable_air], thick_clouds, 0.5)).
-:- assert(prob_rule([cold_front, warm_front], frontal_zone, 0.6)).
-:- assert(prob_rule([frontal_zone, jet_stream_dip], storm_system, 0.8)).
-:- assert(prob_rule([thick_clouds, storm_system], severe_storm, 0.5)).
-:- assert(prob_rule([severe_storm], tornado_risk, 0.6)).
-:- assert(prob_rule([severe_storm], flash_flood_risk, 0.8)).
+%% load_example_kb - Assert the weather example knowledge base.
+%% Idempotent: retracts any existing KB first, so it is safe to call
+%% repeatedly (e.g. on reload).
+load_example_kb :-
+    retractall(prob_fact(_, _)),
+    retractall(prob_rule(_, _, _)),
+    assertz(prob_fact(cloudy, 0.5)),
+    assertz(prob_fact(windy, 0.3)),
+    assertz(prob_rule([cloudy], rain, 0.8)),
+    assertz(prob_rule([rain, windy], storm, 0.7)),
+    %% Complex weather knowledge base
+    %% 5 base facts, 7 rules, 4 levels of reasoning depth
+    %% Chain: low_pressure -> unstable_air -> thick_clouds ->
+    %% severe_storm -> tornado_risk
+    %%        cold_front + warm_front -> frontal_zone -> storm_system
+    %%        -> severe_storm -> flash_flood_risk
+    %% Probabilities:
+    %%   P(unstable_air)      = 0.5*0.8                   = 0.4
+    %%   P(thick_clouds)      = 0.5*0.4*0.5               = 0.1
+    %%   P(frontal_zone)      = 0.5*0.5*0.6               = 0.15
+    %%   P(storm_system)      = 0.15*0.5*0.8              = 0.06
+    %%   P(severe_storm)      = 0.1*0.06*0.5              = 0.003
+    %%   P(tornado_risk)      = 0.003*0.6                 = 0.0018
+    %%   P(flash_flood_risk)  = 0.003*0.8                 = 0.0024
+    assertz(prob_fact(low_pressure, 0.5)),
+    assertz(prob_fact(high_humidity, 0.5)),
+    assertz(prob_fact(cold_front, 0.5)),
+    assertz(prob_fact(warm_front, 0.5)),
+    assertz(prob_fact(jet_stream_dip, 0.5)),
+    assertz(prob_rule([low_pressure], unstable_air, 0.8)),
+    assertz(prob_rule([high_humidity, unstable_air], thick_clouds, 0.5)),
+    assertz(prob_rule([cold_front, warm_front], frontal_zone, 0.6)),
+    assertz(prob_rule([frontal_zone, jet_stream_dip], storm_system, 0.8)),
+    assertz(prob_rule([thick_clouds, storm_system], severe_storm, 0.5)),
+    assertz(prob_rule([severe_storm], tornado_risk, 0.6)),
+    assertz(prob_rule([severe_storm], flash_flood_risk, 0.8)).
 ```
 
 #### How the Reasoner Works
@@ -93,8 +131,8 @@ mul(X, Acc, Result) :- Result is Acc * X.
 - **Query Propagation**: The `prob_query/2` predicate calculates the probability of a goal:
   1. If the goal matches a base fact directly, it returns that probability.
   2. If the goal is derived via a rule, it recursively calls `prob_query/2` on all conditions in the rule's body using `maplist/3`.
-  3. It then multiplies all the condition probabilities together using `foldl/4` and the `mul/3` helper to compute the `JointProb` of the preconditions.
-  4. Finally, the joint probability is multiplied by the rule's conditional probability (`CondProb`) to get the final goal probability.
+  3. It then multiplies all the condition probabilities together using `foldl/4` over the log of each condition probability (the `sum_log/3` helper), so the joint is a log-space sum. Computing in log space avoids floating-point underflow on deep chains.
+  4. Finally, the log joint is converted back with `exp/1` and multiplied by the rule's conditional probability (`CondProb`) to get the final goal probability.
 
 #### Deep Probability Attenuation
 The weather knowledge base demonstrates how probabilities attenuate (rapidly decrease) across deep inference chains. Consider the path from `low_pressure` to `tornado_risk`:
@@ -105,7 +143,7 @@ The weather knowledge base demonstrates how probabilities attenuate (rapidly dec
 5. `severe_storm` converges from `thick_clouds` and `storm_system` with conditional probability `0.5`$, yielding `P=0.1 \times 0.06 \times 0.5 = 0.003`$.
 6. `tornado_risk` is derived from `severe_storm` with conditional probability `0.6`$, yielding `P=0.003 \times 0.6 = 0.0018`$.
 
-This rapid attenuation shows that naive multiplication across deep chains can quickly shrink probabilities. In real-world applications, to prevent underflow and model complex dependencies correctly, we use more sophisticated models like Bayesian networks or full ProbLog.
+This rapid attenuation shows that multiplying across deep chains can quickly shrink probabilities. The implementation computes these products in log space to prevent floating-point underflow. To model complex dependencies more correctly, we use more sophisticated models like Bayesian networks or full ProbLog.
 
 ## Learning Probabilities from Data
 

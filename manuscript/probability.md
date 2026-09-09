@@ -26,7 +26,7 @@ Before diving into the library and the worked examples, here is a reference for 
 
 **Bayes' Theorem** — The mathematical rule connecting prior, likelihood, and posterior: P(H | E) = P(E | H) · P(H) / P(E).
 
-**Maximum a posteriori (MAP)** — The hypothesis with the highest posterior probability — the Bayesian "best guess."
+**Maximum a posteriori (MAP)** — The hypothesis with the highest posterior probability — the Bayesian "best guess." `maximum_a_posteriori/2` breaks ties deterministically by standard term order, so among hypotheses with equal maximum probability the `@<`-smallest wins.
 
 **Prevalence (base rate)** — The proportion of a population that has a particular condition. When the base rate is very low, even a highly accurate test produces many false positives relative to true positives.
 
@@ -109,7 +109,7 @@ only yields about 1.9% probability of disease because the
 disease is so rare (0.1% prevalence).
 
 === Correlation Analysis (N = 100000) ===
-Pearson r(test-result, disease) = 0.1349
+Pearson r(test-result, disease) = 0.1319
 
 === Done. ===
 ~~~~~~~~
@@ -161,15 +161,9 @@ update(Model, _Evidence, LikelihoodPred, Updated) :-
     sumlist(UnnormProbs, Marginal),
     (   Marginal =:= 0.0
     ->  throw(error(zero_marginal,
-
-
-
-
-
-                                  'Marginal likelihood is zero — evidence impossible under all hypotheses.'))
+                    'Marginal likelihood is zero — evidence impossible under all hypotheses.'))
     ;   maplist(normalise_pair(Marginal), Unnormalised, Updated)
     ).
-
 unnormalised_posterior(LikelihoodPred, H-Prior, H-UPost) :-
     call(LikelihoodPred, H, Lik),
     UPost is Lik * Prior.
@@ -281,9 +275,10 @@ The deepest fault-line in probability runs between two camps that disagree on wh
 ### Frequentist module API
 
 - `phi_approx(+Z, -CDF)` — standard normal CDF using the Abramowitz & Stegun 26.2.17 rational approximation.
+- `z_score(+Observed, +Expected, -Z)` — convenience form with `StdDev = 1.0`, returning the raw difference.
 - `z_score(+Observed, +Expected, +StdDev, -Z)` — compute the standard z-score.
 - `z_test_proportion(+Successes, +N, +HypP, -Result)` — one-sample z-test for a proportion. Returns `result(Z, PValue)`.
-- `chi_squared_test(+Observed, +Expected, _, -Result)` — Pearson's chi-squared goodness-of-fit test. Returns `result(ChiSq, DF, PValue)`.
+- `chi_squared_test(+Observed, +Expected, -Result)` — Pearson's chi-squared goodness-of-fit test, returning `result(ChiSq, DF, PValue)`. The legacy `chi_squared_test(+Observed, +Expected, -ChiSq, -Result)` is deprecated but kept for backward compatibility. A zero expected value now throws `domain_error(non_zero_expected, E)`; previously it silently contributed 0.0.
 - `confidence_interval_proportion(+Successes, +N, +Confidence, -Result)` — Wilson score interval. Returns `result(Lower, Upper)`.
 
 ### Walking Through the Frequentist Code
@@ -350,21 +345,21 @@ $ make freq
 ================================================================
 
 --- 1. Simulated Clinical Trial (N = 100000) ---
-  True  Positives (TP): 110
-  False Positives (FP): 4938
-  True  Negatives (TN): 94951
+  True  Positives (TP): 94
+  False Positives (FP): 4982
+  True  Negatives (TN): 94923
   False Negatives (FN): 1
 
 --- 2. Chi-Squared Test of Independence ---
-  chi-squared = 2050.74   df = 3   p-value < 1e-15
+  chi-squared = 1739.02   df = 3   p-value < 1e-15
 
 --- 3. Positive Predictive Value (PPV) ---
-  PPV = 110 / 5048 = 0.0218  (2.18 %)
-  95% Wilson CI for PPV: [0.0181, 0.0262]  (1.81% - 2.62%)
+  PPV = 94 / 5076 = 0.0185  (1.85 %)
+  95% Wilson CI for PPV: [0.0152, 0.0226]  (1.52% - 2.26%)
 
 --- 5. Bayesian vs. Frequentist Side-by-Side ---
   Bayesian posterior P(disease | positive) = 0.0194  (1.94%)
-  Frequentist PPV from simulation          = 0.0218  (2.18%)
+  Frequentist PPV from simulation          = 0.0185  (1.85%)
 
   Both frameworks agree: about 2% probability of illness.
 ================================================================
@@ -377,7 +372,7 @@ $ make freq
 {linenos=off}
 ~~~~~~~~
 $ make test
-% All 15 tests passed in 0.011 seconds (0.007 cpu)
+% All 21 tests passed in 0.011 seconds (0.009 cpu)
 ~~~~~~~~
 
 ## Prolog-Specific Design Decisions

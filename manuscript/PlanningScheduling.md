@@ -27,7 +27,10 @@ The **strips_planner** project implements the core algorithm and two practical v
 :- module(strips, [
     plan/3,
     plan_bfs/3,
-    plan_visited/3
+    plan_visited/3,
+    valid_state/1,
+    action/4,
+    holds/2
 ]).
 
 %% holds(+Conditions, +State)
@@ -38,25 +41,38 @@ holds([], _).
 holds([C|Cs], State) :- member(C, State), holds(Cs, State).
 
 %% plan(+InitState, +GoalState, -Plan)
-%% Depth-first search through the state space.
-plan(State, Goal, []) :-
+%% Iterative-deepening search: plan_dfs/4 is run with depth limits
+%% 1, 2, ..., 50 in turn.  Unlike plain DFS this always terminates
+%% and finds a shortest plan; on exhaustion (no plan within the
+%% depth bound) it fails cleanly.
+plan(State, Goal, Plan) :-
+    between(1, 50, Depth),
+    plan_dfs(State, Goal, Depth, Plan), !.
+
+%% plan_dfs(+State, +Goal, +DepthLeft, -Plan)
+plan_dfs(State, Goal, _DepthLeft, []) :-
     holds(Goal, State).
-plan(State, Goal, [Action|Plan]) :-
+plan_dfs(State, Goal, DepthLeft, [Action|Plan]) :-
+    DepthLeft > 0,
     action(Action, Preconditions, AddList, DeleteList),
     holds(Preconditions, State),
     subtract(State, DeleteList, TempState),
     union(TempState, AddList, NewState),
-    plan(NewState, Goal, Plan).
+    DepthLeft1 is DepthLeft - 1,
+    plan_dfs(NewState, Goal, DepthLeft1, Plan).
 
 %% plan_bfs(+InitState, +GoalState, -Plan)
 %% Breadth-first search — guaranteed to find the shortest plan.
+%% States are normalized with sort/2 and kept in a visited set so
+%% each distinct state is enqueued at most once.
 plan_bfs(State, Goal, Plan) :-
-    plan_bfs_queue([bfs_node(State, [])], Goal, RevPlan),
+    sort(State, Key),
+    plan_bfs_queue([bfs_node(State, [])], Goal, [bfs_key(Key)], RevPlan),
     reverse(RevPlan, Plan).
 
-plan_bfs_queue([bfs_node(State, Actions)|_], Goal, Actions) :-
+plan_bfs_queue([bfs_node(State, Actions)|_], Goal, _Seen, Actions) :-
     holds(Goal, State), !.
-plan_bfs_queue([bfs_node(State, Actions)|Rest], Goal, Plan) :-
+plan_bfs_queue([bfs_node(State, Actions)|Rest], Goal, Seen, Plan) :-
     findall(
         bfs_node(NewState, [Action|Actions]),
         (   action(Action, Preconditions, AddList, DeleteList),
@@ -66,38 +82,65 @@ plan_bfs_queue([bfs_node(State, Actions)|Rest], Goal, Plan) :-
         ),
         Children
     ),
-    append(Rest, Children, NewQueue),
-    plan_bfs_queue(NewQueue, Goal, Plan).
+    % Normalize each child state with sort/2 and enqueue only
+    % distinct states that have not been seen before.
+    bfs_enqueue_unseen(Children, Seen, Fresh, Seen1),
+    append(Rest, Fresh, NewQueue),
+    plan_bfs_queue(NewQueue, Goal, Seen1, Plan).
+
+%% Drop children whose sort/2-normalized state (wrapped in
+%% bfs_key/1) has already been seen; add the kept states' keys.
+bfs_enqueue_unseen([], Seen, [], Seen).
+bfs_enqueue_unseen([bfs_node(S, _)|Nodes], Seen, Fresh, Seen1) :-
+    sort(S, K),
+    memberchk(bfs_key(K), Seen),
+    !,
+    bfs_enqueue_unseen(Nodes, Seen, Fresh, Seen1).
+bfs_enqueue_unseen([bfs_node(S, A)|Nodes], Seen,
+                   [bfs_node(S, A)|Fresh], Seen1) :-
+    sort(S, K),
+    bfs_enqueue_unseen(Nodes, [bfs_key(K)|Seen], Fresh, Seen1).
 
 %% plan_visited(+InitState, +GoalState, -Plan)
-%% DFS with cycle detection — avoids revisiting states.
+%% DFS with cycle detection — avoids revisiting states.  The
+%% visited set is passed as an explicit argument, so backtracking
+%% automatically unwinds it (no surviving assertz leaks) and every
+%% top-level call starts from a fresh set.
 plan_visited(State, Goal, Plan) :-
-    retractall(plan_visited_state(_)),
-    plan_visited_dfs(State, Goal, [], Plan).
+    sort(State, Key),
+    plan_visited_dfs(State, Goal, [Key], Plan).
 
-:- dynamic plan_visited_state/1.
-
-plan_visited_dfs(State, Goal, _ActionPath, []) :-
+plan_visited_dfs(State, Goal, _Visited, []) :-
     holds(Goal, State), !.
-plan_visited_dfs(State, Goal, ActionPath, [Action|Plan]) :-
+plan_visited_dfs(State, Goal, Visited, [Action|Plan]) :-
     action(Action, Preconditions, AddList, DeleteList),
     holds(Preconditions, State),
     subtract(State, DeleteList, TempState),
     union(TempState, AddList, NewState),
-    \+ plan_visited_state(NewState),
-    assert(plan_visited_state(NewState)),
-    plan_visited_dfs(NewState, Goal, [Action|ActionPath], Plan).
+    sort(NewState, Key),
+    \+ memberchk(Key, Visited),
+    plan_visited_dfs(NewState, Goal, [Key|Visited], Plan).
+
+%% valid_state(+State)
+%% True when State (a list of fluents) contains no basic
+%% contradictions: nothing may be both clear and have a block on
+%% it, and nothing may be held while the hand is empty.
+valid_state(State) :-
+    \+ ( member(on(_, Y), State), member(clear(Y), State) ),
+    \+ ( member(holding(_), State), member(hand_empty, State) ).
 ```
 
 ### How the Planner Works
 
 The planner provides three search strategies, all built on the same action interface:
 
-**Depth-first search (`plan/3`)** is the simplest: recursively try every applicable action, building the plan as Prolog backtracks. With only 10 lines of logic it captures the essence of STRIPS planning — but it may loop forever when actions are reversible (you can pick up a block and put it down indefinitely).
+**Depth-bounded iterative deepening (`plan/3`)** is the simplest: `plan_dfs/4` runs with successive depth limits 1, 2, ..., 50. Unlike plain DFS it always terminates and finds a shortest plan, failing cleanly when no plan exists within the bound.
 
-**Breadth-first search (`plan_bfs/3`)** maintains an explicit queue of `bfs_node(State, RevActions)` terms. It expands all nodes at depth *d* before any at depth *d+1*, guaranteeing the first plan found has the minimum number of actions. The trade-off is memory: the queue can grow large for complex problems.
+**Breadth-first search (`plan_bfs/3`)** maintains an explicit queue of `bfs_node(State, RevActions)` terms. It expands all nodes at depth *d* before any at depth *d+1*, guaranteeing the first plan found has the minimum number of actions. States are normalized with `sort/2` and deduplicated before enqueueing, so each distinct state enters the queue at most once. The trade-off is memory: the queue can grow large for complex problems.
 
-**DFS with cycle detection (`plan_visited/3`)** stores visited states in a dynamic predicate and skips any state already encountered. This avoids the infinite-loop problem of naive DFS while retaining its space efficiency. It does *not* guarantee optimality, but in practice it finds reasonable plans quickly.
+**DFS with cycle detection (`plan_visited/3`)** carries the visited set as an explicit argument, normalized with `sort/2`, and skips any state already encountered. Backtracking unwinds the set automatically and each top-level call starts fresh, so there is no surviving `assertz` leak. It does *not* guarantee optimality, but in practice it finds reasonable plans quickly.
+
+The module also exports `valid_state/1`, which reports whether a fluent list is free of basic contradictions, for example nothing both `clear` and occupied, and no hand both empty and holding. It is a sanity check for hand-written initial states rather than part of the search.
 
 ### The `holds/2` Predicate
 
@@ -105,7 +148,7 @@ A subtle but critical detail: we define `holds/2` using `member/2` rather than S
 
 ### Running the Planner
 
-Here is a simple blocks-world query using the DFS planner:
+Here is a simple blocks-world query using the iterative-deepening planner:
 
 ```prolog
 ?- plan([on_table(a), clear(a), hand_empty], [holding(a)], Plan).
@@ -189,33 +232,41 @@ While the generic STRIPS planner above can solve blocks-world problems, the dedi
     print_state/1
 ]).
 
-%% blocks_plan(+InitState, +GoalState, -Moves)
-%% State is a list of on(X,Y) and on_table(X) atoms
-blocks_plan(State, Goal, []) :-
-    subset(Goal, State), !.
-blocks_plan(State, Goal, [Move|Moves]) :-
-    blocks_move(State, Move, NewState),
-    \+ blocks_plan_visited(NewState),
-    assert(blocks_plan_visited(NewState)),
-    blocks_plan(NewState, Goal, Moves).
+:- use_module(library(lists), [subset/2]).
 
 :- dynamic blocks_plan_visited/1.
 
-blocks_move(State, move(X, table, To), NewState) :-
-    member(on_table(X), State),
-    clear(X, State),
-    block_in_state(To, State),
-    dif(X, To),
-    clear(To, State),
-    select(on_table(X), State, S1),
-    NewState = [on(X, To)|S1].
+%% blocks_plan(+InitState, +GoalState, -Moves)
+%% State is a list of on(X,Y) and on_table(X) atoms; clear/2 is a
+%% derived relation (not stored in the state).  The visited set is
+%% cleared on entry and exit (and on failure) via
+%% setup_call_cleanup/3, so successive calls behave identically.
+blocks_plan(State, Goal, Moves) :-
+    setup_call_cleanup(
+        retractall(blocks_plan_visited(_)),
+        blocks_plan_dfs(State, Goal, Moves),
+        retractall(blocks_plan_visited(_))
+    ).
+
+blocks_plan_dfs(State, Goal, []) :-
+    subset(Goal, State), !.
+blocks_plan_dfs(State, Goal, [Move|Moves]) :-
+    blocks_move(State, Move, NewState),
+    \+ blocks_plan_visited(NewState),
+    assert(blocks_plan_visited(NewState)),
+    blocks_plan_dfs(NewState, Goal, Moves).
+
+%% blocks_move(+State, -Move, -NewState)
+%% Moving a block X onto block To is the same whether X starts on
+%% the table or on another block; only the source fact differs.
+%% This shared rule merges the old duplicated clause pair.
 blocks_move(State, move(X, From, To), NewState) :-
-    member(on(X, From), State),
+    from_fact(State, X, From, FromFact),
     clear(X, State),
     block_in_state(To, State),
     dif(X, To),
     clear(To, State),
-    select(on(X, From), State, S1),
+    select(FromFact, State, S1),
     NewState = [on(X, To)|S1].
 blocks_move(State, move_to_table(X, From), NewState) :-
     member(on(X, From), State),
@@ -223,12 +274,16 @@ blocks_move(State, move_to_table(X, From), NewState) :-
     select(on(X, From), State, S1),
     NewState = [on_table(X)|S1].
 
+%% from_fact(+State, +X, -From, -Fact)
+%% Where X currently sits: on the table, or on another block.
+from_fact(State, X, table, on_table(X)) :- member(on_table(X), State).
+from_fact(State, X, From,  on(X, From)) :- member(on(X, From), State).
+
 block_in_state(B, State) :- member(on_table(B), State).
 block_in_state(B, State) :- member(on(B, _), State).
 block_in_state(B, State) :- member(on(_, B), State).
 
 clear(X, State) :- \+ member(on(_, X), State).
-clear(table, _).
 ```
 
 ### Design Decisions
@@ -237,9 +292,9 @@ Several choices distinguish this dedicated planner from the generic STRIPS versi
 
 **Move representation.** Rather than STRIPS-style add/delete lists, `blocks_move/3` works directly with state lists. The `select/3` predicate removes the block from its old position and the new `on/2` or `on_table/1` term is prepended to form the new state. This is more concise for this specific domain and produces human-readable move descriptions like `move(a, table, b)`.
 
-**Cycle detection.** The `blocks_plan_visited/1` dynamic predicate records every visited state. Before exploring a move, the planner checks that the resulting state has not already been seen. This prevents the infinite loops that naive DFS would encounter — without it, the planner could move a block back and forth between the same two positions forever.
+**Cycle detection.** The `blocks_plan_visited/1` dynamic predicate records every visited state. Before exploring a move, the planner checks that the resulting state has not already been seen. This prevents the infinite loops that naive DFS would encounter, without which the planner could move a block back and forth between the same two positions forever. `blocks_plan/3` clears the visited set on entry and exit via `setup_call_cleanup/3`, so successive calls behave identically.
 
-**The `clear/2` rule.** A block is clear when nothing is stacked on top of it. The rule `clear(X, State) :- \+ member(on(_, X), State)` uses negation-as-failure: X is clear if there is no block Y such that `on(Y, X)` holds. The table is always clear.
+**The `clear/2` rule.** A block is clear when nothing is stacked on it. The rule `clear(X, State) :- \+ member(on(_, X), State)` uses negation-as-failure: X is clear if there is no block Y such that `on(Y, X)` holds. The merged `blocks_move/3` clause uses `from_fact/4` so moving from the table or from another block shares one rule.
 
 **State representation.** States are simple lists of `on(X, Y)` and `on_table(X)` atoms. The goal is a list of atoms that must all be present in the final state — typically just the desired `on/2` relationships, ignoring table facts.
 
@@ -258,10 +313,10 @@ Rearrange a small tower by unstacking `a` from `b` and restack `b` on `a`:
 ```prolog
 ?- blocks_plan([on(a, b), on_table(b), clear(a)],
                [on(b, a)], Moves).
-Moves = [move(a, b, table), move(b, table, a)].
+Moves = [move_to_table(a, b), move(b, table, a)].
 ```
 
-The dedicated representation produces plans that read naturally: "move block a from b to the table, then move block b from the table to a."
+The dedicated representation produces plans that read naturally: "move block a to the table from b, then move block b from the table to a."
 
 
 ## Planning with Constraints
@@ -295,24 +350,81 @@ The companion project **job_scheduler** (described fully in the Constraint Logic
 
 ```prolog
 schedule_jobs(Jobs, Schedule) :-
-    maplist(create_task, Jobs, Schedule, Starts),
+    compute_horizon(Jobs, Horizon),
+    maplist(create_task(Horizon), Jobs, Schedule, Starts),
     chain(Starts, #=<),          % order tasks by start time
     maplist(deadline_constraint, Jobs, Schedule),
     no_overlap(Schedule),        % one job at a time
     maplist(label_task, Schedule).
 
-create_task(job(Name, Duration, _Deadline), scheduled(Name, Start, End),
-    Start) :-
-    Start in 0..100,
+%% compute_horizon(+Jobs, -Horizon)
+compute_horizon(Jobs, Horizon) :-
+    compute_horizon(Jobs, 0, 0, 0, Horizon).
+
+compute_horizon([], MaxDeadline, TotalDuration, SeenDeadline,
+    Horizon) :-
+    (   SeenDeadline > 0
+    ->  Horizon = MaxDeadline
+    ;   Horizon is TotalDuration + 1
+    ).
+compute_horizon([job(_, Duration, Deadline)|Jobs], MaxD0, Total0,
+    Seen0, Horizon) :-
+    Total1 is Total0 + Duration,
+    (   integer(Deadline)
+    ->  MaxD1 is max(MaxD0, Deadline),
+        Seen1 is Seen0 + 1
+    ;   MaxD1 = MaxD0,
+        Seen1 = Seen0
+    ),
+    compute_horizon(Jobs, MaxD1, Total1, Seen1, Horizon).
+
+create_task(Horizon, job(Name, Duration, _Deadline),
+    scheduled(Name, Start, End), Start) :-
+    Start in 0..Horizon,
     End #= Start + Duration.
 
+deadline_constraint(job(Name, _Duration, Deadline), scheduled(Name,
+    _Start, End)) :-
+    End #=< Deadline.
+
+%% no_overlap(+Schedule)
+%% Posts CLP(FD) constraints chaining adjacent jobs in the schedule
+%% list: the end of each job must be =< the start of the next one.
+%% NOTE: this operates on constraint variables while building the
+%% schedule (it posts `#=<` constraints); it is NOT a check on ground
+%% data.  Use schedule_valid/1 to verify a fully ground schedule.
 no_overlap([]).
 no_overlap([_]).
 no_overlap([scheduled(_,_,End1)|Rest]) :-
     Rest = [scheduled(_,Start2,_)|_],
     End1 #=< Start2,
     no_overlap(Rest).
+
+%% schedule_valid(+Schedule)
+%% Verifies a fully ground schedule: no two jobs overlap.  Uses plain
+%% numeric comparisons (no constraint posting) and fails if the
+%% schedule contains variables.
+schedule_valid(Schedule) :-
+    maplist(ground, Schedule),
+    \+ overlaps_any_pair(Schedule, Schedule).
+
+overlaps_any_pair([S|_], All) :-
+    overlaps_one(S, All).
+overlaps_any_pair([_|Ss], All) :-
+    overlaps_any_pair(Ss, All).
+
+overlaps_one(S, All) :-
+    member(T, All),
+    S \== T,
+    S = scheduled(_, StartS, EndS),
+    T = scheduled(_, StartT, EndT),
+    StartS < EndT,
+    StartT < EndS.
+
+label_task(scheduled(_, Start, _)) :- label([Start]).
 ```
+
+The horizon is derived from the input jobs (the largest deadline, or the sum of durations plus one), not hard-coded. Also, `no_overlap/1` posts `#=<` constraints on constraint variables. To verify an already-ground schedule use `schedule_valid/1`, which compares times numerically.
 
 This scheduler handles three constraint types simultaneously:
 

@@ -143,7 +143,17 @@ The DCG approach to text processing has several advantages over regex-based alte
 
 The example below shows how the `text_dcg` module parses CSV lines and key-value pairs. The `parse_csv_line/2` predicate handles both quoted and unquoted fields, and `parse_key_value/2` splits `key=value` strings into structured pairs—tasks that are common in log processing, configuration file parsing, and data ingestion pipelines.
 
-The **scryer_dcg** project demonstrates text processing DCGs designed for Scryer. Here is the file **scryer_dcg/prolog/text_dcg.pl**:
+The **scryer_dcg** project demonstrates text processing DCGs designed for Scryer. The loader file **scryer_dcg/load.pl** sets the flag before importing the module, following the convention that strings are lists of one-character atoms:
+
+```prolog
+%% NOTE: This project is for Scryer Prolog, not SWI-Prolog
+%% Run with: scryer-prolog prolog/text_dcg.pl
+%% Convention: strings are lists of one-character atoms.
+:- set_prolog_flag(double_quotes, chars).
+:- use_module(prolog/text_dcg).
+```
+
+The module also self-sets the same flag inside text_dcg.pl, and the project's `Makefile` invokes `scryer-prolog` directly. Here is the file **scryer_dcg/prolog/text_dcg.pl**:
 
 ```prolog
 :- module(text_dcg, [
@@ -151,6 +161,9 @@ The **scryer_dcg** project demonstrates text processing DCGs designed for Scryer
     parse_key_value/2,
     extract_emails/2
 ]).
+
+:- set_prolog_flag(double_quotes, chars).
+
 
 %% parse_csv_line(+Line, -Fields)
 %% Parse a CSV line into a list of fields
@@ -184,7 +197,48 @@ word([]) --> [].
 
 rest([C|Cs]) --> [C], rest(Cs).
 rest([]) --> [].
+
+%% CSV grammar limitations: this parser handles plain and double-quoted
+%% fields, but NOT escaped quotes ("" inside a quoted field) and NOT
+%% CRLF line endings (line input is assumed to be split already, with
+%% '\n' treated as a field terminator, not '\r\n').
+
+%% extract_emails(+Text, -Emails)
+%% DCG-based email extraction from text.  Emails match
+%% local@domain where local/domain use letters, digits, '.', '_', '-'
+%% (this is NOT full RFC 5322, just the common simple form).
+extract_emails(Text, Emails) :-
+    phrase(emails(Emails), Text),
+    !.
+
+emails([]) --> eos.
+emails([Email|Emails]) -->
+    email(EmailChars),
+    { atom_chars(Email, EmailChars) },
+    !, emails(Emails).
+emails(Emails) --> [_], emails(Emails).
+
+%% email//1 matches local@domain with at least one local char and
+%% at least one domain char on each side of '@'.
+email(Email) -->
+    local_chars(Local), "@", domain_chars(Domain),
+    { Local \= [], Domain \= [],
+      append(Local, ['@'|Domain], Email) }.
+
+local_chars([C|Cs]) --> [C], { local_char(C) }, local_chars(Cs).
+local_chars([]) --> "".
+
+local_char(C) :- char_type(C, alnum) ; C = '.' ; C = '_' ; C = '-'.
+
+domain_chars([C|Cs]) --> [C], { domain_char(C) }, domain_chars(Cs).
+domain_chars([]) --> "".
+
+domain_char(C) :- char_type(C, alnum) ; C = '.' ; C = '-'.
+
+eos([], []).
 ```
+
+The `extract_emails/2` predicate is itself a DCG: the `emails//1` rule scans the input one character at a time, committing with a cut whenever an `email//1` match completes, and skipping unmatched characters. The matcher recognizes the common `local@domain` form where both sides use letters, digits, `.`, `_`, or `-`; it is not full RFC 5322. The CSV grammar has two documented limits: it does not handle CRLF line endings (`\n` is the field terminator, not `\r\n`), and it does not handle escaped quotes (`""` inside a quoted field). The output examples need `scryer-prolog` on PATH, which is not installed on the machine used to prepare this text, so we do not quote sample output here; run the project `Makefile` to see live results.
 
 ## Constraint Logic Programming in Scryer
 
@@ -239,6 +293,11 @@ send_more_money([S,E,N,D,M,O,R,Y]) :-
     Digits = [S,E,N,D,M,O,R,Y],
     Digits ins 0..9,
     all_different(Digits),
+    S #\= 0, M #\= 0,
+                 1000*S + 100*E + 10*N + D
+    +            1000*M + 100*O + 10*R + E
+    #= 10000*M + 1000*O + 100*N + 10*E + Y,
+    label(Digits).
 ```
 
 Note: This module requires Scryer Prolog's `library(clpz)` and will not load under SWI-Prolog. The test suite skips the full CLP tests when running on SWI-Prolog.

@@ -25,41 +25,55 @@ The utility module **graph_search/prolog/read_graph.pl** reads this file and ass
 :- module(read_graph, [
     load_graph/0,
     load_graph/1,
+    clear_graph/0,
     edge/2
 ]).
 
 :- dynamic edge/2.
 
-%% load_graph/0 - Load graph from default file (sample_graph.txt)
+%% clear_graph/0 - Remove all loaded edge/2 facts.
+clear_graph :-
+    retractall(edge(_, _)).
+
+%% load_graph/0 - Load graph from default file (sample_graph.txt
+%% located next to this pack's prolog/ directory).
 load_graph :-
-    source_file(read_graph:_, SrcFile),
+    source_file(read_graph:edge(_, _), SrcFile),
     file_directory_name(SrcFile, PrologDir),
     file_directory_name(PrologDir, ProjectDir),
-    atom_concat(ProjectDir, '/sample_graph.txt', DefaultFile),
+    atomic_list_concat([ProjectDir, '/sample_graph.txt'], DefaultFile),
     load_graph(DefaultFile).
 
 %% load_graph/1 - Load graph from a specified file
 %%   Reads lines of the form:  edge(Source, Destination).
-%%   Asserts each as an edge/2 fact.
+%%   Clears any previously loaded edges first.  Malformed terms
+%%   are counted and reported as a warning when reading finishes.
 load_graph(File) :-
-    retractall(edge(_, _)),
-    open(File, read, Stream),
-    read_edges(Stream),
-    close(Stream).
-
-read_edges(Stream) :-
-    read_term(Stream, Term, []),
-    (   Term == end_of_file
-    ->  true
-    ;   assert_edge(Term),
-        read_edges(Stream)
+    clear_graph,
+    setup_call_cleanup(
+        open(File, read, Stream),
+        read_edges(Stream, 0, Skipped),
+        close(Stream)
+    ),
+    (   Skipped > 0
+    ->  print_message(warning, read_graph_skipped(Skipped))
+    ;   true
     ).
 
-assert_edge(edge(From, To)) :-
-    !,
-    assertz(edge(From, To)).
-assert_edge(_).   % skip comments / unrecognised terms
+read_edges(Stream, Skip0, Skip) :-
+    read_term(Stream, Term, []),
+    (   Term == end_of_file
+    ->  Skip = Skip0
+    ;   (   Term = edge(From, To)
+        ->  assertz(edge(From, To)),
+            Skip1 = Skip0
+        ;   Skip1 is Skip0 + 1
+        ),
+        read_edges(Stream, Skip1, Skip)
+    ).
 ```
+
+`clear_graph/0` removes all loaded `edge/2` facts. `load_graph/1` calls it first, then reports a warning if any malformed terms were skipped.
 
 
 {width: "80%"}
@@ -186,35 +200,49 @@ A* combines the actual path cost with a heuristic estimate of the remaining dist
 
 :- use_module(read_graph, [edge/2]).
 
-%% Safe call: if Heuristic(Node, Value) fails with existence error,
-%% return 0.
-safe_call(Callable, Node, Value) :-
-    catch(call(Callable, Node, Value), _, Value = 0).
-
-%% A* search: accepts both string designators ('h/2') and callable terms
-%% (?(-N,-V)).
+%% A* search with a closed set holding best-known g values.
+%% When a popped node's recorded g is worse than the closed g for
+%% that node, it is skipped (lazy re-opening); otherwise it is
+%% closed and expanded.  Heuristic may be a callable term.
 astar(Start, Goal, Heuristic, Path) :-
     safe_call(Heuristic, Start, H0),
-    H is H0 + 0,
-    astar_loop([node(H, 0, [Start])], Goal, Heuristic, Path).
+    astar_loop([node(H0, 0, [Start])], Goal, Heuristic, [], Path).
 
-astar_loop([node(_, _, [Goal|Rest])|_], Goal, _, Path) :-
+astar_loop([node(_, _, [Goal|Rest])|_], Goal, _, _Closed, Path) :-
+    !,
     reverse([Goal|Rest], Path).
-astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Path) :-
+astar_loop([node(_, G, [Current|_])|Open], Goal, Heuristic, Closed, Path) :-
+    best_g(Current, Closed, GBest),
+    G >= GBest,
+    !,                               % stale entry: skip it
+    astar_loop(Open, Goal, Heuristic, Closed, Path).
+astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Closed, Path) :-
+    \+ best_g(Current, Closed, _),
     findall(
         node(F1, G1, [Next, Current|Rest]),
-            (   edge(Current, Next),
-                \+ member(Next, [Current|Rest]),
+        (   edge(Current, Next),
+            \+ member(Next, [Current|Rest]),
             G1 is G + 1,
-            safe_call(Heuristic, Next, H0),
-            H is H0 + 0,
+            safe_call(Heuristic, Next, H),
             F1 is G1 + H
-            ),
+        ),
         Children
-       ),
+    ),
     append(Open, Children, Unsorted),
     sort(1, @=<, Unsorted, Sorted),
-    astar_loop(Sorted, Goal, Heuristic, Path).
+    astar_loop(Sorted, Goal, Heuristic, [best_g(Current, G)|Closed], Path).
+
+%% best_g(+Node, +Closed, -G) — G is the best g recorded for Node.
+best_g(Node, [best_g(Node, G)|_], G) :- !.
+best_g(Node, [_|Closed], G) :- best_g(Node, Closed, G).
+
+%% Safe call: evaluate Heuristic(Node, Value).  Only an undefined
+%% heuristic predicate (existence error) falls back to 0; any
+%% other exception propagates to the caller.
+safe_call(Callable, Node, Value) :-
+    catch(call(Callable, Node, Value),
+          error(existence_error(_, _), _),
+          Value = 0).
 
 %% Zero heuristic: admissible for uniform-weight graphs (all edge
 %% weights = 1).
@@ -246,7 +274,7 @@ distance_heuristic(albany,    7).
 
 ```prolog
 ?- astar(albany, reno, distance_heuristic, Path).
-Path = [albany, boston, eton, kent, naples, portland, reno]
+Path = [albany, detroit, houston, lansing, omaha, portland, reno]
 ```
 
 The heuristic guides A* directly toward the goal, avoiding the unnecessary exploration of interior nodes that DFS would visit.
@@ -297,21 +325,32 @@ solve(State, Goal, Visited, [Description|Moves]) :-
     \+ member(NextState, Visited),
     solve(NextState, Goal, [NextState|Visited], Moves).
 
-%% Moves: farmer always crosses, optionally carrying one item
-move(state(left,F,C,G), state(right,F,C,G), farmer_alone).
-move(state(right,F,C,G), state(left,F,C,G), farmer_alone).
-move(state(left,left,C,G), state(right,right,C,G), farmer_fox).
-move(state(right,right,C,G), state(left,left,C,G), farmer_fox).
-move(state(left,F,left,G), state(right,F,right,G), farmer_chicken).
-move(state(right,F,right,G), state(left,F,left,G), farmer_chicken).
-move(state(left,F,C,left), state(right,F,C,right), farmer_grain).
-move(state(right,F,C,right), state(left,F,C,left), farmer_grain).
+%% Moves: farmer always crosses, optionally carrying one item.
+%% Each move is expressed once; opposite/2 supplies the two
+%% directions, so only 4 rules are needed instead of 8.
+move(state(From,F,C,G), state(To,F,C,G), farmer_alone) :-
+    opposite(From, To).
+move(state(From,From,C,G), state(To,To,C,G), farmer_fox) :-
+    opposite(From, To).
+move(state(From,F,From,G), state(To,F,To,G), farmer_chicken) :-
+    opposite(From, To).
+move(state(From,F,C,From), state(To,F,C,To), farmer_grain) :-
+    opposite(From, To).
 
-%% Safety: fox cannot be alone with chicken, chicken cannot be alone
-%% with grain
-safe(state(Farmer, Fox, Chicken, Grain)) :-
-    (Fox == Chicken -> Farmer == Fox ; true),
-    (Chicken == Grain -> Farmer == Chicken ; true).
+%% opposite(+Bank, -OtherBank) — the two river banks.
+opposite(left, right).
+opposite(right, left).
+
+%% Safety: a state is unsafe when the fox and chicken (or chicken
+%% and grain) share a bank while the farmer is on the opposite
+%% bank.  Pure head-pattern matching via opposite/2 — no ==/2.
+safe(State) :-
+    \+ unsafe(State).
+
+unsafe(state(Farmer, Bank, Bank, _)) :-
+    opposite(Farmer, Bank).             % fox left with chicken
+unsafe(state(Farmer, _, Bank, Bank)) :-
+    opposite(Farmer, Bank).             % chicken left with grain
 ```
 
 
@@ -328,18 +367,29 @@ The companion project **n_queens** implements this solver. Here is the complete 
 
 ```prolog
 :- module(queens, [
-    n_queens/2
+    n_queens/2,
+    n_queens/3
 ]).
 
 :- use_module(library(clpfd)).
 
-%% n_queens(+N, -Queens)
-%% Queens is a list of column positions for queens in each row
+%% n_queens(+N:int, -Queens:list) is nondet
+%% Queens is a list of column positions for queens in each row.
 n_queens(N, Queens) :-
+    n_queens(N, [], Queens).
+
+%% n_queens(+N:int, +Options:list, -Queens:list) is nondet
+%% Options:
+%%   ff_opt(true)  label with labeling([ff], Queens)
+%%                 (first-fail heuristic); otherwise label/1 is used.
+n_queens(N, Options, Queens) :-
     length(Queens, N),
     Queens ins 1..N,
     safe_queens(Queens),
-    label(Queens).
+    (   member(ff_opt(true), Options)
+    ->  labeling([ff], Queens)
+    ;   label(Queens)
+    ).
 
 safe_queens([]).
 safe_queens([Q|Qs]) :-
@@ -354,6 +404,8 @@ safe_queen(Q, [Q1|Qs], D) :-
     D1 #= D + 1,
     safe_queen(Q, Qs, D1).
 ```
+
+`n_queens/3` takes an options list. `ff_opt(true)` selects the first-fail labelling heuristic `labeling([ff], Queens)`, which is much faster for large `N`.
 
 ### How the CLP(FD) Search Works
 
@@ -381,7 +433,7 @@ To count the total number of solutions for an 8x8 board:
 Count = 92.
 ```
 
-CLP(FD) propagation dramatically prunes the search space relative to a naive backtracking search, making the search for solutions extremely efficient even for larger board sizes.
+CLP(FD) propagation dramatically prunes the search space relative to a naive backtracking search, and the first-fail labelling option keeps larger boards tractable.
 
 ## Optional Practice Problems
 

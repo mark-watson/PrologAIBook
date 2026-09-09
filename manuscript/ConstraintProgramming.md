@@ -65,12 +65,19 @@ blocks([N1,N2,N3|Ns1], [N4,N5,N6|Ns2], [N7,N8,N9|Ns3]) :-
     all_distinct([N1,N2,N3,N4,N5,N6,N7,N8,N9]),
     blocks(Ns1, Ns2, Ns3).
 
-%% print_board(+Rows) - Pretty-print a solved board
+%% print_board(+Rows) - Pretty-print the board
+%% Uninstantiated cells are rendered as '.', solved cells as digits.
 print_board([]).
 print_board([Row|Rows]) :-
-    format("~w~n", [Row]),
+    maplist(render_cell, Row, Chars),
+    format("~w~n", [Chars]),
     print_board(Rows).
+
+render_cell(Cell, '.') :- var(Cell), !.
+render_cell(Cell, Cell).
 ```
+
+`print_board/1` renders uninstantiated cells as `.` and solved cells as digits, so a partially solved board prints readably.
 
 ## The N-Queens Problem
 
@@ -85,18 +92,29 @@ The **n_queens** project solves the problem using CLP(FD) diagonal constraints. 
 ```prolog
 %% queens.pl - N-Queens solver using CLP(FD)
 :- module(queens, [
-    n_queens/2
+    n_queens/2,
+    n_queens/3
 ]).
 
 :- use_module(library(clpfd)).
 
-%% n_queens(+N, -Queens)
-%% Queens is a list of column positions for queens in each row
+%% n_queens(+N:int, -Queens:list) is nondet
+%% Queens is a list of column positions for queens in each row.
 n_queens(N, Queens) :-
+    n_queens(N, [], Queens).
+
+%% n_queens(+N:int, +Options:list, -Queens:list) is nondet
+%% Options:
+%%   ff_opt(true)  label with labeling([ff], Queens)
+%%                 (first-fail heuristic); otherwise label/1 is used.
+n_queens(N, Options, Queens) :-
     length(Queens, N),
     Queens ins 1..N,
     safe_queens(Queens),
-    label(Queens).
+    (   member(ff_opt(true), Options)
+    ->  labeling([ff], Queens)
+    ;   label(Queens)
+    ).
 
 safe_queens([]).
 safe_queens([Q|Qs]) :-
@@ -111,6 +129,8 @@ safe_queen(Q, [Q1|Qs], D) :-
     D1 #= D + 1,
     safe_queen(Q, Qs, D1).
 ```
+
+`n_queens/3` takes an options list. `ff_opt(true)` selects the first-fail labelling heuristic `labeling([ff], Queens)`, which is much faster for large `N`.
 
 ## Scheduling and Resource Allocation
 
@@ -127,7 +147,8 @@ The **job_scheduler** project models scheduling with temporal constraints. Here 
 %% scheduler.pl - Job scheduling with temporal constraints using CLP(FD)
 :- module(scheduler, [
     schedule_jobs/2,
-    no_overlap/1
+    no_overlap/1,
+    schedule_valid/1
 ]).
 
 :- use_module(library(clpfd)).
@@ -135,22 +156,55 @@ The **job_scheduler** project models scheduling with temporal constraints. Here 
 %% schedule_jobs(+Jobs, -Schedule)
 %% Jobs: list of job(Name, Duration, Deadline) terms
 %% Schedule: list of scheduled(Name, Start, End) terms
+%%
+%% The search horizon is derived from the input jobs: it is the
+%% largest deadline in the input (or, if no job gives a deadline,
+%% the sum of all durations, plus one as a safety margin).  Infeasible
+%% inputs simply fail during labelling.
 schedule_jobs(Jobs, Schedule) :-
-    maplist(create_task, Jobs, Schedule, Starts),
+    compute_horizon(Jobs, Horizon),
+    maplist(create_task(Horizon), Jobs, Schedule, Starts),
     chain(Starts, #=<),  % order tasks by start time
     maplist(deadline_constraint, Jobs, Schedule),
     no_overlap(Schedule),
     maplist(label_task, Schedule).
 
-create_task(job(Name, Duration, _Deadline), scheduled(Name, Start, End),
-    Start) :-
-    Start in 0..100,
+%% compute_horizon(+Jobs, -Horizon)
+compute_horizon(Jobs, Horizon) :-
+    compute_horizon(Jobs, 0, 0, 0, Horizon).
+
+compute_horizon([], MaxDeadline, TotalDuration, SeenDeadline,
+    Horizon) :-
+    (   SeenDeadline > 0
+    ->  Horizon = MaxDeadline
+    ;   Horizon is TotalDuration + 1
+    ).
+compute_horizon([job(_, Duration, Deadline)|Jobs], MaxD0, Total0,
+    Seen0, Horizon) :-
+    Total1 is Total0 + Duration,
+    (   integer(Deadline)
+    ->  MaxD1 is max(MaxD0, Deadline),
+        Seen1 is Seen0 + 1
+    ;   MaxD1 = MaxD0,
+        Seen1 = Seen0
+    ),
+    compute_horizon(Jobs, MaxD1, Total1, Seen1, Horizon).
+
+create_task(Horizon, job(Name, Duration, _Deadline),
+    scheduled(Name, Start, End), Start) :-
+    Start in 0..Horizon,
     End #= Start + Duration.
 
 deadline_constraint(job(Name, _Duration, Deadline), scheduled(Name,
     _Start, End)) :-
     End #=< Deadline.
 
+%% no_overlap(+Schedule)
+%% Posts CLP(FD) constraints chaining adjacent jobs in the schedule
+%% list: the end of each job must be =< the start of the next one.
+%% NOTE: this operates on constraint variables while building the
+%% schedule (it posts `#=<` constraints); it is NOT a check on ground
+%% data.  Use schedule_valid/1 to verify a fully ground schedule.
 no_overlap([]).
 no_overlap([_]).
 no_overlap([scheduled(_,_,End1)|Rest]) :-
@@ -158,8 +212,31 @@ no_overlap([scheduled(_,_,End1)|Rest]) :-
     End1 #=< Start2,
     no_overlap(Rest).
 
+%% schedule_valid(+Schedule)
+%% Verifies a fully ground schedule: no two jobs overlap.  Uses plain
+%% numeric comparisons (no constraint posting) and fails if the
+%% schedule contains variables.
+schedule_valid(Schedule) :-
+    maplist(ground, Schedule),
+    \+ overlaps_any_pair(Schedule, Schedule).
+
+overlaps_any_pair([S|_], All) :-
+    overlaps_one(S, All).
+overlaps_any_pair([_|Ss], All) :-
+    overlaps_any_pair(Ss, All).
+
+overlaps_one(S, All) :-
+    member(T, All),
+    S \== T,
+    S = scheduled(_, StartS, EndS),
+    T = scheduled(_, StartT, EndT),
+    StartS < EndT,
+    StartT < EndS.
+
 label_task(scheduled(_, Start, _)) :- label([Start]).
 ```
+
+The horizon is derived from the input jobs (the largest deadline, or the sum of durations plus one), not hard-coded. As noted in the Planning and Scheduling chapter, `no_overlap/1` posts `#=<` constraints on constraint variables; to verify an already-ground schedule use `schedule_valid/1`, which compares times numerically.
 
 ## CLP(R) and CLP(Q): Constraints over Reals and Rationals
 

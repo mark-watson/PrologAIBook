@@ -21,7 +21,9 @@ The **http_client** project wraps SWI-Prolog's HTTP libraries. Here is the file 
 %% rest_client.pl - HTTP REST client utilities
 :- module(rest_client, [
     http_get_json/2,
-    http_post_json/3
+    http_get_json/3,
+    http_post_json/3,
+    http_post_json/4
 ]).
 
 :- use_module(library(http/http_client)).
@@ -30,17 +32,53 @@ The **http_client** project wraps SWI-Prolog's HTTP libraries. Here is the file 
 
 %% http_get_json(+URL, -JsonTerm)
 http_get_json(URL, JsonTerm) :-
-    http_get(URL, JsonTerm, [json_object(dict)]).
+    http_get_json(URL, JsonTerm, []).
+
+%% http_get_json(+URL, -JsonTerm, +Options)
+%% Extra Options are passed through to http_get/3.
+http_get_json(URL, JsonTerm, Options) :-
+    append(Options, [status_code(Code), json_object(dict)],
+           RequestOptions),
+    wrapped_call(
+        http_get(URL, JsonTerm, RequestOptions),
+        Code).
 
 %% http_post_json(+URL, +JsonPayload, -Response)
 http_post_json(URL, Payload, Response) :-
-    atom_json_dict(PayloadAtom, Payload, []),
-    http_post(URL, atom(PayloadAtom), Response,
-              [request_header('Content-Type'='application/json'),
-               json_object(dict)]).
+    http_post_json(URL, Payload, Response, []).
+
+%% http_post_json(+URL, +JsonPayload, -Response, +Options)
+%% Extra Options are passed through to http_post/4.
+http_post_json(URL, Payload, Response, Options) :-
+    append(Options,
+           [request_header('Content-Type'='application/json'),
+            status_code(Code),
+            json_object(dict)],
+           RequestOptions),
+    wrapped_call(
+        http_post(URL, json(Payload), Response, RequestOptions),
+        Code).
+
+%% wrapped_call(:Goal, +Code)
+%% Fail (with a warning) on transport errors or non-2xx replies.
+wrapped_call(Goal, Code) :-
+    (   catch(Goal, E, (log_http_error(E), fail))
+    ->  (   success_code(Code)
+        ->  true
+        ;   log_http_error(bad_status(Code)),
+            fail
+        )
+    ;   log_http_error(request_failed),
+        fail
+    ).
+
+success_code(Code) :- Code >= 200, Code < 300.
+
+log_http_error(Error) :-
+    print_message(warning, http_client_error(Error)).
 ```
 
-The `http_get_json/2` predicate is a thin wrapper that adds the `json_object(dict)` option. The `http_post_json/3` predicate serialises a Prolog dict into a JSON string using `atom_json_dict/3`, then posts it with the appropriate `Content-Type` header. The response is automatically parsed back into a dict.
+The `http_get_json/2` predicate is a thin wrapper that adds the `json_object(dict)` option. The `http_post_json/3` predicate posts the payload as `json(Payload)` with the appropriate `Content-Type` header, and the library serialises it directly. The response is automatically parsed back into a dict. Both get and post fail with a warning on transport errors or a non-2xx status. The Options variants pass extra options to the underlying `http_get/3` and `http_post/4`.
 
 You can test this in the REPL:
 
@@ -75,6 +113,7 @@ The **http_client** project also includes JSON utilities. Here is the file **htt
 %% json_utils.pl - JSON parsing and generation utilities
 :- module(json_utils, [
     parse_json_string/2,
+    json_dict_pairs/2,
     json_to_prolog/2
 ]).
 
@@ -84,14 +123,21 @@ The **http_client** project also includes JSON utilities. Here is the file **htt
 parse_json_string(JsonString, Term) :-
     atom_json_dict(JsonString, Term, []).
 
-%% json_to_prolog(+JsonDict, -PrologFacts)
-%% Convert a JSON dict to a list of key-value pairs
-json_to_prolog(Dict, Pairs) :-
+%% json_dict_pairs(+JsonDict, -Pairs)
+%% Convert a JSON dict to a list of Key-Value pairs.
+json_dict_pairs(Dict, Pairs) :-
     is_dict(Dict),
     dict_pairs(Dict, _, Pairs).
+
+%% json_to_prolog(+JsonDict, -Pairs)
+%% Deprecated alias for json_dict_pairs/2, kept for compatibility.
+json_to_prolog(Dict, Pairs) :-
+    print_message(warning, deprecated(json_to_prolog/2,
+                                      json_dict_pairs/2)),
+    json_dict_pairs(Dict, Pairs).
 ```
 
-The `json_to_prolog/2` predicate uses `dict_pairs/3` to decompose a dict into a list of `Key-Value` pairs. This is useful when you need to iterate over all fields in a JSON object without knowing the keys in advance.
+The `json_dict_pairs/2` predicate uses `dict_pairs/3` to decompose a dict into a list of `Key-Value` pairs. This is useful when you need to iterate over all fields in a JSON object without knowing the keys in advance. The older name `json_to_prolog/2` is kept as a deprecated alias that prints a warning and forwards to `json_dict_pairs/2`.
 
 ## Web Scraping
 
@@ -109,7 +155,9 @@ The **web_scraper** project implements a simple HTML scraper. Here is the file *
 :- module(scraper, [
     fetch_page/2,
     extract_links/2,
-    extract_text/2
+    extract_text/2,
+    parse_html_dom/2,
+    strip_script_style/2
 ]).
 
 :- use_module(library(http/http_client)).
@@ -117,37 +165,60 @@ The **web_scraper** project implements a simple HTML scraper. Here is the file *
 :- use_module(library(xpath)).
 
 %% fetch_page(+URL, -DOM) - Fetch and parse an HTML page
+%% Fails (with a warning) on transport errors or non-200 replies.
 fetch_page(URL, DOM) :-
-    http_get(URL, Content, []),
+    catch(
+        http_get(URL, Content,
+                 [to(string),
+                  timeout(20),
+                  status_code(Code),
+                  user_agent('PrologAIBook-Scraper/1.0')]),
+        E,
+        (   print_message(warning,
+                          scraper_error(transport(URL, E))),
+            fail
+        )),
+    (   Code == 200
+    ->  true
+    ;   print_message(warning, scraper_error(status(URL, Code))),
+        fail
+    ),
+    parse_html_dom(Content, DOM).
+
+%% parse_html_dom(+HtmlString, -DOM) - Parse an HTML string into a DOM
+parse_html_dom(Content, DOM) :-
     setup_call_cleanup(
-        new_memory_file(MemFile),
-        (   setup_call_cleanup(
-                open_memory_file(MemFile, write, Out),
-                write(Out, Content),
-                close(Out)
-            ),
-            setup_call_cleanup(
-                open_memory_file(MemFile, read, In),
-                load_html(In, DOM, []),
-                close(In)
-            )
-        ),
-        free_memory_file(MemFile)
-    ).
+        open_string(Content, In),
+        load_html(In, DOM, []),
+        close(In)).
 
 %% extract_links(+DOM, -Links) - Extract all href links from HTML
 extract_links(DOM, Links) :-
     findall(Href, xpath(DOM, //a(@href), Href), Links).
 
-%% extract_text(+DOM, -Text) - Extract all text content
+%% extract_text(+DOM, -Text) - Extract visible text content
+%% Text inside <script> and <style> subtrees is filtered out.
+%% (library(xpath) has no //text node test, so we walk the DOM.)
 extract_text(DOM, Text) :-
-    findall(T, xpath(DOM, //text, T), Texts),
+    strip_script_style(DOM, CleanDOM),
+    findall(T, dom_text(CleanDOM, T), Texts),
     atomic_list_concat(Texts, ' ', Text).
+
+%% dom_text(+DOMList, -Text) is nondet
+%% Yield each text-node atom/string in a DOM list.
+dom_text([Node|Rest], Text) :-
+    (   (atom(Node) ; string(Node)),
+        Text = Node
+    ;   Node = element(_, _, Children),
+        dom_text(Children, Text)
+    ;   Rest \= [],
+        dom_text(Rest, Text)
+    ).
 ```
 
-The `fetch_page/2` predicate uses SWI-Prolog's memory file API to bridge between the HTTP response (a Prolog atom) and the stream-based `load_html/3` parser. The nested `setup_call_cleanup/3` calls ensure that all streams and the memory file are properly cleaned up, even if an error occurs. This is idiomatic SWI-Prolog resource management.
+The `fetch_page/2` predicate requests the page with the `to(string)` option so the body comes back as a Prolog string, sets a 20 second timeout and a custom `User-Agent`, and requests the HTTP status code. The call sits inside `catch/3`; a transport error or a non-200 status prints a warning and fails. `parse_html_dom/2` then opens the string as a stream with `open_string/2` and hands it to `load_html/3`.
 
-The `extract_links/2` and `extract_text/2` predicates both use `findall/3` with `xpath/3` to collect results. XPath expressions like `//a(@href)` select all `<a>` elements and extract their `href` attribute, while `//text` selects all text nodes in the document.
+The `extract_links/2` predicate uses `findall/3` with `xpath/3` to collect results: the XPath expression `//a(@href)` selects all `<a>` elements and extracts their `href` attribute. `extract_text/2` is different: because `library(xpath)` has no `//text` node test, it first removes `<script>` and `<style>` subtrees with `strip_script_style/2`, then walks the DOM with `dom_text/2` to yield each text node.
 
 {width: "80%"}
 ![Architecture diagram for the Web Scraper example](FIG_web_scraper.jpg)

@@ -41,7 +41,8 @@ The companion project **tutorial_basics** demonstrates core Prolog concepts with
     parent/2,
     grandparent/2,
     sibling/2,
-    ancestor/2
+    ancestor/2,
+    ancestor_within/3
 ]).
 
 %% Facts: parent(Parent, Child)
@@ -60,11 +61,32 @@ sibling(X, Y) :-
     parent(Z, Y),
     X \= Y.
 
+%% ancestor(+X, -Y) / ancestor(X, Y)
+%%
+%% WARNING: this naive transitive closure is safe only for acyclic
+%% `parent/2` data. If the data contains a cycle (e.g. by mistake a
+%% person is their own ancestor) or if the rules were written in the
+%% left-recursive form `ancestor(X,Z), parent(Z,Y)`, queries would not
+%% terminate. Use ancestor_within/3 for a depth-bounded, always
+%% terminating variant.
 ancestor(X, Y) :- parent(X, Y).
 ancestor(X, Y) :-
     parent(X, Z),
     ancestor(Z, Y).
+
+%% ancestor_within(+X, -Y, +MaxDepth)
+%% Depth-bounded ancestor search: yields each ancestor of X found
+%% within MaxDepth parent/2 steps. Terminates even for cyclic data.
+ancestor_within(X, Y, MaxDepth) :-
+    MaxDepth > 0,
+    parent(X, Z),
+    (   Y = Z
+    ;   MaxDepth1 is MaxDepth - 1,
+        ancestor_within(Z, Y, MaxDepth1)
+    ).
 ```
+
+`ancestor_within/3` is a depth-bounded variant of `ancestor/2` that always terminates, even on cyclic `parent/2` data.
 
 ## Unification and Pattern Matching
 
@@ -162,6 +184,16 @@ Since lists are defined recursively, they are processed using recursion. The sta
 The **tutorial_basics** project includes hand-rolled list utilities that mirror the built-in predicates. Here is the file **tutorial_basics/prolog/lists.pl**:
 
 ```prolog
+%% lists.pl - List processing examples
+%% Demonstrates: head/tail, recursion, list predicates
+%%
+%% NOTE: this file is named lists.pl, but its module is `my_lists`.
+%% Keeping the module name `my_lists` (rather than `lists`) is a
+%% deliberate workaround: naming a module `lists` shadows SWI-Prolog's
+%% own library(lists), which breaks library(plunit) and library(clpfd)
+%% (they depend on library(lists) internally).  All public predicates
+%% keep their original names and arities (my_length/2 etc.).
+
 :- module(my_lists, [
     my_length/2,
     my_member/2,
@@ -170,11 +202,20 @@ The **tutorial_basics** project includes hand-rolled list utilities that mirror 
     my_last/2
 ]).
 
-%% Length of a list
-my_length([], 0).
-my_length([_|T], N) :-
-    my_length(T, N1),
-    N is N1 + 1.
+:- use_module(library(clpfd)).
+
+%% my_length(?List, ?N) - bidirectional length using CLP(FD)
+%% Works in both directions: my_length([a,b,c], 3) succeeds, and
+%% my_length(L, 3) binds L to a list of three fresh variables.
+my_length(List, N) :-
+    N #>= 0,
+    my_length_(List, N).
+
+my_length_([], 0).
+my_length_([_|T], N) :-
+    N #> 0,
+    N1 #= N - 1,
+    my_length_(T, N1).
 
 %% Membership
 my_member(X, [X|_]).
@@ -197,6 +238,8 @@ my_last([X], X).
 my_last([_|T], X) :- my_last(T, X).
 ```
 
+Because `my_length/2` uses CLP(FD) constraints it works in both directions. `my_length(L, 3)` binds `L` to a list of three fresh variables.
+
 ## Arithmetic and Comparison
 
 In Prolog, arithmetic expressions are stored as compound terms rather than being evaluated automatically. For example, `1 + 2` is structurally the term `+(1, 2)`.
@@ -212,7 +255,7 @@ X = 3.        % Evaluates expression on the right and unifies with X
 ```
 
 > [!IMPORTANT]
-> The right-hand side of `is/2` must be fully instantiated (contain no free variables) at the time of evaluation, otherwise Prolog will throw an `instantiation_error`.
+> The right-hand side of `is/2` must be fully instantiated (contain no free variables) at the time of evaluation, otherwise Prolog will throw an `instantiation_error`. Constraint predicates from `library(clpfd)` are the exception: they accept partially instantiated arguments and wait until enough is known, which is why `my_length/2` above works in both directions.
 
 #### Term Comparison vs. Arithmetic Comparison
 Prolog distinguishes between matching structure, verifying term identity, and comparing numerical values:

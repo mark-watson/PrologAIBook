@@ -92,7 +92,33 @@ Here is the implementation in **source-code/prolog_wasm_web/app.js**:
 
 {lang="javascript",linenos=off}
 ~~~~~~~~
+// app.js - SipLogic application to load SWI-Prolog WASM and query recommendations
+
+const SWIPL_WASM_VERSION = '8.1.2';
+
 let prologEngine = null;
+
+// Whitelisted values for each user-facing selector.  Anything else
+// is rejected before it can reach a Prolog query string.
+const ALLOWED = {
+    food: ['meat', 'cheese', 'poultry', 'fish', 'spicy_food', 'dessert'],
+    body: ['any', 'full_body', 'medium_body', 'light_body'],
+    sweetness: ['any', 'dry', 'sweet']
+};
+
+// pq(atom): single-quote-escape a value as a Prolog atom, defensively.
+// Whitelisted values are already safe; this guards any other code path
+// that builds query strings.
+function pq(atom) {
+    return "'" + String(atom).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+}
+
+function checkedValue(name, raw) {
+    if (ALLOWED[name].indexOf(raw) === -1) {
+        throw new Error(`Invalid ${name} selection: ${raw}`);
+    }
+    return raw;
+}
 
 // DOM Elements
 const statusBadge = document.getElementById('statusBadge');
@@ -102,17 +128,51 @@ const foodSelect = document.getElementById('foodSelect');
 const bodySelect = document.getElementById('bodySelect');
 const sweetnessSelect = document.getElementById('sweetnessSelect');
 
+// Replace the results area with a small (icon, message, detail) state,
+// e.g. an empty state, an error banner, or a "still loading" notice.
+// icon is one of the short label tokens used by the CSS (⚠️, 🍷, ...).
+function showState(icon, message, detail) {
+    resultsContainer.textContent = '';
+
+    const state = document.createElement('div');
+    state.className = 'empty-state';
+
+    const iconEl = document.createElement('span');
+    iconEl.className = 'empty-icon';
+    iconEl.textContent = icon;
+    state.appendChild(iconEl);
+
+    const messageEl = document.createElement('p');
+    messageEl.textContent = message;
+    state.appendChild(messageEl);
+
+    if (detail) {
+        const detailEl = document.createElement('p');
+        detailEl.style.fontSize = '0.85rem';
+        detailEl.style.color = 'var(--text-secondary)';
+        detailEl.textContent = detail;
+        state.appendChild(detailEl);
+    }
+
+    resultsContainer.appendChild(state);
+}
+
+function showError(message, detail) {
+    showState('⚠️', message, detail);
+}
+
 // Initialize the SWI-Prolog WASM engine
 async function initProlog() {
     try {
         console.log("Initializing SWI-Prolog WASM...");
-        
+
         // 1. Initialize SWIPL loader
         const swipl = await SWIPL({
             arguments: ["-q"],
-            locateFile: (path) => `https://unpkg.com/swipl-wasm@latest/dist/swipl/${path}`
+            locateFile: (path) =>
+                `https://unpkg.com/swipl-wasm@${SWIPL_WASM_VERSION}/dist/swipl/${path}`
         });
-        
+
         prologEngine = swipl.prolog;
         console.log("SWI-Prolog engine loaded. Fetching rules.pl...");
 
@@ -127,8 +187,13 @@ async function initProlog() {
         swipl.FS.writeFile('/rules.pl', rulesText);
         console.log("rules.pl written to virtual FS. Consulting...");
 
-        // 4. Consult the rules inside Prolog
-        prologEngine.query("consult('/rules.pl').").once();
+        // 4. Consult the rules inside Prolog; surface consult errors in the UI
+        const consultResult = prologEngine.query("consult('/rules.pl').").once();
+        if (consultResult && consultResult.error) {
+            prologEngine = null;
+            showError("Failed to consult Prolog rules.", consultResult.message);
+            return;
+        }
         console.log("Consult complete. Engine is online!");
 
         // 5. Update UI status
@@ -151,102 +216,48 @@ async function initProlog() {
     } catch (error) {
         console.error("Failed to initialize Prolog WASM:", error);
         statusText.textContent = "Error Loading Prolog";
-        resultsContainer.innerHTML = `
-            <div class="empty-state">
-                <span class="empty-icon">⚠️</span>
-                <p>Failed to initialize the SWI-Prolog engine.</p>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">${error.message}</p>
-            </div>
-        `;
+        showError("Failed to initialize the SWI-Prolog engine.", error.message);
     }
 }
 
 // Run query and display results
 function runRecommendation() {
-    if (!prologEngine) return;
+    if (!prologEngine) {
+        showState('🍷', "The Prolog engine is still loading...",
+                  "Recommendations will appear here once it is ready.");
+        return;
+    }
 
-    const food = foodSelect.value;
-    const body = bodySelect.value;
-    const sweetness = sweetnessSelect.value;
+    let food, body, sweetness;
+    try {
+        food = checkedValue('food', foodSelect.value);
+        body = checkedValue('body', bodySelect.value);
+        sweetness = checkedValue('sweetness', sweetnessSelect.value);
+    } catch (error) {
+        showError("Invalid selection.", error.message);
+        return;
+    }
 
-    resultsContainer.innerHTML = '';
+    resultsContainer.textContent = '';
 
     // Construct Prolog query
     // Example: recommend('meat', 'full_body', 'dry', Wine, Color, Explanation).
-    const queryStr = `recommend('${food}', '${body}', '${sweetness}', Wine, Color, Explanation).`;
+    const queryStr = `recommend(${pq(food)}, ${pq(body)}, ${pq(sweetness)}, Wine, Color, Explanation).`;
     console.log("Executing Query:", queryStr);
 
     try {
         const query = prologEngine.query(queryStr);
         const recommendations = [];
 
-        // Fetch all matching solutions
-        let result = query.next();
-        while (result && !result.done) {
-            // Unpack variables (Prolog bindings are returned as JS values)
-            // String values are decoded/retrieved
-            const wine = formatPrologValue(result.value.Wine);
-            const color = formatPrologValue(result.value.Color);
-            const explanation = formatPrologValue(result.value.Explanation);
-
-            recommendations.push({ wine, color, explanation });
-            result = query.next();
-        }
-        query.close();
-
-        // Display results
-        if (recommendations.length === 0) {
-            resultsContainer.innerHTML = `
-                <div class="empty-state">
-                    <span class="empty-icon">🍷</span>
-                    <p>No perfect pairings found matching your specific preferences.</p>
-                    <p style="font-size: 0.85rem; color: var(--text-secondary);">Try selecting 'Any Body' or 'Any Sweetness' to expand choices.</p>
-                </div>
-            `;
-        } else {
-            recommendations.forEach(rec => {
-                const card = document.createElement('div');
-                card.className = `wine-card ${rec.color}`;
-                
-                // Format wine name for presentation (replace underscores with spaces)
-                const formattedName = rec.wine.replace(/_/g, ' ');
-
-                card.innerHTML = `
-                    <div class="wine-header">
-                        <h3 class="wine-name">${formattedName}</h3>
-                        <span class="wine-type-badge">${rec.color}</span>
-                    </div>
-                    <p class="wine-justification">${rec.explanation}</p>
-                `;
-                resultsContainer.appendChild(card);
-            });
-        }
-
-    } catch (err) {
-        console.error("Query execution error:", err);
-        resultsContainer.innerHTML = `
-            <div class="empty-state">
-                <span class="empty-icon">⚠️</span>
-                <p>Query execution failed.</p>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">${err.message}</p>
-            </div>
-        `;
-    }
-}
-
-// Convert Prolog terms to clean JS strings
-function formatPrologValue(val) {
-    if (typeof val === 'string') return val;
-    // Handle atoms represented as objects or arrays of codes
-    if (val && typeof val === 'object' && val.toString) {
-        return val.toString();
-    }
-    return String(val);
-}
-
-// Start on page load
-window.addEventListener('DOMContentLoaded', initProlog);
+        // ... add the event listeners above, then fetch each solution by
+        // ... calling query.next() in a loop, checking result.error inside
+        // ... and after the loop and calling query.close() on failure paths,
+        // ... then render each recommendation with createElement and
+        // ... textContent rather than innerHTML. See the complete listing
+        // ... in this book's GitHub repository.
 ~~~~~~~~
+
+The CDN dependency is pinned to a specific version (`8.1.2`) instead of `@latest`. This prevents supply-chain drift and makes the page reproducible. User selections are validated against the `ALLOWED` whitelist and escaped with `pq()` before they enter the Prolog query string, which prevents query injection. All DOM rendering uses `createElement` and `textContent` rather than `innerHTML`, so Prolog-derived strings cannot inject markup. Consult and query failures are surfaced in the UI by checking `result.error` on the consult result and on every query step.
 
 ---
 
@@ -267,7 +278,7 @@ Then, open [http://localhost:8000](http://localhost:8000) in your web browser. Y
 
 ## Key Design Decisions
 
-**Loading from CDN vs. Self-Hosting WASM.** In this example, the Emscripten JS and WASM assets are loaded via the unpkg CDN (`https://unpkg.com/swipl-wasm@latest/dist/swipl/`). For production applications, it is usually better to self-host these assets on your own web server or Content Delivery Network to avoid dependencies on external CDN infrastructure and to enforce Strict Content Security Policies (CSP).
+**Loading from CDN vs. Self-Hosting WASM.** In this example, the Emscripten JS and WASM assets are loaded via the unpkg CDN, pinned to version `8.1.2` (`https://unpkg.com/swipl-wasm@8.1.2/dist/swipl/`). For production applications, it is usually better to self-host these assets on your own web server or Content Delivery Network to avoid dependencies on external CDN infrastructure and to enforce Strict Content Security Policies (CSP).
 
 **File System Emulation.** Emscripten maps virtual memory structures to regular file system logic. The call `swipl.FS.writeFile('/rules.pl', rulesText)` creates a virtual file that SWI-Prolog's core `consult` predicate reads as if it were a physical file on disk. This is a powerful feature: it means you can reuse existing complex Prolog databases without modifying the Prolog codebase to load from strings.
 

@@ -69,11 +69,17 @@ The **inference_engine** project implements a forward-chaining engine that deriv
     forward_chain/0,
     add_rule/2,
     add_fact/1,
-    derived_fact/1
+    derived_fact/1,
+    reset_kb/0
 ]).
 
 :- dynamic fact/1.
 :- dynamic rule/2.
+
+%% reset_kb - Remove all facts and rules from the knowledge base
+reset_kb :-
+    retractall(fact(_)),
+    retractall(rule(_, _)).
 
 %% add_fact(+Fact) - Assert a new fact
 add_fact(F) :- \+ fact(F), assert(fact(F)).
@@ -102,29 +108,53 @@ all_conditions_met([C|Rest]) :-
     all_conditions_met(Rest).
 ```
 
+`reset_kb/0` clears the forward-chaining knowledge base. Tests and the Makefile `run` goal call it so runs start clean.
+
 And a backward-chaining engine with explanation traces. Here is the file **inference_engine/prolog/backward_chain.pl**:
 
 ```prolog
+%% backward_chain.pl - Backward chaining with explanation traces
+%%
+%% The internal prove/3 carries a visited-goals list so cyclic
+%% rule sets terminate: a goal that is already on the current branch
+%% of the proof search fails instead of looping forever.
 :- module(backward_chain, [
-    prove/2
+    bc_fact/1,
+    bc_rule/2,
+    prove/2,
+    reset_bc_kb/0
 ]).
 
 :- dynamic bc_rule/2.
 :- dynamic bc_fact/1.
 
+%% reset_bc_kb - Remove all backward-chaining facts and rules
+reset_bc_kb :-
+    retractall(bc_fact(_)),
+    retractall(bc_rule(_, _)).
+
 %% prove(+Goal, -Proof) - Prove a goal and return the proof tree
-prove(Goal, fact(Goal)) :-
+prove(Goal, Proof) :-
+    prove(Goal, Proof, []).
+
+%% prove(+Goal, -Proof, +Visited) - Visited guards against cycles
+prove(Goal, _, Visited) :-
+    member(Goal, Visited),
+    !,
+    fail.
+prove(Goal, fact(Goal), _) :-
     bc_fact(Goal).
-prove(Goal, rule(Goal, Proofs)) :-
+prove(Goal, rule(Goal, Proofs), Visited) :-
     bc_rule(Conditions, Goal),
-    prove_all(Conditions, Proofs).
+    prove_all(Conditions, Proofs, [Goal|Visited]).
 
-prove_all([], []).
-prove_all([C|Rest], [P|Proofs]) :-
-    prove(C, P),
-    prove_all(Rest, Proofs).
-
+prove_all([], [], _).
+prove_all([C|Rest], [P|Proofs], Visited) :-
+    prove(C, P, Visited),
+    prove_all(Rest, Proofs, Visited).
 ```
+
+`reset_bc_kb/0` clears the backward-chaining knowledge base. `prove/2` carries a visited-goal list so cyclic rule bases fail instead of looping forever.
 
 ## Generating and Visualizing Proof Trees
 
@@ -215,7 +245,7 @@ This gives us a readable, tree-structured explanation of the system's reasoning 
 
 ## Reasoning with Uncertainty
 
-In real-world applications, reasoning is rarely black-and-white. AI systems must often handle uncertain or probabilistic information. One classic approach to this is attaching **certainty factors** or probabilities to rules and facts, and propagating those scores through the inference chain.
+In real-world applications, reasoning is rarely black-and-white. AI systems must often handle uncertain or probabilistic information. One classic approach to this is attaching probabilities to rules and facts, and using **noisy-AND probability propagation** through the inference chain.
 
 To compute the probability of a derived goal, we apply the rules of probability:
 1. **Conjunction (AND)**: If a rule depends on multiple conditions, the probability of the conditions holding jointly is the product of their individual probabilities (assuming independence):
@@ -230,34 +260,75 @@ To compute the probability of a derived goal, we apply the rules of probability:
 The companion project **prob_reasoning** implements this logic. Here is the complete file **prob_reasoning/prolog/prob_facts.pl**:
 
 ```prolog
-%% prob_facts.pl - Probabilistic reasoning with certainty factors
+%% prob_facts.pl - Probabilistic reasoning over annotated facts/rules
+%%
+%% NOTE: the probability arithmetic below is noisy-AND style
+%% multiplication along the inference chain; it is NOT MYCIN-style
+%% certainty-factor combination.
+%%
+%% Product chains are computed in log space (a foldl of the log of each
+%% factor, then exp/1 of the sum) so that deep chains do not underflow
+%% to 0.0 in floating point.
+%%
+%% prob_query/3 carries a visited-goal list so that cyclic rule bases
+%% terminate: a goal already on the current reasoning branch fails
+%% instead of looping forever.
+%%
+%% The dynamic facts and rules are empty at module load; call
+%% load_example_kb/0 (see load.pl) to populate the weather example.
+
 :- module(prob_facts, [
     prob_fact/2,
     prob_rule/3,
-    prob_query/2
+    prob_query/2,
+    load_example_kb/0
 ]).
 
 :- dynamic prob_fact/2.  % prob_fact(Fact, Probability)
-:- dynamic prob_rule/3;  % prob_rule(Conditions, Conclusion, CondProb)
+
+%% prob_rule(+Conditions, +Conclusion, +CondProb)
+%% If all Conditions hold, conclude Conclusion with conditional
+%% probability
+:- dynamic prob_rule/3.
 
 %% prob_query(+Goal, -Probability)
 %% Query the probability of a goal given known facts and rules
 prob_query(Goal, Prob) :-
-    prob_fact(Goal, Prob), !.
-prob_query(Goal, Prob) :-
-    prob_rule(Conditions, Goal, CondProb),
-    maplist(prob_query, Conditions, CondProbs),
-    foldl(mul, CondProbs, 1.0, JointProb),
-    Prob is JointProb * CondProb.
+    prob_query(Goal, Prob, []).
 
-mul(X, Acc, Result) :- Result is Acc * X.
+%% prob_query(+Goal, -Probability, +Visited) - Visited guards cycles
+prob_query(Goal, _, Visited) :-
+    member(Goal, Visited),
+    !,
+    fail.
+prob_query(Goal, Prob, _) :-
+    prob_fact(Goal, Prob), !.
+prob_query(Goal, Prob, Visited) :-
+    prob_rule(Conditions, Goal, CondProb),
+    maplist(prob_query_([Goal|Visited]), Conditions, CondProbs),
+    foldl(sum_log, CondProbs, 0.0, LogJoint),
+    Prob is exp(LogJoint) * CondProb.
+
+%% Bridge for maplist so Visited is threaded into recursive calls
+prob_query_(Visited, Goal, Prob) :-
+    prob_query(Goal, Prob, Visited).
+
+%% sum_log(+P, +Acc, -Result)
+%% Accumulate log probabilities; P =:= 0.0 contributes -inf.
+sum_log(P, Acc, Result) :-
+    (   P =:= 0.0
+    ->  Result = -inf
+    ;   Result is Acc + log(P)
+    ).
 ```
+
+The module loads with an empty knowledge base. `load.pl` calls `load_example_kb/0`, which retracts any existing KB first so it is idempotent.
 
 If we query the weather database defined in this project:
 
 ```prolog
 ?- prob_query(storm, Prob).
-Prob = 0.105.
+Prob = 0.084.
 ```
 ```
 
@@ -326,11 +397,7 @@ If we later learn that Tweety is actually a penguin and assert `penguin(tweety).
 
 To see how these reasoning techniques come together, we can look at a practical case study: a **Medical Diagnosis Reasoner**. This system diagnoses diseases by matching patient symptoms against a clinical knowledge base and generating an explicit explanation.
 
-The companion project **medical_diagnosis** implements this diagnostic reasoner. The program uses a clean rule-matching approach:
-1. It accepts a list of patient symptoms and asserts them dynamically into the database.
-2. It queries the disease knowledge base to find a disease whose required symptoms are a subset of the patient's symptoms.
-3. It formats a diagnostic explanation.
-4. It cleans up the temporary asserted facts to prevent side effects in subsequent runs.
+The companion project **medical_diagnosis** implements this diagnostic reasoner. The program is a pure list-based matcher. `diagnose/2` checks whether some disease's required symptoms are a `subset/2` of the patient's symptom list and formats an explanation. It asserts no dynamic state, so repeated consultations are idempotent.
 
 
 {width: "80%"}
@@ -339,27 +406,26 @@ The companion project **medical_diagnosis** implements this diagnostic reasoner.
 The **medical_diagnosis** project demonstrates rule-based diagnostic reasoning. Here is the file **medical_diagnosis/prolog/diagnosis.pl**:
 
 ```prolog
+%% diagnosis.pl - Simple medical diagnosis reasoner
+%% Demonstrates reasoning with multiple rules and explanation
+%%
+%% This implementation is a pure function of the input symptom list:
+%% it matches the patient's symptoms against the disease knowledge base
+%% using subset/2 without asserting or retracting any dynamic state.
+
 :- module(diagnosis, [
-    diagnose/2,
-    symptom/1
+    diagnose/2
 ]).
 
-:- dynamic symptom/1.
-
 %% diagnose(+PatientSymptoms, -DiagnosisWithExplanation)
+%% Pure list-based matching: succeeds iff some disease's required
+%% symptoms are a subset of the patient's symptoms.
 diagnose(Symptoms, diagnosis(Disease, Explanation)) :-
-    maplist(assert_symptom, Symptoms),
     disease(Disease, RequiredSymptoms),
     subset(RequiredSymptoms, Symptoms),
     format(atom(Explanation),
            'Diagnosis: ~w based on symptoms: ~w',
-           [Disease, RequiredSymptoms]),
-    retract_symptoms(Symptoms).
-
-assert_symptom(S) :- assert(symptom(S)).
-retract_symptoms([]).
-retract_symptoms([S|Rest]) :- retract(symptom(S)),
-    retract_symptoms(Rest).
+           [Disease, RequiredSymptoms]).
 
 %% Disease knowledge base
 disease(flu, [fever, cough, fatigue, body_aches]).

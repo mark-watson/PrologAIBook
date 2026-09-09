@@ -19,7 +19,7 @@ Prolog is uniquely suited for building expert systems because its core runtime e
 
 ## Building an Expert System Shell in Prolog
 
-Instead of hard-coding an expert system for a single domain, we can build a **domain-independent shell**. The shell defines the interactive loop, maintains the database of user-supplied facts, and provides explanation utilities, while the specific domain knowledge is loaded from a separate rules file.
+Instead of hard-coding an expert system for a single domain, we can build a **domain-independent shell**. The shell defines the interactive loop, maintains the database of user-supplied facts, and provides explanation utilities, while the specific domain knowledge is loaded from a separate rules file via the shell's `load_kb/1` predicate.
 
 To implement the shell, we use Prolog's dynamic database to store facts provided by the user during a session using `known/2` terms. Prolog's built-in backward-chaining engine automatically executes the rules. When a rule needs an attribute that is not yet known, the shell prompts the user, records the answer, and continues evaluation.
 
@@ -30,30 +30,125 @@ The **expert_shell** project provides a domain-independent shell. Here is the fi
 :- module(shell, [
     consult_expert/1,
     explain/1,
-    ask_question/1
+    ask_question/1,
+    provide_answer/2,
+    reset_known/0,
+    load_kb/1
 ]).
 
 :- dynamic known/2.  % known(Attribute, Value) - user-provided facts
 
+%% reset_known - Clear all user-provided answers
+reset_known :-
+    retractall(known(_, _)).
+
+%% provide_answer(+Attribute, +Value)
+%% Programmatically supply an answer (used by tests and non-interactive
+%% drivers) instead of prompting the user.
+provide_answer(Attribute, Value) :-
+    retractall(known(Attribute, _)),
+    assertz(known(Attribute, Value)).
+
 %% consult_expert(-Conclusion) - Main entry point
+%% When a KB has been loaded via load_kb/1, its hypothesis/1 rules
+%% (in module user) are tried first; otherwise the built-in default
+%% applies.  Answers provided earlier via provide_answer/2 are kept;
+%% call reset_known/0 explicitly for a fresh consultation.
 consult_expert(Conclusion) :-
-    retractall(known(_, _)),
-    hypothesis(Conclusion),
+    consult_kb_hypothesis(Conclusion),
     !.
+
+consult_kb_hypothesis(Conclusion) :-
+    kb_file(_),
+    !,
+    user:hypothesis(Conclusion).
+consult_kb_hypothesis(Conclusion) :-
+    hypothesis(Conclusion).
 
 %% explain(+Conclusion) - Show reasoning chain
 explain(Conclusion) :-
-    hypothesis_explanation(Conclusion, Explanation),
+    explanation_text(Conclusion, Explanation),
     format("Conclusion: ~w~n", [Conclusion]),
     format("Reasoning: ~w~n", [Explanation]).
 
+explanation_text(C, E) :-
+    kb_file(_),
+    user:hypothesis_explanation(C, E),
+    !.
+explanation_text(C, E) :-
+    hypothesis_explanation(C, E).
+
 %% ask_question(+Attribute) - Ask user for information
+%% Reuse a known answer; otherwise read a line, strip a trailing '.',
+%% and convert to an atom or number as appropriate.  EOF aborts the
+%% consultation gracefully.
+ask_question(Attribute) :-
+    known(Attribute, Value),
+    !,
+    format("~w: (cached) ~w~n", [Attribute, Value]).
 ask_question(Attribute) :-
     format("~nWhat is the value of ~w? ", [Attribute]),
-    read(Value),
-    assert(known(Attribute, Value)).
+    catch(read_line_to_string(user_input, Line),
+          _, Line = end_of_file),
+    (   Line == end_of_file
+    ->  format("~nEOF reached; aborting consultation.~n"),
+        fail
+    ;   normalize_answer(Line, Value),
+        provide_answer(Attribute, Value)
+    ).
 
-%% Hypothesis rules (to be extended in domain-specific knowledge bases)
+%% normalize_answer(+RawString, -Value)
+%% Strip a trailing '.', try a numeric conversion, else produce an atom.
+normalize_answer(Raw, Value) :-
+    string_codes(Raw, Codes0),
+    strip_trailing_dot(Codes0, Codes),
+    string_codes(Term, Codes),
+    (   catch(atom_number(Term, Value), _, fail)
+    ->  true
+    ;   atom_string(Value, Term)
+    ).
+
+strip_trailing_dot(Codes, Rest) :-
+    append(Rest, [0'.], Codes),
+    !.
+strip_trailing_dot(Codes, Codes).
+
+%% load_kb(+File) - Consult a knowledge-base file defining hypothesis/1
+%% and hypothesis_explanation/2 rules (if_/then_ style conditions read
+%% known/2 answers via check/1).  Clears previously loaded KB rules.
+:- dynamic kb_file/1.
+
+load_kb(File) :-
+    retractall(kb_file(_)),
+    unload_old_kb,
+    assertz(kb_file(File)),
+    open(File, read, In),
+    repeat,
+      read(In, Term),
+      (   Term == end_of_file
+      ->  close(In), !
+      ;   assertz(user:Term),
+          fail
+      ).
+
+unload_old_kb :-
+    forall(clause(user:hypothesis(_), _, Ref), erase(Ref)),
+    forall(clause(user:hypothesis_explanation(_, _), _, Ref),
+           erase(Ref)),
+    dynamic(user:hypothesis/1),
+    dynamic(user:hypothesis_explanation/2).
+
+%% check(+Condition) - True when the attribute has been answered as
+%% requested, prompting via ask_question/1 when not yet known.
+check(A == V) :- !,
+    (   known(A, V)
+    ->  true
+    ;   \+ known(A, _),
+        ask_question(A),
+        known(A, V)
+    ).
+
+%% Default hypothesis rules (used when no KB is loaded)
 hypothesis(unknown) :-
     format("Could not determine a conclusion from the given facts.~n").
 
@@ -61,6 +156,15 @@ hypothesis_explanation(
     unknown,
     'Insufficient data to reach a conclusion.').
 ```
+
+The shell's key predicates:
+
+- **`consult_expert/1`** is the main entry point. It tries the loaded KB's `hypothesis/1` rules first (falling back to the built-in `unknown` hypothesis) and no longer auto-retracts `known/2` facts. Call `reset_known/0` explicitly for a fresh consultation.
+- **`explain/1`** routes through `explanation_text/2`, preferring the loaded KB's `hypothesis_explanation/2` over the shell's own default.
+- **`ask_question/1`** reads a line with `read_line_to_string/2`, runs `normalize_answer/2` (which strips a trailing `.` and converts numbers) and treats EOF as a graceful abort. Known answers are reused and printed as "(cached)".
+- **`provide_answer/2`** supplies an answer programmatically (used by tests and non-interactive drivers) instead of prompting.
+- **`reset_known/0`** clears all user-provided answers.
+- **`load_kb/1`** loads a user knowledge-base file and asserts its `hypothesis/1` and `hypothesis_explanation/2` clauses into module `user`, clearing any previously loaded KB rules. This is what makes pluggable knowledge bases real rather than aspirational.
 
 ## Knowledge Acquisition and Rule Representation
 
@@ -113,7 +217,7 @@ To demonstrate rule-based reasoning in a practical domain, we look at the **wine
 
 The system utilizes two distinct categories of rules:
 1. **Meal Pairing Rules**: Determining which color of wine (red, white, rose) matches the food type (fish, red meat, dessert).
-2. **Flavor Preference Rules**: Matching the user's body preference (bold, light, moderate) with the wine's characteristics (full body, light body, medium body).
+2. **Flavor Preference Rules**: Matching the user's preference with the wine's characteristics. The preference may be a body atom (`bold`, `moderate`, `light`) or a sweetness atom (`sweet`, `dry`).
 
 {width: "80%"}
 ![Architecture diagram for the Wine Advisor example](FIG_wine_advisor.jpg)
@@ -127,10 +231,13 @@ The **wine_advisor** project implements a rule-based wine recommender. Here is t
 ]).
 
 %% recommend_wine(+MealType, +Preference, -Wine)
+%% Preference may be a body atom (bold, moderate, light), a sweetness
+%% atom (sweet, dry), or 'any' matching all wines on both dimensions.
 recommend_wine(MealType, Preference, Wine) :-
-    wine(Wine, Color, Body, _Sweetness),
+    wine(Wine, Color, Body, Sweetness),
     meal_pairs_with(MealType, Color),
-    preference_matches(Preference, Body).
+    preference_matches(Preference, Body),
+    sweetness_matches(Preference, Sweetness).
 
 %% Wine database: wine(Name, Color, Body, Sweetness)
 wine(cabernet_sauvignon, red, full, dry).
@@ -153,101 +260,85 @@ meal_pairs_with(pasta, red).
 meal_pairs_with(dessert, white).
 meal_pairs_with(cheese, red).
 
-%% Preference matching
+%% Preference matching: body dimension.
+%% Sweetness preferences (sweet, dry) do not constrain body.
 preference_matches(bold, full).
 preference_matches(moderate, medium).
 preference_matches(light, light).
+preference_matches(sweet, _).
+preference_matches(dry, _).
 preference_matches(any, _).
+
+%% Sweetness matching.
+%% Body preferences (bold, moderate, light) do not constrain sweetness.
+sweetness_matches(sweet, sweet).
+sweetness_matches(dry, dry).
+sweetness_matches(bold, _).
+sweetness_matches(moderate, _).
+sweetness_matches(light, _).
+sweetness_matches(any, _).
 ```
 
-## Case Study: A Fault Diagnosis System
+This is a behavior change from the first edition of this chapter: body and sweetness are now orthogonal dimensions. `recommend_wine(red_meat, bold, W)` returns both `cabernet_sauvignon` and `port` because a `bold` preference constrains only body, not sweetness, and `port` is a full-bodied red. `recommend_wine(dessert, sweet, W)` returns only `[riesling]` because `dessert` pairs with white wine and only `riesling` is both white and sweet.
 
-As a final case study, we can implement a **Fault Diagnosis System** that diagnoses computer network issues. By combining our domain-independent shell (`shell.pl`) with network diagnostic rules, we can build an interactive system that helps users troubleshoot connectivity problems.
+## Case Study: A Pluggable Knowledge Base
 
-Here is the complete fault diagnosis knowledge base, **expert_shell/prolog/fault_diagnosis.pl**:
+As a final case study, we use the shell's `load_kb/1` support with the bundled **expert_shell/prolog/sample_kb.pl**, a small wine-selection knowledge base. Four hypotheses (serve_port, serve_riesling, serve_cabernet, serve_sauvignon_blanc) are driven by `shell:check/1` conditions that read `known/2` answers or prompt the user:
 
 ```prolog
- %% fault_diagnosis.pl - Network fault diagnosis rules
-:- module(fault_diagnosis, [
-    diagnose/1
-]).
+ %% sample_kb.pl - Wine-selection knowledge base for expert_shell
+ %%
+ %% If_/then_ style hypotheses: each condition is checked via
+ %% shell:check/1, which reuses known/2 answers or asks the user.
+ %% shell:load_kb/1 asserts these clauses into module `user` so the
+ %% shell can find them via user:hypothesis/1 and
+ %% user:hypothesis_explanation/2.
 
-:- use_module(shell).
+hypothesis(serve_port) :-
+    shell:check(meal == dessert),
+    shell:check(sweet_preference == yes).
 
-%% Import ask_question and known from shell
-:- reexport(shell).
+hypothesis(serve_riesling) :-
+    shell:check(sweet_preference == yes),
+    \+ shell:known(meal, dessert).
 
-%% ask_if(+Attribute, +Value) - Check fact database or ask user
-ask_if(Attribute, Value) :-
-    known(Attribute, Value), !.
-ask_if(Attribute, Value) :-
-    \+ known(Attribute, _),
-    ask_question(Attribute),
-    known(Attribute, Value).
+hypothesis(serve_cabernet) :-
+    shell:check(meal == red_meat),
+    shell:check(bold_preference == yes).
 
-%% Knowledge base rules defining hypotheses
-hypothesis(cable_unplugged) :-
-    ask_if(ethernet_status, disconnected).
+hypothesis(serve_sauvignon_blanc) :-
+    shell:check(meal == fish),
+    shell:check(light_preference == yes).
 
-hypothesis(router_failure) :-
-    ask_if(ethernet_status, connected),
-    ask_if(router_lights, off).
-
-hypothesis(dns_configuration_issue) :-
-    ask_if(ethernet_status, connected),
-    ask_if(router_lights, on),
-    ask_if(ping_ip_address, success),
-    ask_if(ping_domain_name, failure).
-
-hypothesis(isp_outage) :-
-    ask_if(ethernet_status, connected),
-    ask_if(router_lights, on),
-    ask_if(ping_ip_address, failure).
-
-hypothesis(local_software_firewall) :-
-    ask_if(ethernet_status, connected),
-    ask_if(router_lights, on),
-    ask_if(ping_domain_name, success),
-    ask_if(browser_connect, failure).
-
-%% Explanations for each conclusion
-hypothesis_explanation(cable_unplugged,
-    'Your Ethernet cable is disconnected. Please plug it in securely and retry.').
-hypothesis_explanation(router_failure,
-    'Your router has no power or is failing. Check power cables and cycle the router power.').
-hypothesis_explanation(dns_configuration_issue,
-    'You can connect to raw IP addresses but not domain names. Your DNS server configuration is likely broken.').
-hypothesis_explanation(isp_outage,
-    'You cannot ping external IP addresses. This indicates a physical line issue or ISP outage.').
-hypothesis_explanation(local_software_firewall,
-    'Pings are successful, but browser traffic is blocked. A local firewall or proxy is likely blocking HTTP ports.').
+hypothesis_explanation(serve_port,
+    'A dessert meal plus a sweet preference points to port.').
+hypothesis_explanation(serve_riesling,
+    'A sweet preference without a dessert meal suggests riesling.').
+hypothesis_explanation(serve_cabernet,
+    'Red meat plus a bold preference points to cabernet sauvignon.').
+hypothesis_explanation(serve_sauvignon_blanc,
+    'Fish plus a light preference points to sauvignon blanc.').
 ```
 
-### Running the Diagnosis System
+### Running the Wine Knowledge Base
 
-You can run the network troubleshooter in the SWI-Prolog REPL:
+Load the KB and run a consultation in the SWI-Prolog REPL. Here we supply the answers programmatically with `provide_answer/2`:
 
 ```prolog
-?- consult_expert(Conclusion).
+?- shell:load_kb('prolog/sample_kb.pl'),
+   shell:provide_answer(meal, dessert),
+   shell:provide_answer(sweet_preference, yes),
+   shell:consult_expert(Conclusion).
+Conclusion = serve_port.
 
-What is the value of ethernet_status? connected.
-
-What is the value of router_lights? on.
-
-What is the value of ping_ip_address? success.
-
-What is the value of ping_domain_name? failure.
-
-Conclusion = dns_configuration_issue.
-
-?- explain(dns_configuration_issue).
-Conclusion: dns_configuration_issue
-Reasoning: You can connect to raw IP addresses but not domain names. Your DNS server configuration is likely broken.
+?- shell:explain(serve_port).
+Conclusion: serve_port
+Reasoning: A dessert meal plus a sweet preference points to port.
 ```
 
-This case study demonstrates the power of separating the inference logic (defined in the shell) from the domain rules (defined in the fault diagnosis module), allowing you to build new expert systems simply by swapping in different rule bases.
+This case study demonstrates the power of separating the inference logic (defined in the shell) from the domain rules (loaded with `load_kb/1`), allowing you to build new expert systems simply by swapping in different rule files.
 
 ## Optional Practice Problems
 
 1. **Why Explanations**: Extend the `expert_shell` system to support `why` queries. When the system asks the user a question, the user should be able to type `why`, and the system should print the rules that are currently being evaluated.
-2. **Sweetness Recommendation**: In the `wine_advisor` project, add a new attribute for "sweetness" (e.g., dry, semi-sweet, sweet) and update the recommendation rules to recommend dessert wines.
+2. **Semi-Sweet Wines**: In the `wine_advisor` project, add a `semi-sweet` preference and at least one semi-sweet wine to the database, and write a test asserting it is recommended for the right meals.

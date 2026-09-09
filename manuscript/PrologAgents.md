@@ -53,7 +53,7 @@ run_agent(N) :-
         run_agent(N1)
     ).
 
-%% Extension points — override these for your domain
+%% TBD: Implement perceive, select_action, execute_action
 perceive :- true.
 
 select_action(idle) :-
@@ -234,7 +234,7 @@ Each agent is a specialization of the same `run_agent/1` loop, but with a differ
 
 ## Case Study: A Research Assistant Agent
 
-The **research_assistant** project sketches a multi-stage agent that answers research questions by chaining together web search, LLM summarization, and Prolog knowledge-base reasoning. Here is the file **research_assistant/prolog/assistant.pl**:
+The **research_assistant** project sketches a multi-stage agent that answers research questions by chaining together web search, LLM summarization, and Prolog knowledge-base reasoning. This is an experimental skeleton: the pack title is "Research assistant (experimental skeleton)" and the README declares "Status: experimental". Here is the complete file **research_assistant/prolog/assistant.pl** (22 lines):
 
 ```prolog
 %% assistant.pl - Research assistant agent
@@ -247,7 +247,7 @@ The **research_assistant** project sketches a multi-stage agent that answers res
 :- dynamic knowledge/3.  % knowledge(Topic, Fact, Source)
 
 %% research(+Question, -Answer)
-%% Full pipeline:
+%% TBD: Full implementation combining:
 %% 1. Parse question to identify search terms
 %% 2. Web search via REST API (Brave Search / Tavily)
 %% 3. Summarize results via LLM (Gemini/Ollama)
@@ -255,65 +255,24 @@ The **research_assistant** project sketches a multi-stage agent that answers res
 %% 5. Reason over knowledge base to produce answer
 research(Question, Answer) :-
     format("Researching: ~w~n", [Question]),
-    extract_search_terms(Question, Terms),
-    web_search(Terms, Results),
-    llm_summarize(Results, Summary),
-    store_knowledge(Terms, Summary),
-    reason_over_knowledge(Question, Answer).
+    %% Placeholder: direct LLM query
+    Answer = placeholder_answer(Question).
 
-extract_search_terms(Question, Terms) :-
-    %% Use LLM to extract key terms from the question
-    format(atom(Prompt),
-           'Extract 3-5 key search terms from: "~w". Return as Prolog list.',
-           [Question]),
-    gemini_generate(Prompt, TermAtom),
-    term_string(Terms, TermAtom).
-
-web_search(Terms, Results) :-
-    %% Call search API — see WebClient chapter for REST examples
-    format("Would search for: ~w~n", [Terms]),
-    Results = [placeholder_result(Terms)].
-
-llm_summarize(Results, Summary) :-
-    format(atom(Prompt),
-           'Summarize these search results in 3 bullet points: ~w',
-           [Results]),
-    gemini_generate(Prompt, Summary).
-
-store_knowledge(Topic, Summary) :-
-    assert(knowledge(Topic, summary, Summary)).
-
-reason_over_knowledge(Question, Answer) :-
-    findall(Fact, knowledge(_, Fact, _), Facts),
-    format(atom(Prompt),
-           'Using these facts: ~w, answer: "~w"',
-           [Facts, Question]),
-    gemini_generate(Prompt, Answer).
+%% TBD: Implement search, summarize, store, reason pipeline
 ```
 
-The pipeline is explicit in the code: `research/2` chains five predicates, each handling one stage of the workflow. `extract_search_terms/2` uses an LLM to pull key terms from the natural-language question. `web_search/2` (a placeholder awaiting the Brave Search or Tavily API from the Web Clients chapter) fetches results. `llm_summarize/2` condenses the raw search results into a digest. `store_knowledge/3` asserts the summary into the `knowledge/3` dynamic database, where other Prolog rules can reason over it. Finally, `reason_over_knowledge/2` synthesizes an answer from the accumulated facts.
+The skeleton declares the intended shape of the pipeline in comments and dynamic predicates. The planned implementation has five stages: parse the question to identify search terms, run a web search via a REST API such as Brave Search or Tavily, summarize the results with an LLM (Gemini or Ollama), store the structured knowledge as `knowledge/3` Prolog facts, then reason over the knowledge base to produce the answer. The current `research/2` only prints the question and returns a `placeholder_answer/1` term; the search, summarize, store, and reason pipeline is not yet implemented. The single test in the suite is `blocked('pipeline not yet implemented')` rather than passing trivially.
 
-### Extending the Pipeline
+### The Planned Pipeline
 
-The placeholder `web_search/2` is designed to be replaced with a real HTTP call to a search API. The Web Clients chapter covers `http_get/3` and JSON parsing in detail. Once connected, the pipeline becomes fully operational:
-
-```prolog
-web_search(Terms, Results) :-
-    atomic_list_concat(Terms, '+', Query),
-    format(atom(URL),
-           'https://api.search.example.com/v1/search?q=~w',
-           [Query]),
-    http_get(URL, Results, [json_object(dict)]).
-```
-
-The research assistant also benefits from caching: if the same question (or similar search terms) was answered recently, the agent can return the cached knowledge rather than repeating the full pipeline. This is a natural fit for the Cache Engine chapter's patterns.
+The Web Clients chapter covers `http_get/3` and JSON parsing, and the LLM Integration chapter covers the Gemini and Ollama clients, so a finished `research/2` would combine those pieces into the five stages listed above. The research assistant also benefits from caching: if the same question (or similar search terms) was answered recently, the agent can return the cached knowledge rather than repeating the full pipeline. This is a natural fit for the Cache Engine chapter's patterns.
 
 Running the assistant:
 
 ```prolog
 ?- research("What are the health benefits of green tea?", Answer).
 Researching: What are the health benefits of green tea?
-Answer = "Green tea contains antioxidants called catechins..."
+Answer = placeholder_answer("What are the health benefits of green tea?").
 ```
 
 ## Optional Practice Problems
