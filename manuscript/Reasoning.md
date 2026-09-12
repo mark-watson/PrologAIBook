@@ -240,8 +240,8 @@ If we query the sample family relationships database:
    ├─ parent(john, mary)
       ✓ true
 ```
+
 This gives us a readable, tree-structured explanation of the system's reasoning process.
-```
 
 ## Reasoning with Uncertainty
 
