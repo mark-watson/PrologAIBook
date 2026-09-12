@@ -10,14 +10,14 @@ Prolog predicates naturally map to **First-Order Logic (FOL)**. We express propo
 Classical logic allows rules with arbitrary conjunctions, disjunctions, and negations. However, resolving arbitrary first-order formulas is computationally expensive. To remain efficient, Prolog restricts its database to **Horn clauses**.
 
 A Horn clause is a disjunction of literals with *at most one positive (non-negated) literal*. In classical notation:
-{$$}
+```$
 A \lor \neg B_1 \lor \neg B_2 \lor \dots \lor \neg B_n
-{/$$}
+```
 
 By applying Boolean algebra, this is logically equivalent to the implication:
-{$$}
+```$
 (B_1 \land B_2 \land \dots \land B_n) \Rightarrow A
-{/$$}
+```
 
 In Prolog, this implication is written in reverse as:
 ```prolog
@@ -249,13 +249,13 @@ In real-world applications, reasoning is rarely black-and-white. AI systems must
 
 To compute the probability of a derived goal, we apply the rules of probability:
 1. **Conjunction (AND)**: If a rule depends on multiple conditions, the probability of the conditions holding jointly is the product of their individual probabilities (assuming independence):
-   {$$}
+   ```$
    P(A \land B) = P(A) \times P(B)
-   {/$$}
+   ```
 2. **Rule Application**: The probability of the conclusion is the joint probability of its conditions multiplied by the conditional probability (confidence) of the rule:
-   {$$}
+   ```$
    P(Conclusion) = P(Conditions) \times P(Rule)
-   {/$$}
+   ```
 
 The companion project **prob_reasoning** implements this logic. Here is the complete file **prob_reasoning/prolog/prob_facts.pl**:
 
