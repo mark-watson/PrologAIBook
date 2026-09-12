@@ -35,4 +35,4 @@ You can find the example programs and manuscript files at:
 
 ## Acknowledgments
 
-I would like to thank my wife Carol for editing this book. I would like to thank the following readers for reporting errors: *none yet!*
+I would like to thank my wife Carol for editing this book. I would like to thank the following readers for reporting errors: David Rupp.
