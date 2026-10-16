@@ -25,4 +25,5 @@ MetaInterpreters.md
 PlanningScheduling.md
 inductive_logic_popper.md
 ScryerProlog.md
+reinforcement_learning.md
 Wrapup.md
