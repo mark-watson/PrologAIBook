@@ -2,8 +2,6 @@
 
 This table maps each chapter file in `./manuscript` to its source code example directory in `./source-code`. Chapters follow the book order in `manuscript/Book.txt`. Chapters with no code show `(none)`.
 
-`source-code/reinforcement_learning` is not yet covered by any chapter (see its `NOT_IN_BOOK.md`).
-
 | Chapter file | Source code directory |
 | --- | --- |
 | `manuscript/Preface.md` | (none) |
@@ -33,4 +31,5 @@ This table maps each chapter file in `./manuscript` to its source code example d
 | `manuscript/PlanningScheduling.md` | `source-code/strips_planner`<br>`source-code/blocks_world`<br>`source-code/job_scheduler` |
 | `manuscript/inductive_logic_popper.md` | `source-code/inductive_logic_popper` |
 | `manuscript/ScryerProlog.md` | `source-code/scryer_dcg`<br>`source-code/scryer_clp` |
+| `manuscript/reinforcement_learning.md` | `source-code/reinforcement_learning` |
 | `manuscript/Wrapup.md` | (none) |
