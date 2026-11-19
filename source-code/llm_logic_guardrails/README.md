@@ -34,7 +34,7 @@ uv run verify_llm.py
 ```
 
 ### Expected Output
-The script runs two simulated LLM recommendations through the Prolog guardrails and prints the results (asserted programmatically; the script exits with code 1 if a check fails). Note: the rules genuinely fire — the risk-tolerance comparison is canonicalised so it works whether JSON string values arrive as Prolog atoms (`json_read_dict/2` default) or as strings (Janus):
+The script runs two simulated LLM recommendations through the Prolog guardrails and prints the results (asserted programmatically; the script exits with code 1 if a check fails). Note: the risk-tolerance comparison is canonicalised so it works whether JSON string values arrive as Prolog atoms (`json_read_dict/2` default) or as strings (Janus):
 
 ```text
 Consulting Prolog guardrail rules...
@@ -87,3 +87,7 @@ The pure-Prolog policy rules are covered by offline plunit tests:
 ```shell
 make test
 ```
+
+## Self-Repair Loop
+
+`prolog/repair_loop.pl` asks Gemini for a portfolio, checks it with the guardrails, and sends any violations back for a corrected answer. Run `make repair` (needs `GOOGLE_API_KEY`). Run the Prolog unit tests with `make test`.

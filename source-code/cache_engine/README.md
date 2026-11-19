@@ -48,8 +48,8 @@ Returns up to 3 matching cached strings. SearchTerms is a list of atoms; all ter
 
 ### `cache_lookup(+Connection, +SearchTerms, -Results, +Options)`
 Extended lookup with options:
-- `limit(N)` — maximum number of results (default 3)
-- `match_any(true)` — use OR instead of AND for multiple search terms
+- `limit(N)`: maximum number of results (default 3)
+- `match_any(true)`: use OR instead of AND for multiple search terms
 
 ### `cache_count(+Connection, -Count)`
 Returns the total number of items stored in the cache.

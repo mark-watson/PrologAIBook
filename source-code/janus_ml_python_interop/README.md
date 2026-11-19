@@ -2,19 +2,33 @@
 
 Call Python's scikit-learn from Prolog via the Janus bridge. Companion code for the Janus Python Bridge chapter.
 
+## Setting Up Janus and Python
+
+Janus embeds the Python that SWI-Prolog was built with, and it uses the packages of the virtual environment named by the `VIRTUAL_ENV` environment variable. So the environment must use that same Python. The Makefile handles this:
+
+```shell
+make venv   # uv sync --python /usr/bin/python3
+make run
+make test
+```
+
+For the Homebrew build of SWI-Prolog on macOS, the matching Python is the Command Line Tools Python 3.9 (`/usr/bin/python3`). Its `janus.so` looks for `Python3.framework` only inside `Xcode.app`, so loading Janus can fail with:
+
+```
+ERROR: open_shared_object/3: dlopen(.../janus.so, 0x0009): Library not loaded: @rpath/Python3.framework/Versions/3.9/Python3
+```
+
+The Makefile works around this by setting `DYLD_FRAMEWORK_PATH=/Library/Developer/CommandLineTools/Library/Frameworks`, which changes nothing on disk. Note that `uv run swipl` does not pass `DYLD_*` variables on, which is why the Makefile calls `swipl` directly with `VIRTUAL_ENV` set. To start an interactive session yourself:
+
+```shell
+VIRTUAL_ENV=$PWD/.venv \
+DYLD_FRAMEWORK_PATH=/Library/Developer/CommandLineTools/Library/Frameworks \
+swipl -s load.pl
+```
+
+On Linux, set `PYTHON=python3` (`make venv PYTHON=python3`) and leave out `DYLD_FRAMEWORK_PATH`. The JanusPythonBridge chapter also shows a permanent fix that edits `janus.so` with `install_name_tool`.
+
 ## Running Examples
-
-First, initialize the Python environment and install dependencies using `uv`. Note: you must specify the Python version that matches the one SWI-Prolog's Janus bridge was compiled against (e.g., Python 3.9):
-
-```shell
-uv sync --python 3.9
-```
-
-Then run the examples using `uv run` to ensure the virtual environment is used:
-
-```shell
-uv run swipl -s load.pl
-```
 
 Once the SWI-Prolog interactive shell opens, you can execute:
 
@@ -32,7 +46,7 @@ Requires SWI-Prolog compiled with Janus support and `uv` installed for Python de
 
 - **`py_classify(+TrainData, +TestData, -Predictions)`**:
   - `TrainData`: A list of lists where each inner list contains feature values followed by the class label as the last element (e.g., `[[Feature1, Feature2, Label], ...]`).
-  - `TestData`: A list of lists of test samples. You may pass **unlabelled feature vectors** (e.g. `[[Feature1, Feature2], ...]`) — the Prolog wrapper detects the shorter rows and appends a placeholder internally before calling Python.  The old convention of explicitly appending a dummy label is still accepted for backwards compatibility, but is no longer required.
+  - `TestData`: A list of lists of test samples. You may pass **unlabelled feature vectors** (e.g. `[[Feature1, Feature2], ...]`): the Prolog wrapper passes them to Python as they are. Rows with an extra trailing dummy label are also accepted; the wrapper strips the label.
 - **`py_cluster(+Data, +NClusters, -Labels)`**:
   - `Data`: A list of lists of data points to cluster (e.g., `[[Feature1, Feature2], ...]`).
   - `NClusters`: The integer number of clusters to form.
@@ -40,33 +54,8 @@ Requires SWI-Prolog compiled with Janus support and `uv` installed for Python de
 ## Running Tests
 
 ```shell
-uv run swipl -g "['tests/test_janus_ml.pl'], run_tests, halt" -s load.pl
+make test
 ```
-
-## Troubleshooting macOS Library Loading Issues
-
-If you run `uv run swipl -s load.pl` on macOS and encounter a dynamic library loading error:
-```
-ERROR: open_shared_object/3: dlopen(.../janus.so, 0x0009): Library not loaded: @rpath/Python3.framework/Versions/3.9/Python3
-```
-This occurs because the Homebrew-compiled Janus package expects `Python3.framework` in the full Xcode bundle search path, but you may only have Xcode Command Line Tools installed.
-
-To fix this permanently on your machine, add the Command Line Tools framework path to the shared library's `RPATH` list and re-sign the binary (otherwise macOS security will kill the process with exit code 137 / SIGKILL):
-
-```shell
-# 1. Make the library writable
-chmod +w /opt/homebrew/Cellar/swi-prolog/10.0.2/lib/swipl/lib/arm64-darwin/janus.so
-
-# 2. Add the Command Line Tools framework directory to its RPATHs
-install_name_tool -add_rpath /Library/Developer/CommandLineTools/Library/Frameworks /opt/homebrew/Cellar/swi-prolog/10.0.2/lib/swipl/lib/arm64-darwin/janus.so
-
-# 3. Restore read-only permission
-chmod -w /opt/homebrew/Cellar/swi-prolog/10.0.2/lib/swipl/lib/arm64-darwin/janus.so
-
-# 4. Re-sign the library to satisfy macOS security
-codesign -f -s - /opt/homebrew/Cellar/swi-prolog/10.0.2/lib/swipl/lib/arm64-darwin/janus.so
-```
-*(Adjust the version path `10.0.2` if your installed version of SWI-Prolog is different).*
 
 ## Architecture
 

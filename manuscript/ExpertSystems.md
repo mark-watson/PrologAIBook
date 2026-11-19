@@ -1,40 +1,46 @@
 # Expert Systems and Rule-Based AI
 
-Expert systems were one of the earliest commercial successes of AI, and Prolog is an ideal language for building them. In this chapter we build a complete expert system shell and demonstrate it with practical examples.
+Expert systems were one of AI's first commercial successes, and Prolog is a natural language for building them. In this chapter we build an expert system shell and use it with two wine-selection knowledge bases.
 
 {width: "80%"}
 ![Architecture diagram for the Expert Shell example](FIG_expert_shell.jpg)
 
 ## What Is an Expert System?
 
-An **expert system** is a computer program that emulates the decision-making ability of a human expert. Developed in the 1970s and 1980s during the "Rule-Based AI" era (producing famous systems like MYCIN and DENDRAL), they represent one of the first successful applications of AI to real-world problems.
+An **expert system** is a program that makes decisions the way a human expert does in a narrow domain. The rule-based systems of the 1970s and 1980s, such as MYCIN and DENDRAL, were among the first AI programs to solve real problems.
 
-The standard architecture of an expert system consists of four key components:
-1. **Knowledge Base (KB)**: A database of domain-specific facts and rules (heuristic knowledge) usually structured as "IF-THEN" statements.
-2. **Inference Engine**: The brain of the system, which applies logical rules to the knowledge base to deduce new information or prove a hypothesis. It can operate via forward chaining (data-driven) or backward chaining (goal-driven).
-3. **Explanation Facility**: A module that explains the system's reasoning path to the user, answering "How" a conclusion was reached or "Why" a particular question is being asked.
-4. **User Interface**: The interactive portal through which the system prompts the user for missing information and displays conclusions.
+An expert system has four parts:
+1. **Knowledge base (KB)**: Domain facts and rules, usually written as IF-THEN statements.
+2. **Inference engine**: Applies the rules to the knowledge base to prove a hypothesis or derive new facts, by forward chaining (data-driven) or backward chaining (goal-driven).
+3. **Explanation facility**: Tells the user *how* the system reached a conclusion, or *why* it is asking a question.
+4. **User interface**: Asks the user for missing information and shows the conclusions.
 
-Prolog is uniquely suited for building expert systems because its core runtime environment already includes an inference engine (SLD resolution) and a backtracking search mechanism.
+Prolog already has a backward-chaining inference engine with backtracking, so we only need to write the other three parts.
 
 ## Building an Expert System Shell in Prolog
 
-Instead of hard-coding an expert system for a single domain, we can build a **domain-independent shell**. The shell defines the interactive loop, maintains the database of user-supplied facts, and provides explanation utilities, while the specific domain knowledge is loaded from a separate rules file via the shell's `load_kb/1` predicate.
+Instead of writing an expert system for one domain, we build a **domain-independent shell**. The shell asks questions, stores the answers, and explains conclusions. The domain knowledge lives in a separate file that the shell loads with `load_kb/1`.
 
-To implement the shell, we use Prolog's dynamic database to store facts provided by the user during a session using `known/2` terms. Prolog's built-in backward-chaining engine automatically executes the rules. When a rule needs an attribute that is not yet known, the shell prompts the user, records the answer, and continues evaluation.
-
-The **expert_shell** project provides a domain-independent shell. Here is the file **expert_shell/prolog/shell.pl**:
+The shell stores the user's answers as `known(Attribute, Value)` facts. Prolog runs the rules by backward chaining. When a rule needs an attribute that is not yet known, the shell asks the user, records the answer, and carries on. Here is the file **expert_shell/prolog/shell.pl**:
 
 ```prolog
- %% shell.pl - Expert system shell with backward chaining and explanations
+%% shell.pl - Expert system shell with backward
+%% chaining and explanations
 :- module(shell, [
     consult_expert/1,
     explain/1,
     ask_question/1,
     provide_answer/2,
     reset_known/0,
-    load_kb/1
+    load_kb/1,
+    op(1100, fx, if),
+    op(1050, xfx, then),
+    op(1000, xfy, and)
 ]).
+
+%% Operators for knowledge bases written as readable rules:
+%%   if meal is dessert and sweet_preference is yes then serve_port.
+%% is/2 is already a standard operator (priority 700).
 
 :- dynamic known/2.  % known(Attribute, Value) - user-provided facts
 
@@ -61,7 +67,10 @@ consult_expert(Conclusion) :-
 consult_kb_hypothesis(Conclusion) :-
     kb_file(_),
     !,
-    user:hypothesis(Conclusion).
+    (   user:hypothesis(Conclusion)
+    ;   kb_rule(Conclusion, Conditions),
+        maplist(check, Conditions)
+    ).
 consult_kb_hypothesis(Conclusion) :-
     hypothesis(Conclusion).
 
@@ -76,7 +85,22 @@ explanation_text(C, E) :-
     user:hypothesis_explanation(C, E),
     !.
 explanation_text(C, E) :-
+    kb_rule(C, Conditions),
+    maplist(known_condition, Conditions),
+    !,
+    maplist(condition_text, Conditions, Texts),
+    atomic_list_concat(Texts, ' and ', Because),
+    format(atom(E), '~w because ~w.', [C, Because]).
+
+explanation_text(C, E) :-
     hypothesis_explanation(C, E).
+
+%% known_condition/1 and condition_text/2 build the text of an
+%% explanation from the conditions of the rule that fired.
+known_condition(A == V) :- known(A, V).
+
+condition_text(A == V, Text) :-
+    format(atom(Text), '~w is ~w', [A, V]).
 
 %% ask_question(+Attribute) - Ask user for information
 %% Reuse a known answer; otherwise read a line, strip a trailing '.',
@@ -113,25 +137,52 @@ strip_trailing_dot(Codes, Rest) :-
     !.
 strip_trailing_dot(Codes, Codes).
 
-%% load_kb(+File) - Consult a knowledge-base file defining hypothesis/1
-%% and hypothesis_explanation/2 rules (if_/then_ style conditions read
-%% known/2 answers via check/1).  Clears previously loaded KB rules.
-:- dynamic kb_file/1.
+%% load_kb(+File) - Load a knowledge-base file and clear any KB
+%% loaded before. The file may hold two kinds of terms:
+%%   - Prolog clauses for hypothesis/1 and hypothesis_explanation/2,
+%%     whose conditions call shell:check/1. These go into module user.
+%%   - Readable rules such as
+%%       if meal is dessert and sweet_preference is yes then serve_port.
+%%     These become kb_rule(Conclusion, Conditions) facts.
+%% Terms are read with this module's operators, so the file needs no
+%% op/3 directives.
+:- dynamic kb_file/1, kb_rule/2.
 
 load_kb(File) :-
     retractall(kb_file(_)),
     unload_old_kb,
     assertz(kb_file(File)),
-    open(File, read, In),
-    repeat,
-      read(In, Term),
-      (   Term == end_of_file
-      ->  close(In), !
-      ;   assertz(user:Term),
-          fail
-      ).
+    setup_call_cleanup(
+        open(File, read, In),
+        load_terms(In),
+        close(In)).
+
+load_terms(In) :-
+    read_term(In, Term, [module(shell)]),
+    (   Term == end_of_file
+    ->  true
+    ;   add_kb_term(Term),
+        load_terms(In)
+    ).
+
+add_kb_term(if Conds then Conclusion) :- !,
+    and_list(Conds, Conditions),
+    assertz(kb_rule(Conclusion, Conditions)).
+add_kb_term(Term) :-
+    assertz(user:Term).
+
+%% and_list(+AndTerm, -Conditions): a is b and c is d gives
+%% [a == b, c == d], the form check/1 expects.
+and_list(A and B, [C|Cs]) :- !,
+    is_condition(A, C),
+    and_list(B, Cs).
+and_list(A, [C]) :-
+    is_condition(A, C).
+
+is_condition(Attr is Value, Attr == Value).
 
 unload_old_kb :-
+    retractall(kb_rule(_, _)),
     forall(clause(user:hypothesis(_), _, Ref), erase(Ref)),
     forall(clause(user:hypothesis_explanation(_, _), _, Ref),
            erase(Ref)),
@@ -159,73 +210,89 @@ hypothesis_explanation(
 
 The shell's key predicates:
 
-- **`consult_expert/1`** is the main entry point. It tries the loaded KB's `hypothesis/1` rules first (falling back to the built-in `unknown` hypothesis) and no longer auto-retracts `known/2` facts. Call `reset_known/0` explicitly for a fresh consultation.
-- **`explain/1`** routes through `explanation_text/2`, preferring the loaded KB's `hypothesis_explanation/2` over the shell's own default.
-- **`ask_question/1`** reads a line with `read_line_to_string/2`, runs `normalize_answer/2` (which strips a trailing `.` and converts numbers) and treats EOF as a graceful abort. Known answers are reused and printed as "(cached)".
-- **`provide_answer/2`** supplies an answer programmatically (used by tests and non-interactive drivers) instead of prompting.
-- **`reset_known/0`** clears all user-provided answers.
-- **`load_kb/1`** loads a user knowledge-base file and asserts its `hypothesis/1` and `hypothesis_explanation/2` clauses into module `user`, clearing any previously loaded KB rules. This is what makes pluggable knowledge bases real rather than aspirational.
+The shell's key predicates:
+
+- **`consult_expert/1`** is the main entry point. With a KB loaded, it tries the KB's `hypothesis/1` clauses and then its readable rules, and returns the first conclusion that holds. With no KB, it returns `unknown`. Answers persist between calls, so call `reset_known/0` to start a fresh consultation.
+- **`check/1`** tests a condition `Attribute == Value`. If the attribute is known, it compares the stored value. If not, it asks the question and then compares. If the attribute is known with a different value, it fails at once without asking again.
+- **`explain/1`** prints an explanation. It uses the KB's `hypothesis_explanation/2` text if there is one. For a readable rule, it builds the text from the conditions of the rule that fired.
+- **`ask_question/1`** reads a line with `read_line_to_string/2`, strips a trailing `.`, converts numbers, and treats end of file as a reason to stop.
+- **`provide_answer/2`** supplies an answer without asking. Tests and scripts use it.
+- **`load_kb/1`** loads a knowledge-base file and clears any KB loaded before.
 
 ## Knowledge Acquisition and Rule Representation
 
-**Knowledge acquisition** is the process of extracting domain knowledge from human experts and structuring it into rules. In a Prolog-based expert system, we represent this knowledge using clauses.
+**Knowledge acquisition** is the work of getting knowledge from human experts and writing it down as rules. The shell accepts rules in two forms.
 
-#### Structuring Rules for the Shell
-To plug into our shell, a domain knowledge base must define rules for the `hypothesis/1` predicate and explanations for `hypothesis_explanation/2`.
-To prompt the user interactively, we define an `ask_if/2` helper:
+#### Rules as Prolog Clauses
+A knowledge base can define `hypothesis/1` clauses whose conditions call `shell:check/1`, plus `hypothesis_explanation/2` facts that explain each conclusion. For example:
 
-```prolog
-ask_if(Attribute, Value) :-
-    known(Attribute, Value), !.
-ask_if(Attribute, Value) :-
-    \+ known(Attribute, _),
-    ask_question(Attribute),
-    known(Attribute, Value).
-```
-
-A rule in the knowledge base then looks like this:
 ```prolog
 hypothesis(diagnose_internet_issue) :-
-    ask_if(router_lights, off),
-    ask_if(cables_plugged_in, yes).
+    shell:check(router_lights == off),
+    shell:check(cables_plugged_in == yes).
 ```
 
-#### Improving Readability with Custom Operators
-To make rules more readable for non-programmers, Prolog allows you to define custom **operators** using `op/3`. For example, we can define operators like `if`, `then`, `and`, and `is` to write rules in a natural-language-like syntax:
+This form can use any Prolog goal in a condition, but a domain expert who does not know Prolog will struggle to read it.
+
+#### Readable Rules with Custom Operators
+Prolog lets you define your own **operators** with `op/3`. The shell exports three:
 
 ```prolog
-:- op(900, xfx, then).
-:- op(800, xfy, and).
-:- op(700, xfx, is).
-
-% Now we can write rules like:
-% rule 1: if router_lights is off and cables are connected then problem is router_power.
+op(1100, fx, if),
+op(1050, xfx, then),
+op(1000, xfy, and)
 ```
-We can then write a simple parser/meta-interpreter to evaluate these custom-cased rules.
+
+With these, the Prolog reader parses
+
+```prolog
+if meal is dessert and sweet_preference is yes then serve_port.
+```
+
+as the term `if(then(and(is(meal, dessert), is(sweet_preference, yes)), serve_port))`. The priorities decide how the term nests: `and` (1000) binds tighter than `then` (1050), which binds tighter than `if` (1100). `is` is already a standard operator with priority 700. The rule is just data: nothing evaluates `meal is dessert` as arithmetic.
+
+`load_kb/1` reads each term with `read_term(In, Term, [module(shell)])`, so the shell's operators apply and the KB file needs no `op/3` directives. `add_kb_term/1` turns each `if ... then` term into a fact such as `kb_rule(serve_port, [meal == dessert, sweet_preference == yes])`, the form `check/1` expects. Here is the file **expert_shell/prolog/rules_kb.pl**:
+
+```prolog
+% rules_kb.pl - Wine-selection knowledge base in readable rule form.
+% Load with shell:load_kb/1. Each rule reads:
+%   if Attribute is Value and ... then Conclusion.
+% The shell asks for any attribute it does not know yet and builds
+% the explanation from the conditions of the rule that fired.
+
+if meal is dessert and sweet_preference is yes then serve_port.
+if meal is red_meat and bold_preference is yes then serve_cabernet.
+if meal is red_meat then serve_merlot.
+if meal is fish and light_preference is yes then serve_sauvignon_blanc.
+if meal is fish then serve_chardonnay.
+if meal is poultry then serve_pinot_noir.
+```
+
+Because each rule is data, the shell can explain it with no extra text from the author. `explain/1` lists the conditions of the rule that fired. Rule order matters: the shell tries rules from top to bottom, so put specific rules (fish and a light preference) before general ones (fish).
 
 ## Explanation Facilities
 
-One of the defining features of an expert system is its ability to explain its reasoning.
-- **"How" Explanations**: Explain how the system reached a specific conclusion. This is done by traversing the proof tree or rule firing history and listing the rules and facts that succeeded.
-- **"Why" Explanations**: Explain why the system is asking a particular question. When the system prompts the user with a question, the user can type `why`. The system responds by showing the current rule it is trying to satisfy and the subgoal chain.
+Explaining its reasoning is a defining feature of an expert system.
+- **"How" explanations** say how the system reached a conclusion, by listing the rules and facts it used.
+- **"Why" explanations** say why the system is asking a question. When the system asks something, the user can type `why`, and the system shows the rule it is trying to prove.
 
-In our simplified `shell.pl` implementation, we provide a basic "How" explanation via `explain/1`, which fetches the pre-written `hypothesis_explanation/2` text associated with the successful hypothesis. In a more advanced system, we can integrate the proof-tree meta-interpreter (from the previous chapter) to dynamically construct and display step-by-step explanations.
+Our shell gives "how" explanations through `explain/1`. For readable rules it builds them from the rule's conditions. For `hypothesis/1` clauses it uses the author's `hypothesis_explanation/2` text. A larger system could use the proof-tree meta-interpreter from the previous chapter to explain deeper chains of rules. Practice problem 1 adds "why" explanations.
 
 ## Case Study: A Wine Selection Advisor
 
-To demonstrate rule-based reasoning in a practical domain, we look at the **wine_advisor** project. This advisor acts as a digital sommelier, recommending wines by matching food pairings and flavor profiles.
+Not every rule-based program needs a shell. The **wine_advisor** project answers one question, which wines suit a meal and a taste, with plain Prolog rules and no dialog.
 
-The system utilizes two distinct categories of rules:
-1. **Meal Pairing Rules**: Determining which color of wine (red, white, rose) matches the food type (fish, red meat, dessert).
-2. **Flavor Preference Rules**: Matching the user's preference with the wine's characteristics. The preference may be a body atom (`bold`, `moderate`, `light`) or a sweetness atom (`sweet`, `dry`).
+It uses two kinds of rules:
+1. **Meal pairing rules** decide which wine colors (red, white, rose) go with a meal (fish, red meat, dessert, and so on).
+2. **Preference rules** match the user's taste to the wine. The preference is a body (`bold`, `moderate`, `light`), a sweetness (`sweet`, `dry`), or `any`.
 
 {width: "80%"}
 ![Architecture diagram for the Wine Advisor example](FIG_wine_advisor.jpg)
 
-The **wine_advisor** project implements a rule-based wine recommender. Here is the file **wine_advisor/prolog/wine_rules.pl**:
+Here is the file **wine_advisor/prolog/wine_rules.pl**:
 
 ```prolog
- %% wine_rules.pl - Wine selection expert system
+%% wine_rules.pl - Wine selection expert system
 :- module(wine_rules, [
     recommend_wine/3
 ]).
@@ -258,6 +325,7 @@ meal_pairs_with(fish, white).
 meal_pairs_with(seafood, white).
 meal_pairs_with(pasta, red).
 meal_pairs_with(dessert, white).
+meal_pairs_with(dessert, red).    % port and other red dessert wines
 meal_pairs_with(cheese, red).
 
 %% Preference matching: body dimension.
@@ -279,28 +347,34 @@ sweetness_matches(light, _).
 sweetness_matches(any, _).
 ```
 
-This is a behavior change from the first edition of this chapter: body and sweetness are now orthogonal dimensions. `recommend_wine(red_meat, bold, W)` returns both `cabernet_sauvignon` and `port` because a `bold` preference constrains only body, not sweetness, and `port` is a full-bodied red. `recommend_wine(dessert, sweet, W)` returns only `[riesling]` because `dessert` pairs with white wine and only `riesling` is both white and sweet.
+Body and sweetness are separate dimensions. A body preference says nothing about sweetness, and a sweetness preference says nothing about body:
+
+```prolog
+?- findall(W, recommend_wine(red_meat, bold, W), Ws).
+Ws = [cabernet_sauvignon, port].
+
+?- findall(W, recommend_wine(dessert, sweet, W), Ws).
+Ws = [riesling, port].
+```
+
+The first answer shows a weakness of the rules. Port is a full-bodied red, so it passes every test, yet few people drink port with steak. Real experts know many such exceptions, and capturing them is the hard part of building an expert system. Practice problem 2 asks you to add one.
 
 ## Case Study: A Pluggable Knowledge Base
 
-As a final case study, we use the shell's `load_kb/1` support with the bundled **expert_shell/prolog/sample_kb.pl**, a small wine-selection knowledge base. Four hypotheses (serve_port, serve_riesling, serve_cabernet, serve_sauvignon_blanc) are driven by `shell:check/1` conditions that read `known/2` answers or prompt the user:
+The shell also loads knowledge bases written as Prolog clauses. The file **expert_shell/prolog/sample_kb.pl** holds four wine hypotheses whose conditions call `shell:check/1`:
 
 ```prolog
- %% sample_kb.pl - Wine-selection knowledge base for expert_shell
- %%
- %% If_/then_ style hypotheses: each condition is checked via
- %% shell:check/1, which reuses known/2 answers or asks the user.
- %% shell:load_kb/1 asserts these clauses into module `user` so the
- %% shell can find them via user:hypothesis/1 and
- %% user:hypothesis_explanation/2.
+%% sample_kb.pl - Wine-selection knowledge base for expert_shell
+%%
+%% If_/then_ style hypotheses: each condition is checked via
+%% shell:check/1, which reuses known/2 answers or asks the user.
+%% shell:load_kb/1 asserts these clauses into module `user` so the
+%% shell can find them via user:hypothesis/1 and
+%% user:hypothesis_explanation/2.
 
 hypothesis(serve_port) :-
     shell:check(meal == dessert),
     shell:check(sweet_preference == yes).
-
-hypothesis(serve_riesling) :-
-    shell:check(sweet_preference == yes),
-    \+ shell:known(meal, dessert).
 
 hypothesis(serve_cabernet) :-
     shell:check(meal == red_meat),
@@ -309,6 +383,12 @@ hypothesis(serve_cabernet) :-
 hypothesis(serve_sauvignon_blanc) :-
     shell:check(meal == fish),
     shell:check(light_preference == yes).
+
+%% Riesling comes last: its first condition asks about sweetness,
+%% which the rules above settle by asking about the meal first.
+hypothesis(serve_riesling) :-
+    shell:check(sweet_preference == yes),
+    \+ shell:known(meal, dessert).
 
 hypothesis_explanation(serve_port,
     'A dessert meal plus a sweet preference points to port.').
@@ -322,7 +402,7 @@ hypothesis_explanation(serve_sauvignon_blanc,
 
 ### Running the Wine Knowledge Base
 
-Load the KB and run a consultation in the SWI-Prolog REPL. Here we supply the answers programmatically with `provide_answer/2`:
+From the `expert_shell` directory, load the KB and run a consultation. Here we supply the answers with `provide_answer/2`:
 
 ```prolog
 ?- shell:load_kb('prolog/sample_kb.pl'),
@@ -336,9 +416,21 @@ Conclusion: serve_port
 Reasoning: A dessert meal plus a sweet preference points to port.
 ```
 
-This case study demonstrates the power of separating the inference logic (defined in the shell) from the domain rules (loaded with `load_kb/1`), allowing you to build new expert systems simply by swapping in different rule files.
+Note the order of the hypotheses. The shell tries them from top to bottom, and `serve_riesling` starts by asking about sweetness. If it came first, a user who wants red meat would still be asked about sweet wine. Putting it last lets the rules that ask about the meal settle most cases first.
+
+To try an interactive consultation with the readable rules, run `make consult`:
+
+```text
+What is the value of meal? fish
+What is the value of light_preference? no
+Conclusion: serve_chardonnay
+Reasoning: serve_chardonnay because meal is fish.
+```
+
+The shell keeps the inference logic apart from the domain rules, so you build a new expert system by writing a new rule file.
 
 ## Optional Practice Problems
 
-1. **Why Explanations**: Extend the `expert_shell` system to support `why` queries. When the system asks the user a question, the user should be able to type `why`, and the system should print the rules that are currently being evaluated.
-2. **Semi-Sweet Wines**: In the `wine_advisor` project, add a `semi-sweet` preference and at least one semi-sweet wine to the database, and write a test asserting it is recommended for the right meals.
+1. **Why Explanations**: In `expert_shell`, let the user answer a question with `why`. The shell should print the readable rule it is trying to prove and then ask the question again. (Hint: pass the current rule to `check/1`, or keep it in a dynamic fact while its conditions are checked.)
+2. **Exceptions**: In `wine_advisor`, add `avoid(Meal, Wine)` facts such as `avoid(red_meat, port)` and change `recommend_wine/3` to skip them. Add a test.
+3. **Certainty**: Extend the readable rule syntax to `if ... then Conclusion with 0.8` and have `consult_expert/1` return the conclusion with the highest certainty instead of the first.

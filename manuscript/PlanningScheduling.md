@@ -1,6 +1,6 @@
 # Planning and Scheduling
 
-Planning, the automatic generation of action sequences to achieve goals, is a foundational AI problem, and Prolog is exceptionally well-suited for it. Prolog's backtracking search, unification, and declarative style make it natural to express planning domains and let the system find solutions.
+Planning, finding a sequence of actions that reaches a goal, is one of the oldest problems in AI. Prolog suits it well: you describe the actions, and backtracking search finds the plan. In this chapter we build a STRIPS planner, a dedicated blocks world planner, and a scheduler, and look at partial-order planning.
 
 
 ## Classical Planning in Prolog
@@ -13,7 +13,7 @@ The most influential representation is **STRIPS** (STanford Research Institute P
 - **Add list**: fluents made true by the action.
 - **Delete list**: fluents made false by the action.
 
-Dear reader, this is old technology but is still useful to understand. Developed in 1971 by Richard Fikes and Nils Nilsson at the Stanford Research Institute (SRI), the STanford Research Institute Problem Solver (STRIPS) was a landmark automated planner designed to control the Shakey the Robot project. It introduced a formal language for representing state spaces, goals, and actions, where each action is defined by its execution preconditions, an add list of new facts, and a delete list of facts no longer true. By separating the logic of action representation from the search heuristic, STRIPS significantly reduced the state-space explosion that plagued earlier theorem-proving planners like John McCarthy's Advice Taker. 
+Dear reader, this is old technology, but it is still worth understanding. Richard Fikes and Nils Nilsson built STRIPS in 1971 at the Stanford Research Institute (SRI) to plan the actions of Shakey the robot. Its way of describing actions, by preconditions, an add list, and a delete list, is still the basis of planning languages such as PDDL. By keeping the description of actions apart from the search, STRIPS avoided much of the cost of earlier planners that used general theorem proving.
 
 A STRIPS action schema uses variables so a single definition covers many concrete instances. For example, `pickup(X)` applies to any block `X` on the table with nothing on top of it.
 
@@ -62,7 +62,7 @@ plan_dfs(State, Goal, DepthLeft, [Action|Plan]) :-
     plan_dfs(NewState, Goal, DepthLeft1, Plan).
 
 %% plan_bfs(+InitState, +GoalState, -Plan)
-%% Breadth-first search, guaranteed to find the shortest plan.
+%% Breadth-first search, guaranteed to find a shortest plan.
 %% States are normalized with sort/2 and kept in a visited set so
 %% each distinct state is enqueued at most once.
 plan_bfs(State, Goal, Plan) :-
@@ -102,7 +102,7 @@ bfs_enqueue_unseen([bfs_node(S, A)|Nodes], Seen,
     bfs_enqueue_unseen(Nodes, [bfs_key(K)|Seen], Fresh, Seen1).
 
 %% plan_visited(+InitState, +GoalState, -Plan)
-%% DFS with cycle detection, avoids revisiting states.  The
+%% DFS with cycle detection: never revisits a state on the current path.  The
 %% visited set is passed as an explicit argument, so backtracking
 %% automatically unwinds it (no surviving assertz leaks) and every
 %% top-level call starts from a fresh set.
@@ -134,17 +134,17 @@ valid_state(State) :-
 
 The planner provides three search strategies, all built on the same action interface:
 
-**Depth-bounded iterative deepening (`plan/3`)** is the simplest: `plan_dfs/4` runs with successive depth limits 1, 2, ..., 50. Unlike plain DFS it always terminates and finds a shortest plan, failing cleanly when no plan exists within the bound.
+**Iterative deepening (`plan/3`)** runs the depth-limited `plan_dfs/4` with limits 1, 2, ..., 50. Unlike plain DFS it always terminates, and the first plan it finds is a shortest one. It fails if no plan of 50 steps or fewer exists.
 
-**Breadth-first search (`plan_bfs/3`)** maintains an explicit queue of `bfs_node(State, RevActions)` terms. It expands all nodes at depth *d* before any at depth *d+1*, guaranteeing the first plan found has the minimum number of actions. States are normalized with `sort/2` and deduplicated before enqueueing, so each distinct state enters the queue at most once. The trade-off is memory: the queue can grow large for complex problems.
+**Breadth-first search (`plan_bfs/3`)** keeps a queue of `bfs_node(State, RevActions)` terms and expands every node at depth *d* before any at depth *d+1*, so the first plan it finds has the fewest actions. States are sorted with `sort/2`, so the same set of fluents in another order counts as the same state, and each state enters the queue once. The cost is memory, since the queue can grow large.
 
-**DFS with cycle detection (`plan_visited/3`)** carries the visited set as an explicit argument, normalized with `sort/2`, and skips any state already encountered. Backtracking unwinds the set automatically and each top-level call starts fresh, so there is no surviving `assertz` leak. It does *not* guarantee optimality, but in practice it finds reasonable plans quickly.
+**DFS with cycle detection (`plan_visited/3`)** carries the states on the current path as an argument and never returns to one of them. Because the list is an argument, backtracking undoes it for free. It does *not* promise a shortest plan.
 
-The module also exports `valid_state/1`, which reports whether a fluent list is free of basic contradictions, for example nothing both `clear` and occupied, and no hand both empty and holding. It is a sanity check for hand-written initial states rather than part of the search.
+`valid_state/1` checks a hand-written state for simple contradictions, such as a block that is both clear and has a block on it. It is a sanity check, not part of the search.
 
 ### The `holds/2` Predicate
 
-A subtle but critical detail: we define `holds/2` using `member/2` rather than SWI-Prolog's built-in `subset/2`. The built-in uses `memberchk/2`, which is semi-deterministic, it commits to the first matching element in the state. This means a variable like `X` in an action schema `pickup(X)` would always bind to the first block found, and `findall` would never discover actions for other blocks. By using `member/2`, we allow Prolog to backtrack and try every possible binding for action-schema variables.
+We define `holds/2` with `member/2` rather than the library's `subset/2`. `subset/2` uses `memberchk/2`, which commits to the first match. A variable such as `X` in `pickup(X)` would then always bind to the first block found, and `findall/3` would never see actions for the other blocks. `member/2` lets backtracking try every binding.
 
 ### Running the Planner
 
@@ -213,48 +213,70 @@ Plan = [load_truck(pkg1, truck1, loc_a),
         unload_truck(pkg1, truck1, loc_b)].
 ```
 
-This separation of planner from domain is the key architectural insight: add a new domain by defining `action/4` facts and the search code never changes.
+The planner and the domains are separate: to add a domain, write `action/4` facts; the search code does not change.
 
 
 ## The Blocks World
 
-The blocks world is the classic AI planning domain: a robot arm manipulates labeled blocks on a table, stacking and unstacking them to achieve a goal configuration. The domain is simple enough to reason about formally yet rich enough to demonstrate core planning challenges: search, state representation, and the frame problem.
+The blocks world is the classic planning domain: a robot arm stacks and unstacks labeled blocks on a table to reach a goal arrangement. It is simple enough to reason about, yet it shows the core problems of planning: search, state representation, and the frame problem (saying what an action does *not* change).
 
 {width: "80%"}
 ![Architecture diagram for the Blocks World planner](FIG_blocks_world.jpg)
 
-While the generic STRIPS planner above can solve blocks-world problems, the dedicated **blocks_world** project uses a more natural move representation and adds cycle detection. Here is the file **blocks_world/prolog/blocks.pl**:
+The STRIPS planner can solve blocks world problems, but the **blocks_world** project uses a simpler representation with one kind of move. Here is the file **blocks_world/prolog/blocks.pl**:
 
 ```prolog
 %% blocks.pl - Blocks World planner
 :- module(blocks, [
     blocks_plan/3,
+    blocks_plan_dfs/3,
     print_state/1
 ]).
 
 :- use_module(library(lists), [subset/2]).
 
-:- dynamic blocks_plan_visited/1.
-
 %% blocks_plan(+InitState, +GoalState, -Moves)
-%% State is a list of on(X,Y) and on_table(X) atoms; clear/2 is a
-%% derived relation (not stored in the state).  The visited set is
-%% cleared on entry and exit (and on failure) via
-%% setup_call_cleanup/3, so successive calls behave identically.
+%% Breadth-first search, so Moves is a shortest plan. State is a list
+%% of on(X,Y) and on_table(X) atoms; clear/2 is derived, not stored.
+%% The queue holds Moves-State pairs with the moves in reverse order.
+%% Seen holds every state already queued, sorted so that the same
+%% state in a different order is recognized.
 blocks_plan(State, Goal, Moves) :-
-    setup_call_cleanup(
-        retractall(blocks_plan_visited(_)),
-        blocks_plan_dfs(State, Goal, Moves),
-        retractall(blocks_plan_visited(_))
-    ).
+    sort(State, Key),
+    bfs([[]-State], Goal, [Key], RevMoves),
+    reverse(RevMoves, Moves).
 
-blocks_plan_dfs(State, Goal, []) :-
+bfs([RevMoves-State|_], Goal, _, RevMoves) :-
     subset(Goal, State), !.
-blocks_plan_dfs(State, Goal, [Move|Moves]) :-
-    blocks_move(State, Move, NewState),
-    \+ blocks_plan_visited(NewState),
-    assert(blocks_plan_visited(NewState)),
-    blocks_plan_dfs(NewState, Goal, Moves).
+bfs([RevMoves-State|Queue], Goal, Seen, Plan) :-
+    findall([Move|RevMoves]-New, blocks_move(State, Move, New), Children),
+    new_states(Children, Seen, Fresh, Seen1),
+    append(Queue, Fresh, Queue1),
+    bfs(Queue1, Goal, Seen1, Plan).
+
+new_states([], Seen, [], Seen).
+new_states([Ms-S|Rest], Seen, Fresh, Seen1) :-
+    sort(S, Key),
+    (   memberchk(Key, Seen)
+    ->  Fresh = Fresh1, Seen2 = Seen
+    ;   Fresh = [Ms-S|Fresh1], Seen2 = [Key|Seen]
+    ),
+    new_states(Rest, Seen2, Fresh1, Seen1).
+
+%% blocks_plan_dfs(+InitState, +GoalState, -Moves)
+%% Depth-first search with a list of visited states. It finds a plan
+%% quickly but often a long one; compare it with blocks_plan/3.
+blocks_plan_dfs(State, Goal, Moves) :-
+    sort(State, Key),
+    dfs(State, Goal, [Key], Moves).
+
+dfs(State, Goal, _, []) :-
+    subset(Goal, State), !.
+dfs(State, Goal, Visited, [Move|Moves]) :-
+    blocks_move(State, Move, New),
+    sort(New, Key),
+    \+ memberchk(Key, Visited),
+    dfs(New, Goal, [Key|Visited], Moves).
 
 %% blocks_move(+State, -Move, -NewState)
 %% Moving a block X onto block To is the same whether X starts on
@@ -284,39 +306,47 @@ block_in_state(B, State) :- member(on(B, _), State).
 block_in_state(B, State) :- member(on(_, B), State).
 
 clear(X, State) :- \+ member(on(_, X), State).
+
+%% print_state(+State) - Display a blocks world state
+print_state(State) :-
+    format("State: ~w~n", [State]).
 ```
 
 ### Design Decisions
 
-Several choices distinguish this dedicated planner from the generic STRIPS version:
+**Moves.** Instead of add and delete lists, `blocks_move/3` edits the state list: `select/3` removes the block's old position and the new `on/2` or `on_table/1` fact goes on the front. Moves read naturally, such as `move(a, table, b)`. `from_fact/4` lets one clause move a block from the table or from another block.
 
-**Move representation.** Rather than STRIPS-style add/delete lists, `blocks_move/3` works directly with state lists. The `select/3` predicate removes the block from its old position and the new `on/2` or `on_table/1` term is prepended to form the new state. This is more concise for this specific domain and produces human-readable move descriptions like `move(a, table, b)`.
+**Derived facts.** The state holds only `on/2` and `on_table/1`. A block is clear when nothing is on it: `clear(X, State) :- \+ member(on(_, X), State)`. Deriving `clear` instead of storing it means no action can forget to update it, which is one answer to the frame problem.
 
-**Cycle detection.** The `blocks_plan_visited/1` dynamic predicate records every visited state. Before exploring a move, the planner checks that the resulting state has not already been seen. This prevents the infinite loops that naive DFS would encounter, without which the planner could move a block back and forth between the same two positions forever. `blocks_plan/3` clears the visited set on entry and exit via `setup_call_cleanup/3`, so successive calls behave identically.
-
-**The `clear/2` rule.** A block is clear when nothing is stacked on it. The rule `clear(X, State) :- \+ member(on(_, X), State)` uses negation-as-failure: X is clear if there is no block Y such that `on(Y, X)` holds. The merged `blocks_move/3` clause uses `from_fact/4` so moving from the table or from another block shares one rule.
-
-**State representation.** States are simple lists of `on(X, Y)` and `on_table(X)` atoms. The goal is a list of atoms that must all be present in the final state, typically just the desired `on/2` relationships, ignoring table facts.
+**Search.** `blocks_plan/3` is breadth-first, with a list of states already queued, so it returns a shortest plan. `blocks_plan_dfs/3` is depth-first with a visited list, for comparison. The goal is a list of facts that must all hold, usually just the `on/2` facts you want.
 
 ### Example Queries
 
-Stack block `a` on top of block `b` starting from an empty table:
+Stack block `a` on block `b`:
 
 ```prolog
-?- blocks_plan([on_table(a), on_table(b), clear(a), clear(b)],
-               [on(a, b)], Moves).
+?- blocks_plan([on_table(a), on_table(b)], [on(a, b)], Moves).
 Moves = [move(a, table, b)].
 ```
 
-Rearrange a small tower by unstacking `a` from `b` and restack `b` on `a`:
+The **Sussman anomaly** is a famous test. Block `c` sits on `a`, and the goal is a tower `a` on `b` on `c`:
 
 ```prolog
-?- blocks_plan([on(a, b), on_table(b), clear(a)],
-               [on(b, a)], Moves).
-Moves = [move_to_table(a, b), move(b, table, a)].
+?- blocks_plan([on(c, a), on_table(a), on_table(b)],
+               [on(a, b), on(b, c)], Moves).
+Moves = [move_to_table(c, a), move(b, table, c), move(a, table, b)].
 ```
 
-The dedicated representation produces plans that read naturally: "move block a to the table from b, then move block b from the table to a."
+Early planners that worked on one goal at a time failed here: putting `a` on `b` first blocks the way to `b` on `c`, and doing `b` on `c` first buries `a`. Searching whole states avoids the trap. Depth-first search also finds a plan, but not the shortest:
+
+```prolog
+?- blocks_plan_dfs([on(c, a), on_table(a), on_table(b)],
+                   [on(a, b), on(b, c)], Moves).
+Moves = [move(c, a, b), move_to_table(c, b), move(b, table, c),
+         move(a, table, b)].
+```
+
+DFS moves `c` onto `b` and then straight back off, a wasted move. On larger problems, depth-first plans can be much longer than needed.
 
 
 ## Planning with Constraints
@@ -350,87 +380,68 @@ The companion project **job_scheduler** (described fully in the Constraint Logic
 
 ```prolog
 schedule_jobs(Jobs, Schedule) :-
-    compute_horizon(Jobs, Horizon),
+    horizon(Jobs, Horizon),
     maplist(create_task(Horizon), Jobs, Schedule, Starts),
-    chain(Starts, #=<),          % order tasks by start time
     maplist(deadline_constraint, Jobs, Schedule),
-    no_overlap(Schedule),        % one job at a time
-    maplist(label_task, Schedule).
+    no_overlap(Schedule),
+    makespan(Schedule, Makespan),
+    labeling([min(Makespan)], Starts).
 
-%% compute_horizon(+Jobs, -Horizon)
-compute_horizon(Jobs, Horizon) :-
-    compute_horizon(Jobs, 0, 0, 0, Horizon).
+%% horizon(+Jobs, -Horizon)
+%% No job needs to start later than the total work: any feasible
+%% schedule can be shifted left until it has no idle time.
+horizon(Jobs, Horizon) :-
+    foldl(add_duration, Jobs, 0, Horizon).
 
-compute_horizon([], MaxDeadline, TotalDuration, SeenDeadline,
-    Horizon) :-
-    (   SeenDeadline > 0
-    ->  Horizon = MaxDeadline
-    ;   Horizon is TotalDuration + 1
-    ).
-compute_horizon([job(_, Duration, Deadline)|Jobs], MaxD0, Total0,
-    Seen0, Horizon) :-
-    Total1 is Total0 + Duration,
-    (   integer(Deadline)
-    ->  MaxD1 is max(MaxD0, Deadline),
-        Seen1 is Seen0 + 1
-    ;   MaxD1 = MaxD0,
-        Seen1 = Seen0
-    ),
-    compute_horizon(Jobs, MaxD1, Total1, Seen1, Horizon).
+add_duration(job(_, Duration, _), Sum0, Sum) :-
+    Sum is Sum0 + Duration.
 
 create_task(Horizon, job(Name, Duration, _Deadline),
-    scheduled(Name, Start, End), Start) :-
+            scheduled(Name, Start, End), Start) :-
     Start in 0..Horizon,
     End #= Start + Duration.
 
-deadline_constraint(job(Name, _Duration, Deadline), scheduled(Name,
-    _Start, End)) :-
-    End #=< Deadline.
+deadline_constraint(job(_, _, Deadline), scheduled(_, _, End)) :-
+    (   integer(Deadline)
+    ->  End #=< Deadline
+    ;   true
+    ).
 
 %% no_overlap(+Schedule)
-%% Posts CLP(FD) constraints chaining adjacent jobs in the schedule
-%% list: the end of each job must be =< the start of the next one.
-%% NOTE: this operates on constraint variables while building the
-%% schedule (it posts `#=<` constraints); it is NOT a check on ground
-%% data.  Use schedule_valid/1 to verify a fully ground schedule.
+%% Posts constraints so that no two jobs overlap: for each pair, one
+%% job ends before the other starts. #\/ is a constraint
+%% disjunction, so the solver decides the order by propagation and
+%% search instead of by Prolog backtracking.
 no_overlap([]).
-no_overlap([_]).
-no_overlap([scheduled(_,_,End1)|Rest]) :-
-    Rest = [scheduled(_,Start2,_)|_],
-    End1 #=< Start2,
-    no_overlap(Rest).
+no_overlap([Task|Tasks]) :-
+    maplist(disjoint(Task), Tasks),
+    no_overlap(Tasks).
 
-%% schedule_valid(+Schedule)
-%% Verifies a fully ground schedule: no two jobs overlap.  Uses plain
-%% numeric comparisons (no constraint posting) and fails if the
-%% schedule contains variables.
-schedule_valid(Schedule) :-
-    maplist(ground, Schedule),
-    \+ overlaps_any_pair(Schedule, Schedule).
+disjoint(scheduled(_, S1, E1), scheduled(_, S2, E2)) :-
+    E1 #=< S2 #\/ E2 #=< S1.
 
-overlaps_any_pair([S|_], All) :-
-    overlaps_one(S, All).
-overlaps_any_pair([_|Ss], All) :-
-    overlaps_any_pair(Ss, All).
+%% makespan(+Schedule, -Makespan)
+%% Makespan is the largest end time in Schedule.
+makespan(Schedule, Makespan) :-
+    maplist(end_time, Schedule, Ends),
+    max_list_fd(Ends, Makespan).
 
-overlaps_one(S, All) :-
-    member(T, All),
-    S \== T,
-    S = scheduled(_, StartS, EndS),
-    T = scheduled(_, StartT, EndT),
-    StartS < EndT,
-    StartT < EndS.
+end_time(scheduled(_, _, End), End).
 
-label_task(scheduled(_, Start, _)) :- label([Start]).
+max_list_fd([E|Es], Max) :-
+    foldl(fd_max, Es, E, Max).
+
+fd_max(E, M0, M) :-
+    M #= max(M0, E).
 ```
 
-The horizon is derived from the input jobs (the largest deadline, or the sum of durations plus one), not hard-coded. Also, `no_overlap/1` posts `#=<` constraints on constraint variables. To verify an already-ground schedule use `schedule_valid/1`, which compares times numerically.
+The scheduler handles three kinds of constraint:
 
-This scheduler handles three constraint types simultaneously:
-
-1. **Capacity**: `no_overlap/1` ensures only one job executes at a time on the shared machine.
+1. **Capacity**: `no_overlap/1` keeps the jobs from overlapping on the one machine, with a disjunctive constraint for each pair, so the solver chooses the order.
 2. **Deadlines**: each job's `End` must not exceed its deadline.
-3. **Ordering**: `chain/2` sorts jobs by start time, eliminating symmetries.
+3. **Makespan**: `labeling([min(Makespan)], Starts)` looks for the schedule that finishes earliest.
+
+`no_overlap/1` posts constraints on unbound variables; to check a finished schedule, use `schedule_valid/1`.
 
 A six-job problem with tight deadlines:
 
@@ -441,7 +452,7 @@ Schedule = [scheduled(a,0,3), scheduled(b,3,5), scheduled(c,5,9),
             scheduled(d,9,10), scheduled(e,10,12), scheduled(f,12,17)].
 ```
 
-The constraint solver finds a feasible packing where short tasks `d` and `e` fill gaps between longer jobs: a pattern that appears in real production scheduling, timetabling, and project planning.
+With six jobs and no gaps, the schedule finishes at time 17, the total work, so no schedule can finish sooner. Each job also meets its deadline.
 
 
 ## Partial-Order Planning
@@ -461,15 +472,15 @@ Planning proceeds by selecting an **open precondition**, a fluent needed by some
 1. Find an existing action whose effects include that fluent and add a causal link, or
 2. Add a new action to the plan that produces it.
 
-Adding a causal link can create a **threat**: an action *C* that deletes the linked fluent and could be ordered between *A* and *B*. Threats are resolved by **promotion** (ordering *C* before *A*) or **demotion** (ordering *C* after *B*). If neither is possible, the plan is abandoned and the planner backtracks.
+Adding a causal link can create a **threat**: an action *C* that deletes the linked fluent and could fall between *A* and *B*. There are two fixes. **Demotion** orders *C* before *A*, and **promotion** orders *C* after *B* (the terms follow Russell and Norvig's *Artificial Intelligence: A Modern Approach*). If neither ordering is consistent, the planner backtracks.
 
 ### Why Partial-Order Planning Matters
 
 POP produces **least-commitment** plans. By not imposing unnecessary orderings, the resulting plan admits many valid linearizations. This matters when:
 
-- **Multiple agents** execute the plan concurrently, independent actions can truly run in parallel.
-- **Uncertain durations** mean a later action might become ready before an earlier one completes.
-- **Replanning** is needed mid-execution, an unordered action pair can be swapped without invalidating the plan.
+- **Several agents** carry out the plan: independent actions can run in parallel.
+- **Durations are uncertain**: a later action may become ready before an earlier one finishes.
+- **Replanning** is needed during execution: two unordered actions can be swapped without breaking the plan.
 
 ### Implementing POP in Prolog
 
@@ -479,9 +490,9 @@ Prolog's unification and backtracking map cleanly onto the POP algorithm. A part
 plan(Actions, Orderings, CausalLinks, OpenPreconditions)
 ```
 
-The main loop selects an open precondition, nondeterministically chooses a resolver, adds the necessary ordering and causal-link constraints, checks for and resolves threats, and recurses. Prolog's backtracking handles the nondeterministic choice of resolver, when threat resolution fails, the system automatically tries the next option.
+The main loop picks an open precondition, chooses a way to achieve it, adds the ordering and causal-link constraints, resolves any threats, and recurses. Prolog's backtracking handles the choices: when threat resolution fails, Prolog tries the next option.
 
-While a full POP implementation is beyond the scope of this chapter, the key data structures sketch the approach:
+A full POP planner is beyond the scope of this chapter. This sketch shows the key data structures; it is not part of the companion code:
 
 ```prolog
 %% A causal link: Producer achieves Precondition for Consumer
@@ -491,58 +502,59 @@ causal_link(Producer, Precondition, Consumer)
 %% by a causal link from Producer to Consumer
 threat(Deleter, Precondition, Producer, Consumer)
 
-%% Resolve a threat by ordering Deleter before Producer (promotion)
-%% or after Consumer (demotion), if consistent with existing orderings
+%% Resolve a threat by ordering Deleter before Producer (demotion)
+%% or after Consumer (promotion), if consistent with the orderings
 resolve_threat(Threat, Plan, NewPlan) :-
-    (   promote(Threat, Plan, NewPlan)
-    ;   demote(Threat, Plan, NewPlan)
+    (   demote(Threat, Plan, NewPlan)
+    ;   promote(Threat, Plan, NewPlan)
     ).
 ```
 
-The central insight is that partial-order planning generates a *family* of linear plans in a single search, every topological sort of the final plan graph is a valid execution. This compact representation is one of POP's main advantages over total-order search.
+A partial-order plan stands for a whole *family* of linear plans: every topological sort of the final plan graph is a valid way to carry it out.
 
 
 ## Practical Job Scheduling Applications
 
-Planning and scheduling techniques extend well beyond toy blocks and packages. This section surveys real-world applications where Prolog's combined planning and constraint-solving capabilities offer significant leverage.
+Planning and scheduling go well beyond blocks and packages. This section surveys real applications where Prolog's planning and constraint solving help.
 
 {width: "80%"}
 ![Architecture diagram for the Job Scheduler example](FIG_job_scheduler.jpg)
 
 ### Project Scheduling with Resource Constraints
 
-Construction projects, software releases, and manufacturing pipelines all share a common structure: tasks with durations, precedence requirements, and limited shared resources (crews, machines, specialists). The constraint-based approach from earlier sections scales to these problems:
+Construction projects, software releases, and factories share a structure: tasks with durations, ordering requirements, and limited shared resources (crews, machines, specialists). The constraint approach from earlier sections extends to them:
 
-- **Resource pools** replace the single-machine assumption. Instead of `no_overlap/1` constraining all tasks, a **cumulative constraint** ensures that the sum of resource demands at any time does not exceed capacity: `cumulative(Tasks, ResourceDemands, Capacity)`.
+- **Resource pools** replace the single machine. Instead of `no_overlap/1`, the CLP(FD) constraint `cumulative(Tasks, [limit(L)])` keeps the total demand at every moment at or below `L`, where each task is `task(Start, Duration, End, Demand, Id)`.
 - **Precedence networks** capture task dependencies: "the foundation must be poured before the framing begins." These are modeled as `StartB #>= EndA` constraints, just like in the job scheduler.
-- **Milestone deadlines** anchor the schedule to calendar dates: the product launch, the conference deadline, the regulatory filing date.
+- **Milestones** tie the schedule to calendar dates: the launch, the conference deadline, the filing date.
 
 ### Timetabling
 
-University course scheduling, conference programs, and employee shift assignment are all instances of timetabling, assigning events to time slots and rooms while respecting hard constraints (no room double-booking, instructor availability) and soft preferences (consecutive lectures in the same building).
+Course schedules, conference programs, and staff shifts are timetabling problems: assign events to time slots and rooms, with hard constraints (no room booked twice, teachers available) and soft preferences (back-to-back lectures in the same building).
 
-Prolog approaches timetabling by generating candidate assignments and using CLP(FD) to check feasibility. The constraint model captures rules like "Professor Smith cannot teach before 10 AM" (domain restriction on start-time variables) and "Room 101 seats 50, so classes with more than 50 students cannot be assigned there" (reification: if enrollment > 50 then room ≠ 101).
+In CLP(FD), rules become constraints. "Professor Smith cannot teach before 10 AM" restricts the domain of a start-time variable. "Room 101 seats 50" becomes a constraint that a class with more than 50 students is not in room 101. Soft preferences become terms in a cost to minimize.
 
 ### Integration with External Solvers
 
-For industrial-scale scheduling, Prolog often serves as the **modeling and orchestration layer** rather than the raw solver. The Prolog program:
+For large industrial problems, Prolog often works as the **modeling and control layer** rather than the solver itself. The Prolog program:
 
 1. Reads the problem specification (tasks, resources, constraints) from a database or file.
 2. Builds a constraint model in Prolog using CLP(FD) for rapid prototyping.
 3. For production, exports the model to a dedicated solver (OR-Tools, CPLEX, Gurobi) via a file interface or foreign function binding.
 4. Reads back the solution and validates it against the original constraints.
 
-This architecture combines Prolog's strengths, readable constraint formulation, rapid iteration, built-in search, with the raw speed of C++ solvers for large problem instances. The SWI-Prolog ecosystem supports this pattern through its C foreign interface and libraries for common data exchange formats.
+This combines Prolog's readable models and fast iteration with the speed of specialized solvers on large instances. SWI-Prolog supports it through its C foreign interface and libraries for common data formats.
 
 ### The Prolog Advantage
 
-Why use Prolog for scheduling at all? Three reasons stand out:
+Why use Prolog for scheduling? Three reasons:
 
-1. **Declarative constraints** read like the problem description. "Task A ends before Task B starts" becomes `EndA #=< StartB`, no manual implementation of search or propagation.
-2. **Backtracking is built in**. When a partial schedule proves infeasible, Prolog automatically unwinds to the last choice point and tries an alternative, no hand-coded backtracking stack.
-3. **Rapid prototyping**. A working scheduler can be built in under 50 lines of Prolog. While a C++/CPLEX solution may run faster on 10,000 tasks, the Prolog version is running and validated long before the C++ version compiles.
+1. **Constraints read like the problem.** "Task A ends before task B starts" becomes `EndA #=< StartB`, with no search or propagation code to write.
+2. **Backtracking is built in.** When a partial schedule cannot work, Prolog returns to the last choice and tries another.
+3. **Fast prototyping.** The job scheduler in this book is under 100 lines. A specialized solver may run faster on 10,000 tasks, but the Prolog model is a quick way to get the rules right first.
 
 ## Optional Practice Problems
 
-1. **STRIPS Negative Preconditions**: In the `strips_planner` project, modify the planner to support negative preconditions (e.g., an action can only be performed if a state property is *not* true).
-2. **Resource Conflicts**: In `job_scheduler`, add a constraint limiting the number of available workers. Modify the scheduler to resolve overlapping jobs by delaying jobs when the worker limit is exceeded.
+1. **Negative Preconditions**: Extend `action/4` in `strips_planner` so a precondition can be `not(F)`, meaning fluent `F` must be absent. Change `holds/2` and add a test.
+2. **Workers as a Resource**: Change `job_scheduler` so jobs need a number of workers each and up to `W` workers exist, using `cumulative/2` instead of `no_overlap/1`.
+3. **Plan then Schedule**: Give each blocks world move a duration of 1, and two robot arms. Use `blocks_plan/3` to get a plan, then CLP(FD) to schedule its moves on the two arms, keeping each move after the moves it depends on.

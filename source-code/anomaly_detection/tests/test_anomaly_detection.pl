@@ -59,4 +59,31 @@ test(full_pipeline, [true(nonvar(Model))]) :-
     load_wisconsin_data(Rows),
     train_model(Rows, Model).
 
+test(stratified_pick_count) :-
+    anomaly_detection:stratified_pick([a,b,c,d,e,f,g,h,i,j], 3, P),
+    assertion(length(P, 3)).
+
+test(subsample_size_and_ratio) :-
+    load_wisconsin_data(All),
+    load_wisconsin_data(200, Rows),
+    length(Rows, N),
+    assertion(N == 200),
+    include(anomaly_detection:is_malignant_row, All, MA),
+    include(anomaly_detection:is_malignant_row, Rows, MR),
+    length(All, NA), length(MA, NMA), length(MR, NMR),
+    assertion(abs(NMR / N - NMA / NA) < 0.01).
+
+test(data_driven_epsilon_separates) :-
+    % Anomalies (target 1.0) have low probability, normal rows high.
+    PTPs = [0.1-1.0, 0.2-1.0, 0.8-0.0, 0.9-0.0, 1.2-0.0],
+    search_epsilon(PTPs, Eps),
+    assertion(Eps =:= 0.5).
+
+test(full_data_metrics) :-
+    load_wisconsin_data(Rows),
+    compute_model(Rows, R),
+    R.metrics = metrics(_, _, _, _, Precision, Recall, _),
+    assertion(Precision > 0.8),
+    assertion(Recall > 0.6).
+
 :- end_tests(anomaly_detection).

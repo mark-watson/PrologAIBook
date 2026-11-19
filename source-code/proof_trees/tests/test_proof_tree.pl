@@ -68,4 +68,12 @@ test(not_unifiable_builtin_leaf) :-
     prove_with_tree(ann \= bob, Tree),
     Tree = node(ann\=bob, leaf(ann\=bob)).
 
+test(arithmetic_builtin_leaf) :-
+    prove_with_tree(X is 2 + 3, Tree),
+    assertion(X == 5),
+    assertion(Tree == node(5 is 2 + 3, leaf(5 is 2 + 3))).
+
+test(failing_goal, [fail]) :-
+    prove_with_tree(grandparent(ann, adam), _).
+
 :- end_tests(proof_tree).

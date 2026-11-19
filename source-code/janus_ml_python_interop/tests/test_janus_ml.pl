@@ -22,9 +22,9 @@
 
 :- begin_tests(janus_ml).
 
-% Deterministic dataset from README: a 3-row training set whose label
-% is the XOR of the two features, and an unlabelled test row [0,0] or
-% [1,0] whose expected label under the tiny decision tree is 1/0.
+% Deterministic dataset from README: a 3-row training set of two
+% features and a label, and two unlabelled test rows. The decision
+% tree (random_state=42) predicts 1 for [0,0] and 0 for [1,0].
 
 test(py_classify_exact_predictions, [condition(janus_available),
         true(Predictions == [1, 0])]) :-
@@ -48,7 +48,12 @@ test(py_cluster_two_clusters, [condition(janus_available),
 % --- Python-side validation ---
 
 test(classify_rejects_empty_train, [condition(janus_available),
-        error(janus_error(_, _))]) :-
+        error(domain_error(non_empty_list, []))]) :-
     py_classify([], [[0,0]], _).
+
+% A ValueError raised in Python reaches Prolog as an exception.
+test(python_error_becomes_exception, [condition(janus_available),
+        error(python_error('ValueError', _))]) :-
+    py_classify([[1,0,0],[0,1]], [[0,0]], _).
 
 :- end_tests(janus_ml).

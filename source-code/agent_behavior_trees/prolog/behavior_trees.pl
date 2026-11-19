@@ -5,8 +5,7 @@
 
 /** <module> Behavior Trees Engine
  *
- * A simple, lightweight, and elegant
- * Behavior Tree implementation in Prolog.
+ * A small Behavior Tree interpreter in Prolog.
  * Supports:
  *   - sequence([Children])
  *   - selector([Children]) (fallback)
@@ -79,15 +78,22 @@ tick_selector([Child|Rest], Status) :-
     ;   Status = ChildStatus  % either 'success' or 'running'
     ).
 
-% --- Interface to Hook Action & Condition Predicates ---
-% User-defined actions and conditions are
-% expected to be defined in user modules
-% or hooked into the following dynamic/multifile predicates:
+% --- Hooks for Conditions and Actions ---
+% An agent module adds clauses to these multifile predicates:
+%   behavior_trees:user_condition(Name)        succeeds if true
+%   behavior_trees:user_action(Name, Status)   performs the action
 :- multifile user_condition/1.
 :- multifile user_action/2.
 
 call_condition(CondName) :-
     user_condition(CondName).
 
+% An action that is not defined, or whose clauses all fail, is an
+% error: silently failing would make the whole tick fail with no
+% explanation.
 call_action(ActionName, Status) :-
-    user_action(ActionName, Status).
+    (   user_action(ActionName, Status0)
+    ->  must_be(oneof([success, failure, running]), Status0),
+        Status = Status0
+    ;   existence_error(bt_action, ActionName)
+    ).

@@ -1,12 +1,24 @@
 """nlp_bridge.py - Python-side bridge for Janus Hybrid NLP Pipeline"""
 
-# Load spaCy, fallback gracefully if not installed
+import warnings
+
+# The macOS system Python links an old LibreSSL; urllib3 (pulled in by
+# spaCy) warns about it on import. The warning does not affect NER.
+warnings.filterwarnings("ignore", message=".*OpenSSL.*")
+
+# Load spaCy and its small English model; fall back to simple rules if
+# either is missing.
 try:
     import spacy
     nlp = spacy.load("en_core_web_sm")
-except (ImportError, Exception):
+except Exception:
     spacy = None
     nlp = None
+
+
+def backend():
+    """Name of the NER method in use: 'spacy' or 'rules'."""
+    return "spacy" if nlp is not None else "rules"
 
 
 def _dict_entity(text, label):

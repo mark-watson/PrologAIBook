@@ -1,4 +1,4 @@
-%% test_daily_use.pl — Unit tests for the daily_use module
+%% test_daily_use.pl - Unit tests for the daily_use module
 %%
 %% Tests cover keyword extraction and context building logic.
 %% The REPL loop and Gemini API calls are not tested here

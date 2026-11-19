@@ -1,7 +1,7 @@
 %% cache_engine.pl - Persistent LLM cache using SQLite
 %% A SWI-Prolog port of the Common Lisp cache-engine library.
 %%
-%% Requires: pack(prosqlite) — install with:
+%% Requires pack(prosqlite). Install it with:
 %%   ?- pack_install(prosqlite).
 %%
 %% Copyright 2022-2026 Mark Watson. All rights reserved.
@@ -17,11 +17,12 @@
     cache_clear_older_one_week/1
 ]).
 
-%% NOTE on SQL injection safety: this module relies on string-level
-%% SQL because parameterized sqlite_query/4 variable binding is not
-%% available in the installed prosqlite version.  We therefore escape
-%% single quotes, backslashes, NUL characters, and LIKE wildcards
-%% (% and _) before interpolation.
+%% NOTE on SQL injection safety: prosqlite has no parameter binding,
+%% so we build SQL text and escape values ourselves. In an SQLite
+%% string literal the only special character is the single quote,
+%% which is written twice. Backslash has no special meaning there. In
+%% LIKE patterns we also escape % and _ (and the escape character \
+%% itself), using ESCAPE '\'.
 
 :- if(catch(use_module(library(prosqlite)), _, fail)).
 
@@ -65,11 +66,12 @@ cache_close(_) :-
 :- endif.
 
 %% cache_add(+Connection, +Text)
-%% Adds a string to the cache.
+%% Adds a string to the cache unless the same text is already there.
 cache_add(Connection, Text) :-
     escape_sql(Text, Escaped),
-    format(atom(SQL), "INSERT INTO cache (content) VALUES ('~w')",
-        [Escaped]),
+    format(atom(SQL),
+           "INSERT INTO cache (content) SELECT '~w' WHERE NOT EXISTS (SELECT 1 FROM cache WHERE content = '~w')",
+           [Escaped, Escaped]),
     catch(
         sqlite_query(Connection, SQL, _Row),
         E,
@@ -86,12 +88,13 @@ cache_lookup(Connection, SearchTerms, Results) :-
 
 %% cache_lookup(+Connection, +SearchTerms, -Results, +Options)
 %% Options: limit(N), match_any(true/false)
-%%   limit(N)         — max number of results (default 3)
-%%   match_any(true)  — OR matching (default: AND)
+%%   limit(N)         max number of results (default 3)
+%%   match_any(true)  OR matching (default: AND)
+%% Results are newest first.
 cache_lookup(Connection, [], Results, Options) :-
     option_limit(Options, Limit),
     format(atom(SQL),
-        "SELECT content FROM cache ORDER BY created_at DESC LIMIT ~d",
+        "SELECT content FROM cache ORDER BY created_at DESC, id DESC LIMIT ~d",
         [Limit]),
     findall(Content,
         sqlite_query(Connection, SQL, row(Content)),
@@ -103,7 +106,7 @@ cache_lookup(Connection, SearchTerms, Results, Options) :-
     option_match_any(Options, MatchAny),
     build_where_clause(SearchTerms, MatchAny, WhereClause),
     format(atom(SQL),
-        "SELECT content FROM cache WHERE ~w ORDER BY created_at DESC LIMIT ~d",
+        "SELECT content FROM cache WHERE ~w ORDER BY created_at DESC, id DESC LIMIT ~d",
         [WhereClause, Limit]),
     findall(Content,
         sqlite_query(Connection, SQL, row(Content)),
@@ -169,32 +172,37 @@ build_where_clause([Term|Rest], MatchAny, Clause) :-
     format(atom(Clause), "~w~w~w", [TermClause, Connector, RestClause]).
 
 %% escape_sql(+Input, -Escaped)
-%% Escapes single quotes, backslashes, and NUL characters for SQL
-%% string interpolation.  Used for values NOT inside LIKE patterns.
+%% Make Input safe inside an SQLite string literal by doubling single
+%% quotes. A NUL character cannot appear in an SQL literal, so it
+%% raises a domain error. Used for values NOT inside LIKE patterns.
 escape_sql(Input, Escaped) :-
     atom_string(Input, Str),
     string_codes(Str, Codes),
+    (   memberchk(0, Codes)
+    ->  domain_error(text_without_nul, Input)
+    ;   true
+    ),
     escape_sql_codes(Codes, EscapedCodes),
     atom_codes(Escaped, EscapedCodes).
 
 escape_sql_codes([], []).
-escape_sql_codes([0|Cs], [0'\\, 0'0|Es]) :- !, escape_sql_codes(Cs, Es).
-escape_sql_codes([0'\\|Cs], [0'\\, 0'\\|Es]) :- !, escape_sql_codes(Cs, Es).
 escape_sql_codes([0'\'|Cs], [0'\', 0'\'|Es]) :- !, escape_sql_codes(Cs, Es).
 escape_sql_codes([C|Cs], [C|Es]) :- escape_sql_codes(Cs, Es).
 
 %% escape_sql_like(+Input, -Escaped)
-%% As escape_sql/2, but additionally escapes the LIKE wildcard
-%% characters % and _ (with \\ as the LIKE escape character).
+%% As escape_sql/2, but also escapes the LIKE wildcards % and _ and
+%% the LIKE escape character \\ itself, each with a \\ in front.
 escape_sql_like(Input, Escaped) :-
     atom_string(Input, Str),
     string_codes(Str, Codes),
+    (   memberchk(0, Codes)
+    ->  domain_error(text_without_nul, Input)
+    ;   true
+    ),
     escape_sql_like_codes(Codes, EscapedCodes),
     atom_codes(Escaped, EscapedCodes).
 
 escape_sql_like_codes([], []).
-escape_sql_like_codes([0|Cs], [0'\\, 0'0|Es]) :-
-    !, escape_sql_like_codes(Cs, Es).
 escape_sql_like_codes([C|Cs], [0'\\, C|Es]) :-
     memberchk(C, [0'%, 0'_, 0'\\]),
     !,

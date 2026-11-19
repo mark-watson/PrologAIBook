@@ -49,9 +49,10 @@ Extends the knowledge graph concept with multi-hop reasoning capabilities. The `
 - `path/3` - Find chains of relations connecting two entities
 - `connected/2` - Check reachability in either direction
 - `neighbors/3` - Find all direct neighbors with predicates
-- `path_length/3` - Find path length between entities
+- `shortest_path/3` - Find a path with the fewest edges (breadth-first search)
+- `path_length/3` - Number of edges on a shortest path
 - `all_paths/3` - Find all paths between entities
 - `reachable/2` - Find all entities reachable from a given entity
 - `relation_count/2` - Count relations with a given predicate
 
-The sample data (`sample_data.pl`) contains 374 static facts (132 typed entities, 242 relations) modeling relationships between people, programming languages, research fields, implementations, organizations, concepts, projects, and publications. Facts are plain static facts (not runtime `assert`s), so loading the module twice never duplicates data. This showcases Prolog's natural advantage for graph traversal — recursive path finding with backtracking is trivial to express declaratively. A depth-limited variant `path(Start, End, Path, MaxDepth)` is also provided.
+The sample data (`sample_data.pl`) contains 374 static facts (132 typed entities, 242 relations) modeling relationships between people, programming languages, research fields, implementations, organizations, concepts, projects, and publications. Facts are plain static facts (not runtime `assert`s), so loading the module twice never duplicates data. This showcases Prolog's natural advantage for graph traversal: recursive path finding with backtracking is trivial to express declaratively. A depth-limited variant `path(Start, End, Path, MaxDepth)` is also provided.

@@ -125,4 +125,32 @@ test(lookup_the,
     assertion(Len == 2).
     %% "The quick brown fox.
 
+test(backslash_round_trip, [setup(setup_cache(C)),
+    cleanup(teardown_cache(C))]) :-
+    cache_add(C, 'C:\\temp is 100% done'),
+    cache_lookup(C, [], [Stored]),
+    assertion(Stored == 'C:\\temp is 100% done'),
+    cache_lookup(C, ['C:\\temp'], [Found]),
+    assertion(Found == Stored).
+
+test(quote_round_trip, [setup(setup_cache(C)),
+    cleanup(teardown_cache(C))]) :-
+    cache_add(C, 'it''s here'),
+    cache_lookup(C, ['it''s'], R),
+    assertion(R == ['it''s here']).
+
+test(duplicates_skipped, [setup(setup_cache(C)),
+    cleanup(teardown_cache(C))]) :-
+    cache_add(C, 'same text'),
+    cache_add(C, 'same text'),
+    cache_count(C, N),
+    assertion(N == 1).
+
+test(newest_first, [setup(setup_cache(C)),
+    cleanup(teardown_cache(C))]) :-
+    cache_add(C, first),
+    cache_add(C, second),
+    cache_lookup(C, [], R),
+    assertion(R == [second, first]).
+
 :- end_tests(cache_engine).

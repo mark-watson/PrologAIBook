@@ -9,11 +9,16 @@ cd source-code/expert_shell
 swipl -s load.pl
 ```
 
-Interactive (default KB, prompts the user):
+Interactive consultation with the readable rules in `prolog/rules_kb.pl` (the shell asks questions on the terminal):
+
+```shell
+make consult
+```
+
+Readable rules look like this:
 
 ```prolog
-?- consult_expert(Conclusion).
-?- explain(Conclusion).
+if meal is dessert and sweet_preference is yes then serve_port.
 ```
 
 Loading the sample wine KB and answering programmatically:
@@ -27,13 +32,13 @@ Loading the sample wine KB and answering programmatically:
 
 User input is read with `read_line_to_string/2` (a trailing `.` is
 stripped, numbers are converted automatically), so plain answers like
-`yes` or `red_meat` work — no Prolog term syntax is required.  EOF
+`yes` or `red_meat` work, with no Prolog term syntax required.  EOF
 aborts the consultation gracefully.
 
 ## Running Tests
 
 ```shell
-swipl -g "['tests/test_shell.pl'], run_tests, halt" -s load.pl
+make test
 ```
 
 

@@ -1,4 +1,4 @@
-%% correlation.pl — Correlation helpers
+%% correlation.pl - Correlation helpers
 %%
 %% NOTE: Correlation measures *association*, NOT causation.
 %% A high |r| between X and Y does not imply that X causes Y,
@@ -77,7 +77,7 @@ make_rank_pair(Rank, Idx, Rank-Idx).
 
 %% pearson_r(+Xs, +Ys, -R)
 %% Pearson product-moment correlation coefficient.
-%% WARNING: measures linear association only — not causation.
+%% WARNING: measures linear association only, not causation.
 pearson_r(Xs, Ys, R) :-
     length(Xs, N),
     length(Ys, N),   % assert equal length
@@ -100,7 +100,7 @@ cross_dev(MX, MY, X, Y, P) :-
 %% spearman_rho(+Xs, +Ys, -Rho)
 %% Spearman rank-order correlation coefficient.
 %% Converts to ranks then computes Pearson-r on the ranks.
-%% WARNING: measures monotonic association only — not causation.
+%% WARNING: measures monotonic association only, not causation.
 spearman_rho(Xs, Ys, Rho) :-
     rank_list(Xs, RXs),
     rank_list(Ys, RYs),

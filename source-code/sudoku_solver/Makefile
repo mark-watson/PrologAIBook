@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running sudoku_solver examples ==="
-	$(SWIPL) -g " \
+	@$(SWIPL) -g " \
 	  Puzzle = [[5,3,_,_,7,_,_,_,_], \
 	            [6,_,_,1,9,5,_,_,_], \
 	            [_,9,8,_,_,_,_,6,_], \
@@ -19,7 +19,8 @@ run:
 	            [_,6,_,_,_,_,2,8,_], \
 	            [_,_,_,4,1,9,_,_,5], \
 	            [_,_,_,_,8,_,_,7,9]], \
-	  sudoku(Puzzle), print_board(Puzzle), halt" -s load.pl
+	  sudoku(Puzzle), print_board(Puzzle), \
+	  send_more(D), format('SEND+MORE=MONEY [S,E,N,D,M,O,R,Y] = ~w~n', [D]), halt" -s load.pl
 
 test:
 	@echo "=== Running sudoku_solver tests ==="

@@ -13,9 +13,10 @@ test(json_dict_pairs) :-
     json_dict_pairs(Dict, Pairs),
     assertion(Pairs == [name-"test", value-42]).
 
-test(json_to_prolog_alias) :-
-    parse_json_string('{"name":"test"}', Dict),
-    json_to_prolog(Dict, Pairs),
-    assertion(Pairs == [name-"test"]).
+test(dict_round_trip) :-
+    dict_to_json_string(_{name:"Bob", score:95}, S),
+    parse_json_string(S, D),
+    assertion(D.name == "Bob"),
+    assertion(D.score == 95).
 
 :- end_tests(json_utils).

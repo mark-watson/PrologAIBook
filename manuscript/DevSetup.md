@@ -1,28 +1,30 @@
 # Setting Up Your Prolog Development Environment
 
-In this chapter we will install SWI-Prolog and configure a productive development environment. SWI-Prolog is the primary Prolog system used throughout this book.
+In this chapter we install SWI-Prolog and set up a development environment. The book uses SWI-Prolog for all chapters except the one on Scryer Prolog.
 
 ## Installing SWI-Prolog
 
 ### macOS
 
-On macOS, the most straightforward way to install SWI-Prolog is using the [Homebrew](https://brew.sh) package manager. Run the following command in your terminal:
+On macOS, the easiest way to install SWI-Prolog is with the [Homebrew](https://brew.sh) package manager:
 
 ```bash
 brew install swi-prolog
 ```
 
-This installs the stable version of SWI-Prolog, including the core execution engine, compiler, interactive top level (`swipl`), and development utilities.
+This installs the stable version of SWI-Prolog, including the compiler, the interactive top level (`swipl`), and the standard libraries.
+
+Two later chapters need extra setup. The Janus Python bridge in the Homebrew build may fail to load with an error like `Library not loaded: @rpath/Python3.framework/Versions/3.9/Python3`. The chapter **The Janus Python Bridge** shows how to fix this. The **Cache Engine** and **Daily Use REPL** chapters need the `prosqlite` pack, which we install later in this chapter.
 
 #### Building from Source on macOS
 
-If you prefer to build SWI-Prolog from source on macOS (for example, to enable optional modules or custom compile configurations), first install the required build dependencies via Homebrew:
+To build SWI-Prolog from source on macOS (for example, to enable optional modules), first install the build dependencies with Homebrew:
 
 ```bash
 brew install cmake ninja gmp openssl readline jpeg libarchive libyaml pcre2 pkg-config
 ```
 
-Then, clone the official SWI-Prolog repository recursively to fetch all git submodules:
+Then clone the SWI-Prolog repository with its git submodules and build it:
 
 ```bash
 git clone --recursive https://github.com/SWI-Prolog/swipl-devel.git
@@ -36,11 +38,11 @@ ninja install
 
 ### Linux
 
-SWI-Prolog is available in the package repositories of most major Linux distributions.
+Most Linux distributions include SWI-Prolog in their package repositories.
 
 #### Debian and Ubuntu
 
-For Debian, Ubuntu, and derivative distributions, it is highly recommended to use the official SWI-Prolog Personal Package Archive (PPA) to ensure you install the latest stable version:
+On Debian, Ubuntu, and related distributions, use the SWI-Prolog Personal Package Archive (PPA) to get the latest stable version:
 
 ```bash
 sudo apt-add-repository ppa:swi-prolog/stable
@@ -48,11 +50,11 @@ sudo apt update
 sudo apt install swi-prolog
 ```
 
-If you prefer the latest development release instead, you can add `ppa:swi-prolog/devel` instead.
+For the latest development release, add `ppa:swi-prolog/devel` instead.
 
 #### Fedora, Red Hat, and CentOS
 
-On Fedora or other systems using the `dnf` package manager, install SWI-Prolog with:
+On Fedora or other systems that use `dnf`:
 
 ```bash
 sudo dnf install swipl
@@ -60,32 +62,30 @@ sudo dnf install swipl
 
 ### Windows
 
-For Windows environments, precompiled binaries and installers are provided directly:
+For Windows, SWI-Prolog provides installers:
 
 1. Visit the stable download page: [https://www.swi-prolog.org/download/stable](https://www.swi-prolog.org/download/stable).
 2. Download the appropriate 64-bit installer for Windows.
-3. Run the installer and proceed through the setup wizard.
-4. **Important**: During the installation, make sure to check the option to add the SWI-Prolog bin directory to the system `PATH` environment variable. This allows you to launch the REPL by running `swipl` from command prompts or terminal windows (such as Command Prompt, PowerShell, or WSL).
+3. Run the installer.
+4. **Important**: During setup, check the option to add the SWI-Prolog `bin` directory to the `PATH` environment variable. You can then start the REPL by running `swipl` from Command Prompt or PowerShell.
 
 ---
 
 ## Editor Support
 
-Writing Prolog is much more productive when using an editor configured with syntax highlighting, auto-indentation, and interactive execution helper tools.
+An editor with syntax highlighting, auto-indentation, and a built-in REPL makes Prolog work faster.
 
 ### Visual Studio Code (VS Code)
 
-VS Code is the most popular modern text editor for Prolog development:
-- **Recommended Extension**: Search for and install the **VSC-Prolog** extension (by Arthur Wang).
-- **Features**: Offers syntax highlighting, automatic linter feedback, tooltips with predicate signatures, and the ability to load your current file into an integrated SWI-Prolog REPL terminal.
-- **Configuring the Executable**: If the extension displays an error indicating it cannot locate the Prolog engine, open your settings (`Ctrl+,` or `Cmd+,`) and set `prolog.executablePath` to the path of your `swipl` installation (e.g., `/usr/local/bin/swipl` on macOS/Linux, or `C:\Program Files\swipl\bin\swipl.exe` on Windows).
+- **Extension**: Install the **VSC-Prolog** extension (by Arthur Wang).
+- **Features**: Syntax highlighting, linter feedback, tooltips with predicate signatures, and a command to load the current file into a SWI-Prolog REPL terminal.
+- **Setting the executable**: If the extension cannot find Prolog, open settings (`Ctrl+,` or `Cmd+,`) and set `prolog.executablePath` to your `swipl` path (for example `/opt/homebrew/bin/swipl` on Apple Silicon Macs, `/usr/bin/swipl` on Linux, or `C:\Program Files\swipl\bin\swipl.exe` on Windows).
 
 ### Emacs
 
-Emacs provides a classic, keyboard-driven environment with first-class support for SWI-Prolog:
-- **Recommended Mode**: The built-in `prolog-mode` (which has specialized configurations optimized for SWI-Prolog).
-- **Features**: Auto-indentation, syntax coloring, query execution, and the ability to run an interactive sub-process (`M-x run-prolog`) that compiles buffers dynamically.
-- **Configuration**: Add the following setup code to your Emacs init file (`init.el`):
+- **Mode**: The built-in `prolog-mode`, which has settings for SWI-Prolog.
+- **Features**: Auto-indentation, syntax coloring, and an interactive Prolog process (`M-x run-prolog`) that can load buffers.
+- **Configuration**: Add this line to your Emacs init file (`init.el`):
   ```elisp
   (setq prolog-system 'swipl)
   ```
@@ -94,7 +94,7 @@ Emacs provides a classic, keyboard-driven environment with first-class support f
 
 ## The SWI-Prolog Interactive Top Level
 
-The interactive top level, often referred to as the REPL (Read-Eval-Print Loop), is where you query and test your code.
+The interactive top level, often called the REPL (Read-Eval-Print Loop), is where you query and test your code.
 
 ### Starting and Exiting the REPL
 
@@ -102,18 +102,18 @@ To start the REPL, open your terminal and run the `swipl` command:
 
 ```bash
 $ swipl
-Welcome to SWI-Prolog (threaded, 64 bits, version 9.2.0)
+Welcome to SWI-Prolog (threaded, 64 bits, version 10.0.2)
 ...
 ?- 
 ```
 
-To exit the REPL, type the `halt/0` predicate followed by a period:
+To exit the REPL, type `halt` followed by a period:
 
 ```prolog
 ?- halt.
 ```
 
-Alternatively, you can press `Ctrl-D` (on macOS/Linux) or `Ctrl-Z` followed by `Enter` (on Windows).
+You can also press `Ctrl-D` (macOS and Linux) or `Ctrl-Z` then `Enter` (Windows).
 
 ### Loading and Reloading Files
 
@@ -123,21 +123,21 @@ To load (or "consult") a local source file named `family.pl`:
 ?- [family].
 ```
 
-Note that the `.pl` extension is assumed automatically, and the query must end with a period.
+Prolog adds the `.pl` extension, and the query must end with a period.
 
-If you modify `family.pl` in an external editor, reload the changes into the current REPL session with:
+If you edit `family.pl` in an editor, reload it with:
 
 ```prolog
 ?- make.
 ```
 
-The `make/0` predicate automatically checks for modified files and recompiles them.
+The `make/0` predicate finds changed files and recompiles them.
 
 ### Querying and Backtracking
 
-Prolog queries are evaluated left-to-right. If variables are present, the REPL presents the first matching solution it finds.
-- To search for more solutions, press the `;` (semicolon) key.
-- To accept the current solution and return to the main prompt, press the `Enter` key (or `.`).
+Prolog runs the goals in a query from left to right. If the query has variables, the REPL shows the first solution it finds.
+- To see more solutions, press `;` (semicolon).
+- To accept the current solution and return to the prompt, press `Enter` (or `.`).
 
 ```prolog
 ?- parent(tom, Child).
@@ -147,20 +147,20 @@ Child = liz.
 
 ### Tracing and Debugging
 
-SWI-Prolog includes a comprehensive debugging console based on the 4-port debugger model (Call, Exit, Redo, Fail):
-- **Enable Tracing**: Type `trace.` and then run your query. The console will pause at every evaluation port.
-- **Stepping**: During a trace, press the Spacebar to creep (step in) or `s` to skip (step over). Press `h` to display a menu of all trace options.
-- **Disable Tracing**: Turn the debugger off using `notrace.`.
-- **Spy Points**: If you only want to debug a specific predicate, set a spy point: `spy(my_predicate/2).`.
-- **Graphical Debugger**: If you are in a GUI environment, you can open the visual debugger window:
+SWI-Prolog's debugger uses the four-port model (Call, Exit, Redo, Fail):
+- **Start tracing**: Type `trace.` and then run your query. The debugger stops at each port.
+- **Stepping**: Press the space bar to creep (step in) or `s` to skip (step over). Press `h` to list all options.
+- **Stop tracing**: Type `notrace.`.
+- **Spy points**: To debug one predicate, set a spy point: `spy(my_predicate/2).`.
+- **Graphical debugger**: On a desktop, open the visual debugger with:
   ```prolog
   ?- gtrace, my_query(X).
   ```
 
 ### Getting Help
 
-Query the built-in manuals directly from the REPL:
-- **Search for predicate documentation**:
+You can read the manual from the REPL:
+- **Show a predicate's documentation**:
   ```prolog
   ?- help(append/3).
   ```
@@ -173,29 +173,35 @@ Query the built-in manuals directly from the REPL:
 
 ## Installing Packs (Libraries)
 
-SWI-Prolog includes a package manager for distributing community-contributed libraries, referred to as **packs**.
+SWI-Prolog has a package manager for community libraries, called **packs**.
 
 ### Searching and Installing
 
-To install a package, call `pack_install/1` with the pack name:
+To install a pack, call `pack_install/1` with its name:
 
 ```prolog
 ?- pack_install(regex).
 ```
 
-This retrieves the pack from the central repository, configures it, compiles any native foreign components (if needed), and installs it under your user configuration folder.
+This downloads the pack, compiles any C code it contains, and installs it in your user configuration folder.
+
+The **Cache Engine** and **Daily Use REPL** chapters need the `prosqlite` pack for SQLite access. Install it now:
+
+```prolog
+?- pack_install(prosqlite).
+```
 
 ### Pack Management Commands
 
-- **List installed packages**:
+- **List installed packs**:
   ```prolog
-  ?- pack_list('').
+  ?- pack_list_installed.
   ```
-- **Upgrade a package to the latest version**:
+- **Upgrade a pack to the latest version**:
   ```prolog
   ?- pack_upgrade(regex).
   ```
-- **Uninstall a package**:
+- **Remove a pack**:
   ```prolog
   ?- pack_remove(regex).
   ```
@@ -204,31 +210,33 @@ This retrieves the pack from the central repository, configures it, compiles any
 
 ## Cloning the Book's GitHub Repository
 
-First, clone the GitHub repository that contains the example programs and the manuscript files for this book:
+Clone the repository that holds this book's example programs and manuscript files:
 
     git clone https://github.com/mark-watson/PrologAIBook.git
 
 ### Directory Structure Overview
 
-The cloned repository contains two primary directories:
+The repository has two main directories:
 
-1. **`manuscript/`**: This folder contains the markdown chapters of the book.
-2. **`source-code/`**: This folder contains all the companion Prolog projects, which are structured as modular codebases with tests. Here are some of the key source subdirectories:
+1. **`manuscript/`**: The book's chapters in Markdown.
+2. **`source-code/`**: The example projects, most with modules and tests. The file **SOURCE_CODE_MAP.md** at the top level maps each chapter to its projects. Some examples:
    - **`tutorial_basics/`**: Entry-level programs covering lists, rules, and basic DCGs.
    - **`expert_shell/`**: A backward-chaining expert system engine that generates natural explanations.
    - **`scasp_compliance/`**: Code implementing regulatory compliance checks using the `s(CASP)` reasoning engine.
    - **`janus_ml_python_interop/`**: Interfacing Prolog directly with Python machine learning libraries using Janus.
-   - **`prolog_wasm_web/`**: Code examples compiling Prolog logic to run client-side in the web browser via WebAssembly.
-   - **`llm_logic_guardrails/`**: Structuring prompts, sending LLM queries, and verifying responses against formal logic guardrails.
-   - **`agent_behavior_trees/`**: Implementing reactive logic-based behavior trees for agent action planning.
+   - **`prolog_wasm_web/`**: Prolog rules that run in the web browser through WebAssembly.
+   - **`llm_logic_guardrails/`**: Checking LLM output against Prolog rules.
+   - **`agent_behavior_trees/`**: Behavior trees for agent action selection.
+
+Most projects have a **Makefile** with two targets: `make run` runs the examples and `make test` runs the unit tests.
 
 ## Project Organization and Best Practices
 
-Setting up a robust SWI-Prolog project involves adopting package management conventions (even if you aren't publishing it publicly) and utilizing the built-in module and testing systems. Here is the standard approach to structuring, managing dependencies, and testing in SWI-Prolog.
+A good SWI-Prolog project follows the pack layout (even if you never publish it) and uses the module and unit test systems. This section shows the layout the book's projects use.
 
 ### Standard Project Layout
 
-The most idiomatic way to structure a modern SWI-Prolog project mimics its package manager (pack) layout. This cleanly separates metadata, source code, and tests.
+The usual layout copies the pack layout, which keeps metadata, source code, and tests apart.
 
 ```
 my_project/
@@ -242,13 +250,13 @@ my_project/
     └── test_utils.pl
 ```
 
-- **prolog/**: Contains your actual logic. Every file here should be a module.
-- **load.pl**: A convenience script used to load your application into the REPL. It typically contains directives like `:- use_module(prolog/core).`
-- **tests/**: Kept separate from source code to avoid polluting the production footprint.
+- **prolog/**: Your application code. Make every file here a module.
+- **load.pl**: Loads your application into the REPL. It usually holds directives like `:- use_module(prolog/core).`
+- **tests/**: Unit tests, kept apart from the application code.
 
 ### Defining Dependencies with pack.pl
 
-SWI-Prolog manages dependencies via the **pack.pl** file located at the project root. This file contains Prolog terms declaring metadata and required libraries (both built-in and external packs).
+The **pack.pl** file at the project root holds Prolog terms that give the project's metadata and dependencies.
 
 Example **pack.pl**:
 
@@ -259,20 +267,20 @@ title('A concise Prolog application').
 author('Your Name', 'email@example.com').
 
 % Dependencies
-requires(http).           % Built-in SWI-Prolog library
-requires(clpfd).          % Constraint Logic Programming
-requires(regex).          % External pack (needs installation)
+requires(prolog >= '9.2.0').           % Minimum SWI-Prolog version
+requires(prolog:library(clpfd)).      % Library shipped with SWI-Prolog
+requires(regex).                       % External pack
 ```
 
-To install external dependencies defined in this file, you would run the following from the SWI-Prolog REPL in your project root:
+A plain name such as `regex` names an external pack. The `prolog:library(Lib)` form checks for a library that ships with SWI-Prolog, so do not list built-in libraries by bare name. If you publish your project as a pack, `pack_install/1` installs the packs it requires. For a project you only run locally, install each pack yourself:
 
 ```prolog
-?- pack_install('.').
+?- pack_install(regex).
 ```
 
 ### Organizing Source Files with Modules
 
-To prevent predicate name collisions across a growing codebase, encapsulate your source files using SWI-Prolog's module system. At the top of every file in your **prolog/** directory, declare the module and explicitly export the predicates intended for public use.
+Modules prevent predicate name clashes as a code base grows. At the top of each file in **prolog/**, declare the module and list the predicates it exports. SWI-Prolog reports an error if a module exports a predicate it does not define.
 
 **prolog/core.pl**:
 
@@ -290,12 +298,21 @@ process_data(Input, Output) :-
     clean_input(Input, Cleaned), % Private predicate
     Output = Cleaned.
 
+evaluate_state(State) :-
+    State #>= 0.
+
 clean_input(X, X).
+```
+
+The module imports `utils`, so the project also needs **prolog/utils.pl**. A module with no exports is enough to start:
+
+```prolog
+:- module(utils, []).
 ```
 
 ### Unit Testing with PLUnit
 
-SWI-Prolog includes the **plunit** testing framework natively. While you can embed tests directly inside your source modules, placing them in a dedicated **tests/** directory is cleaner for larger projects.
+SWI-Prolog ships with the **plunit** test framework. You can put tests inside your source modules, but a separate **tests/** directory is cleaner for larger projects.
 
 **tests/test_core.pl**:
 
@@ -314,23 +331,26 @@ test(fail_case, [fail]) :-
     process_data(invalid, valid).
 
 test(throws_error, [error(instantiation_error)]) :-
-    X is Y + 1.
+    _X is _Y + 1.
 
 :- end_tests(core_logic).
 ```
 
 **Running the Tests:**
 
-You can run your test suite from the REPL by loading the test files and executing the test runner:
+To run the tests from the REPL, load the test file and call the test runner:
 
 ```prolog
-?- load_test_files([]).
+?- [load].
+?- ['tests/test_core.pl'].
 ?- run_tests.
 ```
 
-Alternatively, to test from the command line without entering the interactive REPL:
+To run them from the command line:
 
+```bash
+swipl -g "['tests/test_core.pl'], run_tests, halt" -s load.pl
 ```
-swipl -g "load_test_files([]), run_tests, halt" -s load.pl
-```
+
+The book's Makefiles use this command for their `test` targets. You may see `load_test_files/1` in other projects. It loads `.plt` files that sit next to each source file, so it does not find tests in a separate **tests/** directory.
 

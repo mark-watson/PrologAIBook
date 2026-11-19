@@ -75,7 +75,7 @@ test(load_twice_no_duplicates) :-
     load_sample_data,
     aggregate_all(count, entity(_, _), 132).
 
-test(depth_limited_path) :-
+test(depth_limited_path, [nondet]) :-
     path(mark, swi, Path, 4),
     length(Path, Len),
     Len >= 2, Len =< 5.
@@ -119,5 +119,20 @@ test(path_no_cycles, [nondet]) :-
 test(reachable_symmetry, [nondet]) :-
     connected(sarah, bert),
     connected(bert, sarah).
+
+test(shortest_path_mark_swi) :-
+    shortest_path(mark, swi, Path),
+    assertion(Path == [mark, prolog, swi]).
+
+test(path_length_counts_edges) :-
+    path_length(mark, swi, L),
+    assertion(L == 2).
+
+test(shortest_not_longer_than_any_path) :-
+    path_length(sarah, bert, L),
+    forall(path(sarah, bert, P), (length(P, N), N - 1 >= L)).
+
+test(shortest_path_unreachable, [fail]) :-
+    shortest_path(swi, mark, _).
 
 :- end_tests(kg_reason).

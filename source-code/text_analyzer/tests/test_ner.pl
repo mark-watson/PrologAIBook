@@ -43,4 +43,14 @@ test(international_body) :-
     memberchk(entity(org, 'UNESCO'), Entities),
     memberchk(entity(org, 'WHO'), Entities).
 
+test(two_word_place) :-
+    find_entities(['She', moved, to, 'New', 'York'], Entities),
+    assertion(Entities == [entity(place, 'New_York')]).
+
+test(order_of_appearance) :-
+    find_entities(['Google', hired, 'Mary', in, 'Paris'], Entities),
+    assertion(Entities == [entity(org, 'Google'),
+                           entity(person, 'Mary'),
+                           entity(place, 'Paris')]).
+
 :- end_tests(ner).

@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running wine_advisor examples ==="
-	$(SWIPL) -g "recommend_wine(red_meat, bold, W1), format('Red meat + bold: ~w~n', [W1]), recommend_wine(fish, light, W2), format('Fish + light: ~w~n', [W2]), halt" -s load.pl
+	@$(SWIPL) -g "forall(member(M-P, [red_meat-bold, fish-light, dessert-sweet]), (findall(W, recommend_wine(M, P, W), Ws), format('~w + ~w: ~w~n', [M, P, Ws]))), halt" -s load.pl
 
 test:
 	@echo "=== Running wine_advisor tests ==="

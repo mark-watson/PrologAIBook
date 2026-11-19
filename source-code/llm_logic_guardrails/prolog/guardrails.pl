@@ -2,7 +2,7 @@
     validate_portfolio_json/2
 ]).
 
-:- use_module(library(http/json)).
+:- use_module(library(json)).
 
 /** <module> Financial Guardrails Module
  *
@@ -22,7 +22,7 @@
  */
 
 % Main entry point. Parses JSON and checks all policy rules.
-% Returns a list of error atoms. If empty, the portfolio is valid.
+% Returns a list of error strings. If empty, the portfolio is valid.
 validate_portfolio_json(JsonString, Errors) :-
     setup_call_cleanup(
         open_string(JsonString, Stream),
@@ -37,10 +37,15 @@ validate_portfolio_json(JsonString, Errors) :-
     ->  message_to_string(JsonError, Msg),
         format(string(ErrStr), "Invalid JSON input: ~w", [Msg]),
         Errors = [ErrStr]
-;   missing_required_keys(Dict, Missing), Missing \= []
-->  atomic_list_concat(Missing, ', ', MissingStr),
+    ;   missing_required_keys(Dict, Missing), Missing \= []
+    ->  atomic_list_concat(Missing, ', ', MissingStr),
         format(string(ErrStr),
             "Missing required keys in recommendation: ~w", [MissingStr]),
+        Errors = [ErrStr]
+    ;   non_numeric_fields(Dict, Bad), Bad \= []
+    ->  atomic_list_concat(Bad, ', ', BadStr),
+        format(string(ErrStr),
+            "These fields must be numbers: ~w", [BadStr]),
         Errors = [ErrStr]
     ;   findall(Error, check_policy(Dict, Error), Errors)
     ).
@@ -61,14 +66,31 @@ has_value(Dict, Key) :-
     catch(get_dict(Key, Dict, Value), _, fail),
     nonvar(Value).
 
+% non_numeric_fields(+Dict, -Bad)
+% Bad lists client_age and each allocation whose value is not a
+% number. The policy rules do arithmetic, so a string such as "40"
+% must be reported here instead of raising a type error later.
+non_numeric_fields(Dict, Bad) :-
+    get_dict(allocations, Dict, Allocs),
+    (   is_dict(Allocs)
+    ->  dict_pairs(Allocs, _, Pairs)
+    ;   Pairs = []
+    ),
+    get_dict(client_age, Dict, Age),
+    findall(Field,
+            (   member(Field-V, [client_age-Age|Pairs]),
+                \+ number(V)
+            ),
+            Bad).
+
 % risk_value(+Dict, -RiskAtom)
-% Extract risk_tolerance and canonicalise to a downcased atom, so the
-% policy rules work whether the value arrived as a Prolog atom
-% (json_read_dict default) or as a string (Janus / value_string_as).
+% Extract risk_tolerance and turn it into a lowercase atom, so the
+% policy rules can match atoms such as low. json_read_dict/2 returns
+% JSON strings as Prolog strings; other callers may pass atoms.
 % risk_value(+Dict, -RiskAtom)
-% Extract risk_tolerance and canonicalise to a downcased atom, so the
-% policy rules work whether the value arrived as a Prolog atom
-% (json_read_dict default) or as a string (Janus / value_string_as).
+% Extract risk_tolerance and turn it into a lowercase atom, so the
+% policy rules can match atoms such as low. json_read_dict/2 returns
+% JSON strings as Prolog strings; other callers may pass atoms.
 risk_value(Dict, RiskAtom) :-
     has_value(Dict, risk_tolerance),
     Risk0 = Dict.get(risk_tolerance, ""),
@@ -87,10 +109,11 @@ downcase_atom_(String, Atom) :-
 % --- Policy Rules ---
 
 % 1. Total sum must be exactly 100%
+% =\= compares numbers, so a float total of 100.0 passes.
 check_policy(Dict, "Total allocation must sum to exactly 100%") :-
     get_allocations(Dict, Stocks, Bonds, Crypto, Cash),
     Total is Stocks + Bonds + Crypto + Cash,
-    Total \= 100.
+    Total =\= 100.
 
 % 2. If client is senior (> 65), high-risk assets (stocks + crypto) must
 % be <= 30%
@@ -123,9 +146,10 @@ check_policy(Dict, Error) :-
         "Low risk tolerance requires at least 50% in conservative assets (currently ~w%)", [Conservative]).
 
 % 5. No asset allocation can be negative
+% once/1 reports the error once, however many allocations are negative.
 check_policy(Dict, "Asset allocations cannot be negative") :-
     get_allocations(Dict, Stocks, Bonds, Crypto, Cash),
-    (Stocks < 0 ; Bonds < 0 ; Crypto < 0 ; Cash < 0).
+    once(( Stocks < 0 ; Bonds < 0 ; Crypto < 0 ; Cash < 0 )).
 
 % --- Helper to extract allocations safely with default 0 if missing ---
 get_allocations(Dict, Stocks, Bonds, Crypto, Cash) :-

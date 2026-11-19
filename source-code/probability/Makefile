@@ -9,11 +9,11 @@ all: run freq test
 
 run:
 	@echo "=== Running Bayesian medical screening example ==="
-	$(SWIPL) -g "run_medical_example, halt" -s load.pl
+	@$(SWIPL) -g "run_medical_example, halt" -s load.pl
 
 freq:
 	@echo "=== Running Frequentist medical screening example ==="
-	$(SWIPL) -g "run_frequentist_demo, halt" -s load.pl
+	@$(SWIPL) -g "run_frequentist_demo, halt" -s load.pl
 
 test:
 	@echo "=== Running probability tests ==="

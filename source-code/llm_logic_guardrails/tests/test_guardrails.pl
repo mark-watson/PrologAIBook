@@ -104,4 +104,13 @@ validate_portfolio_dict(Dict, Errors) :-
     ;   findall(E, guardrails:check_policy(Dict, E), Errors)
     ).
 
+test(float_total_of_100_ok, [true(Errors == [])]) :-
+    validate_portfolio_json('{"client_age":40,"risk_tolerance":"high","allocations":{"stocks":60.0,"bonds":40.0,"crypto":0,"cash":0}}', Errors).
+
+test(negative_reported_once, [true(Errors == ["Asset allocations cannot be negative"])]) :-
+    validate_portfolio_json('{"client_age":40,"risk_tolerance":"high","allocations":{"stocks":-10,"bonds":-10,"crypto":60,"cash":60}}', Errors).
+
+test(string_number_is_policy_error, [true(Errors == ["These fields must be numbers: stocks"])]) :-
+    validate_portfolio_json('{"client_age":40,"risk_tolerance":"high","allocations":{"stocks":"40","bonds":60,"crypto":0,"cash":0}}', Errors).
+
 :- end_tests(guardrails).

@@ -1,37 +1,37 @@
 # Probabilistic Logic Programming
 
-Probabilistic logic programming combines the expressiveness of Prolog with the ability to reason under uncertainty. SWI-Prolog supports several probabilistic programming frameworks that are highly relevant for modern AI applications. We look at a simple example in this chapter and then take a more general look at probability in the next chapter.
+Probabilistic logic programming adds reasoning under uncertainty to Prolog. In this chapter we build two small reasoners in plain Prolog: one that multiplies probabilities along rule chains, and one that does exact inference in a Bayesian network. The next chapter takes a broader look at probability.
 
 {width: "80%"}
 ![Architecture diagram for the Probabilistic Reasoning example](FIG_prob_reasoning.jpg)
 
 ## Why Probabilistic Reasoning?
 
-In classical logic, a statement is either true or false. This binary worldview works well for pure mathematics but fails in real-world AI applications where information is almost always incomplete, noisy, or uncertain.
+In classical logic, a statement is true or false. That works for mathematics, but in AI applications our information is usually incomplete, noisy, or uncertain.
 
-Classical Prolog relies on the **Closed World Assumption**: if a fact cannot be proven true from the knowledge base, it is assumed to be false. However, in the real world, a lack of evidence does not equal evidence of absence. Furthermore, classical logic is **monotonic**: once a fact is proven, it remains true regardless of any new information added to the system. 
+Prolog uses the **Closed World Assumption**: anything it cannot prove, it treats as false. In the real world, a lack of evidence is not evidence of absence.
 
-In contrast, real-world reasoning is **non-monotonic** and probabilistic. For instance, we might believe a patient has a specific illness with `90\%`$ certainty, but when a new test result comes back negative, our belief should adapt. Probabilistic logic programming solves this by representing truth values as real numbers in the range `[0, 1]`$, representing the probability or degree of belief that a statement holds. This allows us to build logic models that handle exceptions, noisy measurements, and uncertain outcomes.
+Real reasoning also revises its beliefs. We might believe a patient has an illness with `90\%`$ certainty, then lower that belief when a test comes back negative. Probabilistic logic programming attaches a probability in `[0, 1]`$ to each fact, so a program can weigh uncertain evidence and update its conclusions.
 
 ## ProbLog and Probabilistic Facts
 
-One of the most popular frameworks for combining logic with probability is **ProbLog**. In ProbLog, facts can be annotated with their probability of being true:
+**ProbLog** is a popular language that combines logic with probability. In ProbLog, each fact can carry the probability that it is true:
 ```prolog
 0.3::windy.
 0.5::cloudy.
 ```
-This notation declares that `windy` has a `30\%`$ chance of being true, and `cloudy` has a `50\%`$ chance. Under the **distribution semantics** introduced by Taisuke Sato, a ProbLog program defines a probability distribution over a set of possible worlds. In each possible world, every probabilistic fact is independently chosen to be either true (with probability `p`$) or false (with probability `1-p`$). The probability of a query is the sum of the probabilities of all possible worlds in which the query can be logically proven.
+This says `windy` is true with probability `0.3`$ and `cloudy` with probability `0.5`$. Under the **distribution semantics** of Taisuke Sato, a ProbLog program defines a probability distribution over *possible worlds*. In each world, every probabilistic fact is independently true (with probability `p`$) or false (with probability `1-p`$). The probability of a query is the total probability of the worlds in which Prolog can prove it.
 
-While a full ProbLog solver requires compiling queries into Binary Decision Diagrams (BDDs) to handle dependencies and logical cycles, we can implement a lightweight reasoner that multiplies probabilities along the inference chain (noisy-AND style propagation) in pure Prolog. This approach propagates probabilities recursively through backtracking search.
+A full ProbLog system compiles queries into Binary Decision Diagrams (BDDs) to handle facts that several proofs share. ProbLog itself is a Python system; for SWI-Prolog, the `cplint` pack offers similar languages. Here we write a much simpler reasoner in plain Prolog that multiplies probabilities along each chain of rules, assuming the conditions of each rule are independent.
 
-The **prob_reasoning** project implements a lightweight probabilistic reasoner. Here is the file **prob_reasoning/prolog/prob_facts.pl**:
+Here is the file **prob_reasoning/prolog/prob_facts.pl**:
 
 ```prolog
 %% prob_facts.pl - Probabilistic reasoning over annotated facts/rules
 %%
-%% NOTE: the probability arithmetic below is noisy-AND style
-%% multiplication along the inference chain; it is NOT MYCIN-style
-%% certainty-factor combination.
+%% NOTE: the code multiplies probabilities along the inference
+%% chain, assuming the conditions of a rule are independent. It is
+%% NOT MYCIN-style certainty-factor combination.
 %%
 %% Product chains are computed in log space (a foldl of the log of each
 %% factor, then exp/1 of the sum) so that deep chains do not underflow
@@ -143,72 +143,150 @@ The weather knowledge base demonstrates how probabilities attenuate (rapidly dec
 5. `severe_storm` converges from `thick_clouds` and `storm_system` with conditional probability `0.5`$, yielding `P=0.1 \times 0.06 \times 0.5 = 0.003`$.
 6. `tornado_risk` is derived from `severe_storm` with conditional probability `0.6`$, yielding `P=0.003 \times 0.6 = 0.0018`$.
 
-This rapid attenuation shows that multiplying across deep chains can quickly shrink probabilities. The implementation computes these products in log space to prevent floating-point underflow. To model complex dependencies more correctly, we use more sophisticated models like Bayesian networks or full ProbLog.
+Multiplying along deep chains shrinks probabilities fast. Computing the products in log space keeps very small values from underflowing to zero. The model also has limits: it assumes independence, and it cannot reason from effects back to causes. A Bayesian network handles both, as the next sections show.
 
 ## Learning Probabilities from Data
 
-Writing down exact probability values for every fact and rule is difficult. In practice, we often have the logical structure of the model but need to learn the probability values from experimental data or observations.
+This section gives background only; the book's code does not include a learner.
 
-This process is called **parameter learning** (implemented in ProbLog as LFI, or *Learning from Interpretations*). The learning system is given:
+Writing down exact probabilities for every fact and rule is hard. Often we know the structure of a model but must learn its probabilities from data.
+
+This is **parameter learning** (in ProbLog, LFI, or *Learning from Interpretations*). The learner is given:
 1. A logic program containing facts and rules with unknown probability parameters.
 2. A database of training interpretations (examples of observed states, which may be complete or incomplete).
 
-Under the hood, the system uses the **Expectation-Maximization (EM)** algorithm:
-- **Expectation Step (E-step)**: Using the current probability estimates, the system computes the expected truth values of all unobserved (latent) variables in the training data.
-- **Maximization Step (M-step)**: The system updates the probability parameters to maximize the likelihood of both the observed and expected data.
+It uses the **Expectation-Maximization (EM)** algorithm:
+- **E-step**: With the current estimates, compute the expected truth values of the variables the data does not show.
+- **M-step**: Update the probabilities to maximize the likelihood of the observed data together with those expected values.
 
-This iterative process continues until the parameters converge, allowing us to train probabilistic logic systems directly from tabular data, sensor logs, or historical records.
+The two steps repeat until the probabilities stop changing. When the data shows every variable, no EM is needed: each CPT entry is just a ratio of counts, which you could compute in Prolog with `aggregate_all/3`.
 
 ## Bayesian Networks in Prolog
 
-A **Bayesian Network** is a directed acyclic graph (DAG) where nodes represent random variables and edges represent conditional dependencies. Each node is associated with a Conditional Probability Table (CPT) expressing the probability of the node given the states of its parent nodes.
+A **Bayesian network** is a directed acyclic graph whose nodes are random variables and whose edges show direct dependence. Each node has a Conditional Probability Table (CPT) that gives its probability for each combination of its parents' values.
 
-Prolog is well-suited for representing Bayesian networks. We can represent the network structure and CPTs directly as facts:
+The network gives the probability of a complete *world*, an assignment of a value to every variable, as a product of one CPT entry per node:
+
+```$
+P(x_1, \dots, x_n) = \prod_i P(x_i \mid \mathrm{parents}(x_i))
+```
+
+From that, we can answer any conditional query by summing worlds:
+
+```$
+P(A \mid B) = \frac{P(A, B)}{P(B)} = \frac{\sum_{\text{worlds with } A, B} P(w)}{\sum_{\text{worlds with } B} P(w)}
+```
+
+Here is the classic sprinkler network: clouds make rain more likely and the sprinkler less likely, and either rain or the sprinkler wets the grass. The file **prob_reasoning/prolog/bayes_net.pl** stores the network as facts and answers queries by enumerating all worlds:
 
 ```prolog
-% network_structure: parent(ParentNode, ChildNode)
+%% bayes_net.pl - Exact inference in a small Bayesian network by
+%% enumerating all possible worlds.
+:- module(bayes_net, [
+    prob/3,
+    joint/2,
+    world/1
+]).
+
+%% Network structure: parent(ParentNode, ChildNode)
 parent(cloudy, rain).
 parent(cloudy, sprinkler).
 parent(rain, wet_grass).
 parent(sprinkler, wet_grass).
 
-% CPT entries: cpt(Node, State, ParentStates, Probability)
+%% CPT entries: cpt(Node, true, ParentStates, Probability)
+%% gives P(Node = true | ParentStates). P(Node = false | ...) is
+%% 1 minus that value.
 cpt(cloudy, true, [], 0.5).
 cpt(sprinkler, true, [cloudy=true], 0.1).
 cpt(sprinkler, true, [cloudy=false], 0.5).
 cpt(rain, true, [cloudy=true], 0.8).
 cpt(rain, true, [cloudy=false], 0.2).
-
-% wet_grass depends on both rain and sprinkler
 cpt(wet_grass, true, [sprinkler=true, rain=true], 0.99).
 cpt(wet_grass, true, [sprinkler=true, rain=false], 0.90).
 cpt(wet_grass, true, [sprinkler=false, rain=true], 0.90).
 cpt(wet_grass, true, [sprinkler=false, rain=false], 0.01).
+
+%% The network's variables. Every node appears in some cpt/4 fact.
+variables(Vars) :-
+    findall(V, cpt(V, _, _, _), Vs),
+    sort(Vs, Vars).
+
+%% world(-World)
+%% World is a list Var=Value giving every variable a value. On
+%% backtracking it enumerates all 2^N worlds.
+world(World) :-
+    variables(Vars),
+    maplist(assign, Vars, World).
+
+assign(Var, Var=Value) :-
+    member(Value, [true, false]).
+
+%% joint(+World, -P)
+%% The probability of a complete world: the product of
+%% P(node | parents) over all nodes (the chain rule for Bayes nets).
+joint(World, P) :-
+    foldl(node_factor(World), World, 1.0, P).
+
+node_factor(World, Node=Value, P0, P) :-
+    cpt(Node, true, ParentStates, PTrue),
+    subset(ParentStates, World),
+    !,
+    (   Value == true
+    ->  P is P0 * PTrue
+    ;   P is P0 * (1 - PTrue)
+    ).
+
+%% prob(+Query, +Evidence, -P)
+%% P is P(Query | Evidence), where Query and Evidence are lists of
+%% Var=Value. We sum the joint probability of the worlds where
+%% Query and Evidence hold, and divide by the sum over the worlds
+%% where Evidence holds.
+prob(Query, Evidence, P) :-
+    append(Query, Evidence, Both),
+    mass(Both, PBoth),
+    mass(Evidence, PEvidence),
+    PEvidence > 0,
+    P is PBoth / PEvidence.
+
+%% mass(+Partial, -P): total probability of the worlds that agree
+%% with the partial assignment Partial.
+mass(Partial, P) :-
+    aggregate_all(sum(PW),
+                  ( world(W), subset(Partial, W), joint(W, PW) ),
+                  P).
 ```
 
-To perform inference (such as calculating `P(\text{rain} \mid \text{wet\_grass} = \text{true})`$), we can write a query solver that uses **variable elimination** or **enumeration** to sum out the latent variables over the joint distribution:
+`world/1` generates assignments on backtracking, and `joint/2` multiplies one CPT entry per node. `node_factor/4` finds the right CPT row with `subset/2`, so the parent states in a `cpt/4` fact can be listed in any order. `prob/3` sums the matching worlds with `aggregate_all/3`.
 
-{$$}
-P(A \mid B) = \frac{P(A, B)}{P(B)} = \frac{\sum_{Y} P(A, B, Y)}{\sum_{X, Y} P(X, B, Y)}
-{/$$}
+```prolog
+?- prob([rain=true], [wet_grass=true], P).
+P = 0.7047692307692307.
 
-Prolog's pattern matching and list processing make it easy to traverse parent-child relationships and lookup CPT probabilities during joint probability factorization.
+?- prob([rain=true], [wet_grass=true, sprinkler=true], P).
+P = 0.32038834951456313.
+```
+
+Wet grass raises the probability of rain from 0.5 to about 0.70. But if we also learn that the sprinkler was on, the probability of rain drops to about 0.32: the sprinkler *explains away* the wet grass. The weather reasoner earlier in this chapter cannot do this, because it only pushes probabilities forward from causes to effects.
+
+Enumeration takes time exponential in the number of variables (here 2 to the power 4, or 16 worlds). Real systems use variable elimination or compile the network into a BDD, as ProbLog does, but they compute the same numbers.
 
 ## Practical Applications
 
-Probabilistic logic programming has several unique strengths for real-world AI systems:
+Probabilistic logic programming suits these kinds of AI systems:
 
 1. **Fault Diagnosis under Uncertainty**:
-   Industrial systems contain many interconnected components. When a sensor reports a failure, we must diagnose the root cause. Since sensors are noisy and can fail themselves, probabilistic logic allows us to model rules like *"If component X fails, sensor Y shows error with 95% probability, but sensor Y has a 2% random failure rate."* The inference engine can then identify the most likely failed component.
+   Industrial systems have many connected parts. When a sensor reports a failure, we must find the cause, and sensors can fail too. Probabilistic logic can model rules like *"If component X fails, sensor Y shows an error with 95% probability, but sensor Y also fails at random 2% of the time."* Inference then finds the most likely failed part, just as `prob/3` reasons from wet grass back to rain.
 
 2. **Medical Reasoning**:
-   Diseases and symptoms do not have a simple one-to-one mapping. A symptom can be caused by multiple diseases, and a disease does not always produce all symptoms. By modeling symptoms as probabilistic facts and diseases as conditional hypotheses, we can calculate the posterior probability of each diagnosis given a patient's clinical file.
+   A symptom can have several causes, and a disease does not always show every symptom. A network with diseases as parents and symptoms as children gives the probability of each diagnosis given the patient's symptoms.
 
 3. **Information Extraction Pipelines**:
-   Modern NLP systems (like NER taggers or relation extractors) output extracted facts with confidence scores. By feeding these confidence scores directly into a probabilistic Prolog reasoner as probabilistic facts (e.g., `0.85::extracted_relation('ACME', 'acquired', 'BetaCorp')`), we can run logical reasoning while correctly propagating the extraction uncertainty downstream to final conclusions.
+   NLP systems such as entity and relation extractors give each extracted fact a confidence score. Loading the scores as probabilistic facts (e.g., `0.85::extracted_relation('ACME', 'acquired', 'BetaCorp')`) lets later reasoning carry the extraction uncertainty through to its conclusions.
 
 
 ## Optional Practice Problems
 
-1. **Weather Delay Probability**: In the `prob_reasoning` project, add a probabilistic fact representing a flight delay caused by weather (e.g., 30% chance of snow, which leads to 80% chance of delay) and calculate the overall probability of arriving on time.
-2. **Coin Toss Network**: Write a ProbLog-style program in `prob_facts.pl` to compute the probability of getting at least two heads out of three independent biased coin flips.
+1. **Flight Delays**: Add a `snow` fact with probability 0.3 and a rule that snow delays a flight with probability 0.8 to `load_example_kb/0`. What is the probability that the flight is *on time*? (Hint: `prob_query/2` gives the probability of a delay caused by snow.)
+2. **Coin Flips as Possible Worlds**: Make a copy of `bayes_net.pl` with three independent coins, each a node with no parents and `P(heads) = 0.6`$. Use `world/1` and `joint/2` to compute the probability of at least two heads. Check your answer by hand.
+3. **A Fourth Cause**: Add a `dew` node with no parents to the sprinkler network and make it a parent of `wet_grass`. How does `P(rain | wet_grass)` change?

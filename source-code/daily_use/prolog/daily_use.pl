@@ -1,5 +1,5 @@
-%% daily_use.pl — Interactive Gemini REPL with search grounding and
-%% cache
+%% daily_use.pl - Interactive Gemini REPL with search grounding and
+%% a cache of earlier answers
 %%
 %% Commands:
 %%   <text>          Ask Gemini a question (plain, no search)
@@ -14,22 +14,29 @@
 
 :- module(daily_use, [
     main/0,
+    ask/3,
     extract_keywords/2,
     build_context_from_cache/3
 ]).
 
-:- use_module(library(http/http_client)).
-:- use_module(library(http/http_json)).
 :- use_module(library(readutil)).
+:- use_module('../../cache_engine/prolog/cache_engine').
+:- use_module('../../llm_client/prolog/gemini').
 
 %% ---- Configuration ----
 
 model('gemini-2.5-flash').
-cache_db_path(Path) :-
-    expand_file_name('~/.daily-use-cache', [Base]),
-    atom_string(Base, Path).
 
-%% ---- Mutable state (asserted/retracted) ----
+%% cache_db_path(-Path)
+%% The cache file, without its .db extension. Set DAILY_USE_CACHE to
+%% use another file, for example a test cache.
+cache_db_path(Path) :-
+    (   getenv('DAILY_USE_CACHE', Path)
+    ->  true
+    ;   expand_file_name('~/.daily-use-cache', [Path])
+    ).
+
+%% ---- Mutable state ----
 
 :- dynamic last_answer/1.
 :- dynamic cache_connection/1.
@@ -128,97 +135,69 @@ atom_string_conv(S, A) :- atom_string(A, S).
 %% ---- Cache context builder ----
 
 %% build_context_from_cache(+Connection, +Query, -Context)
-%% Retrieves cached items relevant to Query via keyword overlap.
+%% Context holds up to 10 cached answers that share a keyword with
+%% Query, as a preamble for the prompt, or "" if none match.
 build_context_from_cache(Connection, Query, Context) :-
     extract_keywords(Query, Keywords),
-    ( Keywords = [] ->
-        Context = ""
-    ;
-        cache_engine:cache_lookup(Connection, Keywords, Items,
-                                   [limit(10), match_any(true)]),
-        ( Items = [] ->
-            Context = ""
-        ;
-            format_context_items(Items, Formatted),
-            format(atom(Context),
-
-
-
-
-
-                                       "Use the following context from previous conversations when answering:\n\n~w\n---\n\n",
-                   [Formatted])
-        )
+    (   Keywords == []
+    ->  Items = []
+    ;   cache_lookup(Connection, Keywords, Items,
+                     [limit(10), match_any(true)])
+    ),
+    (   Items == []
+    ->  Context = ""
+    ;   format_context_items(Items, Formatted),
+        format(string(Context),
+               "Use the following context from previous conversations when answering:~n~n~w---~n~n",
+               [Formatted])
     ).
 
-format_context_items([], '').
-format_context_items([Item|Rest], Formatted) :-
-    format_context_items(Rest, RestFmt),
-    format(atom(Formatted), "- ~w\n~w", [Item, RestFmt]).
+format_context_items(Items, Formatted) :-
+    findall(Line, ( member(Item, Items),
+                    format(string(Line), "- ~w~n", [Item]) ),
+            Lines),
+    atomic_list_concat(Lines, Formatted).
 
-%% ---- Gemini API calls ----
+%% ---- Asking Gemini ----
 
-%% ask_gemini(+Connection, +Prompt, +SearchP, -Answer)
-ask_gemini(Connection, Prompt, SearchP, Answer) :-
-    build_context_from_cache(Connection, Prompt, Context),
-    atom_concat(Context, Prompt, FullPrompt),
-    catch(
-        call_gemini_api(FullPrompt, SearchP, Answer),
-        Error,
-        ( term_to_atom(Error, ErrAtom),
-          atom_concat('[Error calling Gemini API: ', ErrAtom, Tmp),
-          atom_concat(Tmp, ']', Answer) )
-    ).
+%% ask(+Question, +Search, -Answer)
+%% Answer Question with Gemini, using cached answers as context.
+%% Search is true to let Gemini use Google Search. Opens and closes
+%% the cache, so it works outside the REPL too.
+ask(Question, Search, Answer) :-
+    cache_db_path(DbPath),
+    setup_call_cleanup(
+        cache_open(DbPath, Conn),
+        ask_gemini(Conn, Question, Search, Answer),
+        cache_close(Conn)).
 
-%% call_gemini_api(+Prompt, +SearchP, -Response)
-call_gemini_api(Prompt, SearchP, Response) :-
-    getenv('GOOGLE_API_KEY', ApiKey),
+%% ask_gemini(+Connection, +Question, +Search, -Answer)
+%% On an API error, Answer is an error message instead.
+ask_gemini(Connection, Question, Search, Answer) :-
+    build_context_from_cache(Connection, Question, Context),
+    string_concat(Context, Question, Prompt),
     model(Model),
-    format(atom(URL),
+    (   catch(gemini_generate(Prompt, Answer0,
+                              [model(Model), search(Search)]),
+              Error,
+              error_answer(Error, Answer0))
+    ->  Answer = Answer0
+    ;   Answer = "[No response from Gemini: check the model name and API key]"
+    ).
 
-
-
-
-
-                               'https://generativelanguage.googleapis.com/v1beta/models/~w:generateContent?key=~w',
-           [Model, ApiKey]),
-    build_payload(Prompt, SearchP, Payload),
-    http_post(URL, json(Payload), Result, [json_object(dict)]),
-    extract_text_response(Result, Response).
-
-build_payload(Prompt, false, Payload) :-
-    Payload = json([
-        contents=[json([
-            parts=[json([text=Prompt])]
-        ])]
-    ]).
-build_payload(Prompt, true, Payload) :-
-    Payload = json([
-        contents=[json([
-            parts=[json([text=Prompt])]
-        ])],
-        tools=[json([
-            google_search=json([])
-        ])]
-    ]).
-
-extract_text_response(Result, Text) :-
-    Candidates = Result.candidates,
-    [First|_] = Candidates,
-    Content = First.content,
-    Parts = Content.parts,
-    [Part|_] = Parts,
-    Text = Part.text.
+error_answer(Error, Text) :-
+    message_to_string(Error, Msg),
+    format(string(Text), "[Error calling Gemini: ~w]", [Msg]).
 
 %% ---- Help text ----
 
 print_help :-
     cache_connection(Conn),
-    cache_engine:cache_count(Conn, N),
+    cache_count(Conn, N),
     cache_db_path(DbPath),
     model(Model),
     format("~n  Gemini Daily-Use REPL~n"),
-    format("  ─────────────────────────────────────────~n"),
+    format("  -----------------------------------------~n"),
     format("  <text>         Ask Gemini a question~n"),
     format("  !<text>        Ask with Google Search grounding~n"),
     format("  >              Add last answer to cache~n"),
@@ -226,25 +205,9 @@ print_help :-
     format("  h / help       Show this help~n"),
     format("  q / quit       Exit~n"),
     format("  Ctrl-D         Exit~n"),
-    format("  ─────────────────────────────────────────~n"),
+    format("  -----------------------------------------~n"),
     format("  Model: ~w~n", [Model]),
-    format("  Cache: ~w (~w items)~n~n", [DbPath, N]).
-
-%% ---- Display answer ----
-
-display_answer(Text) :-
-    ( nonvar(Text), Text \= '' ->
-        format("~n~w~n~n", [Text]),
-        retractall(last_answer(_)),
-        assert(last_answer(Text))
-    ;
-
-
-
-
-
-                            format("~n  [No response from Gemini — check model name or API key]~n~n")
-    ).
+    format("  Cache: ~w.db (~w items)~n~n", [DbPath, N]).
 
 %% ---- REPL ----
 
@@ -252,113 +215,83 @@ repl_loop :-
     format("~n  Gemini Daily-Use REPL  (type 'h' for help)~n~n"),
     repl_iteration.
 
+%% repl_iteration
+%% Read and handle one line, then loop. process_input/2 returns stop
+%% for a quit command, so the loop ends normally and main/0 can close
+%% the cache.
 repl_iteration :-
     format("gemini> "),
     flush_output,
-    catch(
-        read_line_to_string(current_input, RawInput),
-        _,
-        ( format("~nGoodbye.~n"), ! )
-    ),
-    ( RawInput == end_of_file ->
-        format("~nGoodbye.~n")
-    ;
-        normalize_space(atom(Trimmed), RawInput),
-        process_input(Trimmed),
-        repl_iteration
+    read_line_to_string(current_input, Raw),
+    (   Raw == end_of_file
+    ->  format("~nGoodbye.~n")
+    ;   normalize_space(atom(Input), Raw),
+        process_input(Input, Next),
+        (   Next == stop
+        ->  format("Goodbye.~n")
+        ;   repl_iteration
+        )
     ).
 
-%% process_input(+Input)
-%% Dispatches the trimmed user input to the appropriate handler.
-
-% Empty line — skip
-process_input('') :- !.
-
-% Quit commands
-process_input(q)    :- !, format("Goodbye.~n"), halt(0).
-process_input(quit) :- !, format("Goodbye.~n"), halt(0).
-process_input(exit) :- !, format("Goodbye.~n"), halt(0).
-
-% Help
-process_input(h)    :- !, print_help.
-process_input(help) :- !, print_help.
-
-% ">" — cache last answer
-process_input('>') :- !,
-    ( last_answer(Ans) ->
-        cache_connection(Conn),
-        cache_engine:cache_add(Conn, Ans),
-        cache_engine:cache_count(Conn, N),
+%% process_input(+Input, -Next)
+%% Handle one command. Next is stop to end the REPL, else continue.
+process_input('', continue) :- !.
+process_input(Q, stop) :-
+    memberchk(Q, [q, quit, exit]), !.
+process_input(H, continue) :-
+    memberchk(H, [h, help]), !,
+    print_help.
+process_input('>', continue) :- !,
+    (   last_answer(Ans)
+    ->  cache_connection(Conn),
+        cache_add(Conn, Ans),
+        cache_count(Conn, N),
         format("  [Cached. ~w items total]~n", [N])
-    ;
-        format("  [No answer to cache yet]~n")
+    ;   format("  [No answer to cache yet]~n")
     ).
-
-% "!" alone — clear old cache entries
-process_input('!') :- !,
+process_input('!', continue) :- !,
     cache_connection(Conn),
-    cache_engine:cache_count(Conn, Before),
-    cache_engine:cache_clear_older_one_week(Conn),
-    cache_engine:cache_count(Conn, After),
+    cache_count(Conn, Before),
+    cache_clear_older_one_week(Conn),
+    cache_count(Conn, After),
     Cleared is Before - After,
-    format("  [Cleared ~w old entries. ~w items remain]~n", [Cleared,
-        After]).
-
-% "!<query>" — search-grounded question
-process_input(Input) :-
-    atom_concat('!', Rest, Input),
-    Rest \= '',
-    !,
+    format("  [Cleared ~w old entries. ~w items remain]~n",
+           [Cleared, After]).
+process_input(Input, continue) :-
+    atom_concat('!', Rest, Input), !,
     normalize_space(atom(Query), Rest),
-    ( Query = '' ->
-        process_input('!')
-    ;
-        format("  [Searching...]~n"),
-        flush_output,
-        cache_connection(Conn),
-        ask_gemini(Conn, Query, true, Answer),
-        display_answer(Answer)
-    ).
-
-% Plain question
-process_input(Input) :-
+    format("  [Searching...]~n"),
+    answer_and_show(Query, true).
+process_input(Input, continue) :-
     format("  [Thinking...]~n"),
+    answer_and_show(Input, false).
+
+answer_and_show(Question, Search) :-
     flush_output,
     cache_connection(Conn),
-    ask_gemini(Conn, Input, false, Answer),
-    display_answer(Answer).
+    ask_gemini(Conn, Question, Search, Answer),
+    format("~n~w~n~n", [Answer]),
+    retractall(last_answer(_)),
+    assertz(last_answer(Answer)).
 
 %% ---- Entry point ----
 
 %% main/0
-%% Initialize cache and start the REPL.
+%% Open the cache, run the REPL, and close the cache on the way out,
+%% even if the REPL ends with an error.
 main :-
-    ( getenv('GOOGLE_API_KEY', _) ->
-        true
-    ;
-
-
-
-
-
-                            format("Error: GOOGLE_API_KEY environment variable is not set.~n"),
-
-
-
-
-
-                            format("Export it before running:  export GOOGLE_API_KEY=your-key-here~n"),
+    (   getenv('GOOGLE_API_KEY', _)
+    ->  true
+    ;   format("Error: GOOGLE_API_KEY environment variable is not set.~n"),
+        format("Export it before running:  export GOOGLE_API_KEY=your-key-here~n"),
         halt(1)
     ),
     cache_db_path(DbPath),
-    cache_engine:cache_open(DbPath, Conn),
-    retractall(cache_connection(_)),
-    assert(cache_connection(Conn)),
-    retractall(last_answer(_)),
-    catch(
+    setup_call_cleanup(
+        ( cache_open(DbPath, Conn),
+          retractall(cache_connection(_)),
+          assertz(cache_connection(Conn)),
+          retractall(last_answer(_)) ),
         repl_loop,
-        _,
-        true
-    ),
-    cache_engine:cache_close(Conn),
-    format("  [Cache closed]~n").
+        ( cache_close(Conn),
+          format("  [Cache closed]~n") )).

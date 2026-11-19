@@ -4,11 +4,11 @@ A SWI-Prolog library for exploring probability from both Bayesian and Frequentis
 
 ## Modules
 
-- **bayes.pl** — Bayesian inference: model construction, Bayes' Theorem updates, posterior queries, MAP estimation.
-- **correlation.pl** — Pearson-r, Spearman-ρ, and correlation matrices. Measures *association*, not causation.
-- **frequentist.pl** — z-tests, chi-squared tests, Wilson confidence intervals. Classical hypothesis testing.
-- **medical_example.pl** — Bayesian worked example: medical screening with 0.1% prevalence.
-- **frequentist_demo.pl** — Frequentist analysis of the same scenario, with side-by-side Bayesian comparison.
+- **bayes.pl**: Bayesian inference: model construction, Bayes' Theorem updates, posterior queries, MAP estimation.
+- **correlation.pl**: Pearson-r, Spearman-ρ, and correlation matrices. Measures *association*, not causation.
+- **frequentist.pl**: z-tests, chi-squared tests (goodness of fit and independence), Wilson confidence intervals. Classical hypothesis testing.
+- **medical_example.pl**: Bayesian worked example: medical screening with 0.1% prevalence.
+- **frequentist_demo.pl**: Frequentist analysis of the same scenario, with side-by-side Bayesian comparison.
 
 ## Running Examples
 

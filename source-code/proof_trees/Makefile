@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running proof_trees examples ==="
-	$(SWIPL) -g "format('proof_trees: module loaded successfully~n'), halt" -s load.pl
+	@$(SWIPL) -g "once(prove_with_tree(cousin(carol, emma), T)), print_proof(T), halt" -s load.pl
 
 test:
 	@echo "=== Running proof_trees tests ==="

@@ -11,27 +11,28 @@ cd source-code/anomaly_detection
 make run
 ```
 
-Sample output (deterministic — the pipeline seeds with `set_random(seed(42))` and the subsample is a stratified, evenly-spaced pick):
+Sample output (deterministic, since the pipeline seeds with `set_random(seed(42))`):
 
 ```
-Split: 88 train, 56 cv, 22 test
+Split: 263 train, 190 cv, 71 test
 
-**** Best epsilon value = 0.951000
+**** Best epsilon value = 1.045599
 
- -- number of test examples = 22
- -- true positives  = 5
- -- false positives = 0
- -- false negatives = 3
- -- true negatives  = 14
- -- precision = 1.000000
- -- recall    = 0.625000
- -- F1        = 0.769231
+ -- number of test examples = 71
+ -- true positives  = 21
+ -- false positives = 1
+ -- false negatives = 6
+ -- true negatives  = 43
+ -- precision = 0.954545
+ -- recall    = 0.777778
+ -- F1        = 0.857143
 ```
 
-Two intentional deviations from the Java original:
+Deviations from the Java original:
 
-- **Gaussian PDF divisor** — the Java `p()` method divides the summed PDF by the number of *columns* (10, including the class label) while only 9 input features are actually summed; the Prolog version deliberately divides by `num_input_features` (9).
-- **Subsampling** — class balance is now genuinely preserved: rows are split by class label (Wisconsin coding 2=benign / 4=malignant) and each class is sampled proportionally (evenly-spaced index pick under a fixed RNG seed) instead of the Java version's independent coin-flip per row.
+- **Gaussian PDF divisor**: the Java `p()` method divides the summed PDF by the number of *columns* (10, including the class label) while only 9 input features are summed; the Prolog version divides by `num_input_features` (9).
+- **Epsilon search**: the Java version tries a fixed grid of 20 values up to 0.951. On this data the best threshold lies above that, so `search_epsilon/2` instead tries the midpoint between each pair of neighbouring cross-validation densities. The grid search is still available as `search_epsilon/5`.
+- **Full dataset**: the pipeline uses all 648 rows and runs in well under a second. `load_wisconsin_data/2` loads a stratified sample (class ratio preserved) for quick experiments.
 
 ## Running Tests
 
@@ -45,12 +46,12 @@ The algorithm fits a Gaussian distribution to each input feature using only (mos
 
 ### Pipeline
 
-1. **Load & subsample** — Read the Wisconsin cancer CSV (~648 rows), randomly subsample to ~200 for Prolog performance
-2. **Preprocess** — Scale features by 0.1, log-transform, min-max normalise per row, remap target to {0, 1}
-3. **Split** — 60% training (mostly normal), ~28% cross-validation, ~12% test
-4. **Fit statistics** — Compute per-feature mean (μ) and variance (σ²) from training data
-5. **Search epsilon** — Grid search over 20 epsilon values, minimising cross-validation error count
-6. **Evaluate** — Report precision, recall, and F1 on held-out test data
+1. **Load**: Read the Wisconsin cancer CSV (648 rows)
+2. **Preprocess**: Scale features by 0.1, log-transform, min-max normalise per row, remap target to {0, 1}
+3. **Split**: 60% training (mostly normal), ~28% cross-validation, ~12% test
+4. **Fit statistics**: Compute per-feature mean (μ) and variance (σ²) from training data
+5. **Search epsilon**: Try the midpoint between each pair of neighbouring cross-validation densities and keep the one with the fewest errors
+6. **Evaluate**: Report precision, recall, and F1 on held-out test data
 
 ### Gaussian PDF
 
@@ -64,13 +65,13 @@ A data point is flagged as an anomaly when the average per-feature PDF value fal
 
 ## Project Structure
 
-- **`prolog/anomaly_detection.pl`** — Core module: data loading, preprocessing, Gaussian PDF, training, evaluation
-- **`data/cleaned_wisconsin_cancer_data.csv`** — Wisconsin Diagnostic Breast Cancer dataset (648 rows, 10 columns)
-- **`tests/test_anomaly_detection.pl`** — Unit tests for preprocessing, statistics, and the full pipeline
+- **`prolog/anomaly_detection.pl`**: Core module: data loading, preprocessing, Gaussian PDF, training, evaluation
+- **`data/cleaned_wisconsin_cancer_data.csv`**: Wisconsin Diagnostic Breast Cancer dataset (648 rows, 10 columns)
+- **`tests/test_anomaly_detection.pl`**: Unit tests for preprocessing, statistics, and the full pipeline
 
 ## Description
 
-Implements anomaly detection using per-feature Gaussian probability density estimation. The model learns what "normal" looks like from training data, then flags data points that deviate significantly. This approach works well when anomalies are rare (few positive examples) — the model only needs to characterise the normal distribution. The Wisconsin breast cancer dataset provides a practical demonstration: benign samples define the normal distribution, and malignant samples appear as statistical outliers.
+Implements anomaly detection using per-feature Gaussian probability density estimation. The model learns what "normal" looks like from training data, then flags data points that deviate significantly. This approach works well when anomalies are rare (few positive examples): the model only needs to characterise the normal distribution. The Wisconsin breast cancer dataset provides a practical demonstration: benign samples define the normal distribution, and malignant samples appear as statistical outliers.
 
 ## Copyright and License
 

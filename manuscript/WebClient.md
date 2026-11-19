@@ -1,19 +1,19 @@
 # Web Clients in Prolog
 
-SWI-Prolog includes comprehensive HTTP client libraries that make it straightforward to interact with REST APIs, parse JSON, and scrape web content, all from within Prolog.
+SWI-Prolog's HTTP client libraries let a Prolog program call REST APIs, parse JSON, and scrape web pages.
 
 {width: "80%"}
 ![Architecture diagram for the HTTP Client example](FIG_http_client.jpg)
 
 ## HTTP GET and POST Requests
 
-SWI-Prolog ships with `library(http/http_client)`, a full HTTP/1.1 client that handles GET, POST, PUT, and DELETE requests. The companion library `library(http/http_json)` adds automatic JSON serialisation and deserialisation, so a single `http_get/3` call can fetch a URL and return its JSON body as a Prolog dict.
+`library(http/http_client)` is an HTTP/1.1 client for GET, POST, PUT, and DELETE requests, over HTTP or HTTPS. `library(http/http_json)` adds JSON conversion, so one `http_get/3` call can fetch a URL and return its JSON body as a Prolog dict.
 
 The key predicates are:
-- **`http_get(+URL, -Reply, +Options)`** - Sends a GET request. The `json_object(dict)` option tells the library to parse the response body as a SWI-Prolog dict rather than the older `json/1` term format.
-- **`http_post(+URL, +Data, -Reply, +Options)`** - Sends a POST request. The `Data` argument can be `atom(Body)`, `json(Term)`, or other content types. Custom request headers (such as `Content-Type` or `Authorization`) are passed via the options list.
+- **`http_get(+URL, -Reply, +Options)`** sends a GET request. The `json_object(dict)` option returns a JSON body as a dict instead of the older `json/1` term.
+- **`http_post(+URL, +Data, -Reply, +Options)`** sends a POST request. `Data` can be `atom(Body)`, `json(Term)`, and other forms. Request headers such as `Authorization` go in the options.
 
-Error handling is straightforward: if the server returns a non-2xx status code, `http_get` and `http_post` throw an `http_error` exception, which you can catch with `catch/3`.
+By default, a reply with an error status raises an exception. A 404, for example, raises `existence_error(url, URL)`. If you pass the option `status_code(Code)`, the library raises no exception and binds `Code`, so your code can decide what to do.
 
 The **http_client** project wraps SWI-Prolog's HTTP libraries. Here is the file **http_client/prolog/rest_client.pl**:
 
@@ -78,43 +78,49 @@ log_http_error(Error) :-
     print_message(warning, http_client_error(Error)).
 ```
 
-The `http_get_json/2` predicate is a thin wrapper that adds the `json_object(dict)` option. The `http_post_json/3` predicate posts the payload as `json(Payload)` with the appropriate `Content-Type` header, and the library serialises it directly. The response is automatically parsed back into a dict. Both get and post fail with a warning on transport errors or a non-2xx status. The Options variants pass extra options to the underlying `http_get/3` and `http_post/4`.
+`http_get_json/2` adds the `json_object(dict)` option. `http_post_json/3` sends the payload as `json(Payload)`, which the library serializes, and parses the JSON reply into a dict. Both pass `status_code(Code)`, and `wrapped_call/2` turns a network error or a status outside 200 to 299 into a warning and a failure. The versions with an Options argument pass extra options to `http_get/3` and `http_post/4`.
 
-You can test this in the REPL:
+Try it in the REPL (this needs network access):
 
 ```prolog
 ?- http_get_json('https://jsonplaceholder.typicode.com/todos/1', R).
-R = _{ completed:false, id:1, title:"delectus aut autem", userId:1 }.
+R = #{completed:false, id:1, title:"delectus aut autem", userId:1}.
+
+?- http_get_json('https://jsonplaceholder.typicode.com/todos/0', R).
+Warning: rest_client: HTTP request failed: bad_status(404)
+false.
 ```
+
+SWI-Prolog 10 gives dicts read from JSON the tag `#`, so they print as `#{...}`. Older versions leave the tag unbound and print `_{...}`. The tag does not affect your code.
 
 ## Working with JSON
 
-Most modern web APIs return JSON. SWI-Prolog provides two representations for JSON data:
-1. **Dicts** (the modern approach) - SWI-Prolog dicts are key-value stores accessed with dot notation (e.g., `Dict.name`). They map naturally to JSON objects and are the recommended format.
-2. **`json/1` terms** (the legacy approach) - The older `json([key=value, ...])` compound term format. Still supported but less ergonomic.
+Most web APIs return JSON. SWI-Prolog has two ways to represent it:
+1. **Dicts** (the modern way): key-value maps read with dot notation (e.g., `Dict.name`). They match JSON objects and are the recommended form.
+2. **`json/1` terms** (the older way): `json([key=value, ...])`. Still supported, but harder to use.
 
-The `atom_json_dict/3` predicate is the core conversion tool. It converts between a JSON-formatted atom (or string) and a Prolog dict in both directions:
+`atom_json_dict/3` converts between JSON text and a dict, in either direction:
 
 ```prolog
 %% Parsing: JSON string -> Prolog dict
 ?- atom_json_dict('{"name":"Alice","age":30}', Dict, []).
-Dict = _{ age:30, name:"Alice" }.
+Dict = #{age:30, name:"Alice"}.
 
 %% Generating: Prolog dict -> JSON string
 ?- atom_json_dict(Json, _{name:"Bob", score:95}, []).
 Json = '{"name":"Bob","score":95}'.
 ```
 
-To traverse nested JSON structures, use chained dot notation: `Dict.address.city` accesses the `city` field inside a nested `address` object. For lists, use standard Prolog list operations: a JSON array becomes a Prolog list.
+For nested JSON, chain the dots: `Dict.address.city` reads the `city` field of a nested `address` object. A JSON array becomes a Prolog list. Dot notation works in clauses and at the REPL, which expand it when they are read; in a goal built at run time, such as one passed to `swipl -g`, use `get_dict/3` instead.
 
-The **http_client** project also includes JSON utilities. Here is the file **http_client/prolog/json_utils.pl**:
+Here is the file **http_client/prolog/json_utils.pl**:
 
 ```prolog
 %% json_utils.pl - JSON parsing and generation utilities
 :- module(json_utils, [
     parse_json_string/2,
     json_dict_pairs/2,
-    json_to_prolog/2
+    dict_to_json_string/2
 ]).
 
 :- use_module(library(json)).
@@ -129,26 +135,25 @@ json_dict_pairs(Dict, Pairs) :-
     is_dict(Dict),
     dict_pairs(Dict, _, Pairs).
 
-%% json_to_prolog(+JsonDict, -Pairs)
-%% Deprecated alias for json_dict_pairs/2, kept for compatibility.
-json_to_prolog(Dict, Pairs) :-
-    print_message(warning, deprecated(json_to_prolog/2,
-                                      json_dict_pairs/2)),
-    json_dict_pairs(Dict, Pairs).
+%% dict_to_json_string(+Dict, -JsonString)
+%% Serialize a dict as compact JSON text.
+dict_to_json_string(Dict, JsonString) :-
+    atom_json_dict(Atom, Dict, [width(0)]),
+    atom_string(Atom, JsonString).
 ```
 
-The `json_dict_pairs/2` predicate uses `dict_pairs/3` to decompose a dict into a list of `Key-Value` pairs. This is useful when you need to iterate over all fields in a JSON object without knowing the keys in advance. The older name `json_to_prolog/2` is kept as a deprecated alias that prints a warning and forwards to `json_dict_pairs/2`.
+`json_dict_pairs/2` uses `dict_pairs/3` to split a dict into `Key-Value` pairs, which lets you loop over every field without knowing the keys. `dict_to_json_string/2` goes the other way; the `width(0)` option writes the JSON on one line.
 
 ## Web Scraping
 
-SWI-Prolog can also fetch and parse HTML pages directly. The workflow combines three libraries:
-1. **`library(http/http_client)`** - Fetches the raw HTML content from a URL.
-2. **`library(sgml)`** - Parses the HTML string into a DOM tree (a nested Prolog term representing the document structure).
-3. **`library(xpath)`** - Queries the DOM tree using XPath expressions to extract specific elements.
+SWI-Prolog can also fetch and parse HTML pages, using three libraries:
+1. **`library(http/http_client)`** fetches the HTML from a URL.
+2. **`library(sgml)`** parses the HTML into a DOM tree: nested `element(Name, Attributes, Children)` terms.
+3. **`library(xpath)`** selects parts of the tree with XPath-like expressions.
 
-The `load_html/3` predicate from `library(sgml)` is tolerant of malformed HTML, making it suitable for scraping real-world web pages. Once you have a DOM tree, `xpath/3` lets you select elements declaratively, for example, `xpath(DOM, //a(@href), Href)` extracts the `href` attribute from every `<a>` tag in the document.
+`load_html/3` copes with malformed HTML, which real pages often contain. With a DOM tree, `xpath(DOM, //a(@href), Href)` returns the `href` attribute of every `<a>` element in turn.
 
-The **web_scraper** project implements a simple HTML scraper. Here is the file **web_scraper/prolog/scraper.pl**:
+Here is the main part of **web_scraper/prolog/scraper.pl** (the rest of the file is `strip_script_style/2`, which copies the DOM without its `script` and `style` elements):
 
 ```prolog
 %% scraper.pl - Web scraping using HTTP client and SGML/HTML parser
@@ -197,28 +202,41 @@ extract_links(DOM, Links) :-
     findall(Href, xpath(DOM, //a(@href), Href), Links).
 
 %% extract_text(+DOM, -Text) - Extract visible text content
-%% Text inside <script> and <style> subtrees is filtered out.
-%% (library(xpath) has no //text node test, so we walk the DOM.)
+%% Text inside <script> and <style> subtrees is filtered out, and each
+%% text node has its white space collapsed. (library(xpath) has no
+%% //text node test, so we walk the DOM.)
 extract_text(DOM, Text) :-
     strip_script_style(DOM, CleanDOM),
-    findall(T, dom_text(CleanDOM, T), Texts),
+    findall(T, ( dom_text(CleanDOM, T0),
+                 normalize_space(atom(T), T0),
+                 T \== '' ),
+            Texts),
     atomic_list_concat(Texts, ' ', Text).
 
 %% dom_text(+DOMList, -Text) is nondet
-%% Yield each text-node atom/string in a DOM list.
-dom_text([Node|Rest], Text) :-
-    (   (atom(Node) ; string(Node)),
-        Text = Node
+%% Yield each text node in a DOM list, depth first.
+dom_text(Nodes, Text) :-
+    member(Node, Nodes),
+    (   atomic(Node)
+    ->  Text = Node
     ;   Node = element(_, _, Children),
         dom_text(Children, Text)
-    ;   Rest \= [],
-        dom_text(Rest, Text)
     ).
 ```
 
-The `fetch_page/2` predicate requests the page with the `to(string)` option so the body comes back as a Prolog string, sets a 20 second timeout and a custom `User-Agent`, and requests the HTTP status code. The call sits inside `catch/3`; a transport error or a non-200 status prints a warning and fails. `parse_html_dom/2` then opens the string as a stream with `open_string/2` and hands it to `load_html/3`.
+`fetch_page/2` asks for the body as a string (`to(string)`), sets a 20-second timeout, sends a `User-Agent` header that names the program (polite scrapers identify themselves), and gets the status code. A network error or a status other than 200 prints a warning and fails. `parse_html_dom/2` opens the string as a stream with `open_string/2` for `load_html/3`.
 
-The `extract_links/2` predicate uses `findall/3` with `xpath/3` to collect results: the XPath expression `//a(@href)` selects all `<a>` elements and extracts their `href` attribute. `extract_text/2` is different: because `library(xpath)` has no `//text` node test, it first removes `<script>` and `<style>` subtrees with `strip_script_style/2`, then walks the DOM with `dom_text/2` to yield each text node.
+`extract_links/2` collects every `href` with `findall/3` and `xpath/3`. `extract_text/2` works differently, since `library(xpath)` has no text node test. It removes `script` and `style` elements, walks the tree with `dom_text/2`, and collapses the white space in each text node with `normalize_space/2`, dropping nodes that hold only white space.
+
+`make run` scrapes the SWI-Prolog home page (it needs network access):
+
+```text
+Found 17 links on swi-prolog.org
+Text starts: SWI-Prolog Did you know ... Search Documentation: Robust,
+mature, free. Prolog for the real world. HOME DOWNLOAD ...
+```
+
+Before you scrape a site, check its terms of use and its `robots.txt` file, and keep your request rate low.
 
 {width: "80%"}
 ![Architecture diagram for the Web Scraper example](FIG_web_scraper.jpg)
@@ -227,12 +245,15 @@ The `extract_links/2` predicate uses `findall/3` with `xpath/3` to collect resul
 
 These HTTP client and scraping building blocks are used throughout the book:
 
-- **LLM API Integration** - The `rest_client` module is the foundation for calling the Google Gemini and Ollama APIs (see the LLM Integration chapter). A single `http_post_json/3` call sends a prompt and receives the model's response.
-- **SPARQL Queries** - The Semantic Web chapter uses HTTP GET requests to query remote SPARQL endpoints like DBpedia and Wikidata, parsing the JSON results into Prolog terms for local reasoning.
-- **Knowledge Graph Enrichment** - Web scraping can extract structured data from HTML pages and assert it into a local knowledge graph. For example, scraping a product catalogue and converting the extracted attributes into `entity/3` facts.
-- **Data Pipeline Preprocessing** - Fetching CSV or JSON datasets from public APIs (such as government open data portals) and transforming them into Prolog facts for analysis with the anomaly detection or probabilistic reasoning modules.
+These building blocks appear throughout the book:
+
+- **LLM APIs**: The LLM Integration chapter calls the Gemini and Ollama APIs with the same JSON-over-HTTP pattern: one POST sends a prompt and returns the model's reply.
+- **SPARQL queries**: The Semantic Web chapter sends queries to DBpedia and Wikidata over HTTP and turns the results into Prolog terms.
+- **Knowledge graph enrichment**: A scraper can pull structured data from HTML pages, such as product attributes from a catalog, and add it to a local knowledge graph as triples.
+- **Data pipelines**: Fetch CSV or JSON data from public APIs, such as government open-data portals, and turn it into Prolog facts for analysis.
 
 ## Optional Practice Problems
 
-1. **Image Link Scraper**: In the `web_scraper` project, extend `scraper.pl` to parse and extract the `src` attribute of all `<img>` tags on a webpage, handling relative paths correctly.
-2. **HTTP Retry Decorator**: In `http_client`, implement a wrapper predicate `http_get_retry/3` that automatically retries an HTTP request up to three times with exponential backoff if the server returns a temporary network code.
+1. **Image Sources**: In `web_scraper`, write `extract_images(+BaseURL, +DOM, -URLs)` that collects the `src` of every `<img>` and turns relative paths into absolute URLs. (Hint: `uri_resolve/3`.)
+2. **Retry with Backoff**: In `http_client`, write `http_get_json_retry/3`, which retries a request up to three times, waiting 1, 2, and 4 seconds, when the status is 429 or 503.
+3. **Headings Outline**: Write `outline(+DOM)` that prints the text of every `h1`, `h2`, and `h3` element, indented by level.

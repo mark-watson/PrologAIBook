@@ -47,4 +47,6 @@ swipl -g "['tests/test_sparql.pl'], run_tests, halt" -s load.pl
 
 ## Description
 
-Provides a Prolog interface to remote SPARQL endpoints using SWI-Prolog's `library(semweb/sparql_client)`. The module includes convenience predicates for querying DBpedia and Wikidata, two of the largest public linked data sources. This allows Prolog programs to access vast external knowledge bases and combine the results with local reasoning — a powerful pattern for AI applications that need both structured web data and logical inference.
+Provides a Prolog interface to remote SPARQL endpoints using SWI-Prolog's `library(semweb/sparql_client)`. The module includes convenience predicates for querying DBpedia and Wikidata, two of the largest public linked data sources. This allows Prolog programs to access vast external knowledge bases and combine the results with local reasoning, a useful pattern for AI applications that need both structured web data and logical inference.
+
+Endpoints are given as full `https` URLs: `https://dbpedia.org/sparql` and `https://query.wikidata.org/sparql`. The `knowledge_explorer.pl` module prints local RDF facts about a resource next to its DBpedia description. `make run` needs network access.

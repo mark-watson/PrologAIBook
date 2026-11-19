@@ -16,23 +16,29 @@ reset_kb :-
     retractall(fact(_)),
     retractall(rule(_, _)).
 
-%% add_fact(+Fact) - Assert a new fact
-add_fact(F) :- \+ fact(F), assert(fact(F)).
-add_fact(_).
+%% add_fact(+Fact) - Assert Fact unless it is already known
+add_fact(F) :-
+    (   fact(F)
+    ->  true
+    ;   assertz(fact(F))
+    ).
 
 %% add_rule(+Conditions, +Conclusion)
 add_rule(Conditions, Conclusion) :-
-    assert(rule(Conditions, Conclusion)).
+    assertz(rule(Conditions, Conclusion)).
 
 %% derived_fact(?F) - Query derived facts
 derived_fact(F) :- fact(F).
 
 %% forward_chain - Apply all rules until fixpoint
+%% Find one rule whose conditions hold and whose conclusion is new,
+%% add the conclusion, and start over. When no rule fires, the
+%% second clause succeeds: we have reached the fixpoint.
 forward_chain :-
     rule(Conditions, Conclusion),
-    \+ fact(Conclusion),
     all_conditions_met(Conditions),
-    assert(fact(Conclusion)),
+    \+ fact(Conclusion),
+    assertz(fact(Conclusion)),
     !,
     forward_chain.
 forward_chain. % fixpoint reached

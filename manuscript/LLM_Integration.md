@@ -1,16 +1,16 @@
 # LLM Integration
 
-Large Language Models are transforming AI, and Prolog can serve as a powerful orchestration layer, combining LLM-generated text with symbolic reasoning, structured knowledge, and explainable inference.
+Large language models (LLMs) are changing AI. Prolog makes a good partner for them: an LLM reads and writes text, and Prolog reasons over the facts that text contains, with explanations. In this chapter we call LLMs from Prolog, turn their answers into Prolog facts, and build a pipeline that mixes statistical NLP with Prolog rules.
 
 ## Calling LLM APIs from Prolog
 
-SWI-Prolog's HTTP client libraries (covered in the Web Clients chapter) make it straightforward to call any REST API, including LLM endpoints. The workflow is:
-1. Read the API key from an environment variable using `getenv/2`.
-2. Build the JSON request payload as a Prolog term.
-3. Send an HTTP POST request with `http_post/4`, which automatically serialises the payload and deserialises the JSON response into a SWI-Prolog dict.
-4. Extract the generated text from the response dict using dot notation.
+With the HTTP client libraries from the Web Clients chapter, an LLM API is just another REST API:
+1. Read the API key from an environment variable with `getenv/2`.
+2. Build the JSON request as a Prolog dict.
+3. Send it with `http_post/4`, which serializes the dict and parses the JSON reply into a dict.
+4. Pull the generated text out of the reply.
 
-Because `http_post/4` is synchronous, the call blocks until the model returns its full response. For streaming responses (where tokens arrive incrementally), you would use `http_open/3` with a read loop, but for most Prolog applications, the simpler synchronous approach is sufficient.
+`http_post/4` blocks until the model sends its whole reply. To show tokens as they arrive (streaming), you would read the reply with `http_open/3` in a loop, but most Prolog programs need the whole answer before they can reason over it.
 
 {width: "80%"}
 ![Architecture diagram for the LLM Client example](FIG_llm_client.jpg)
@@ -27,6 +27,7 @@ The **llm_client** project provides clients for Google Gemini and Ollama. Here i
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_json)).
 :- use_module(library(json)).
+:- use_module(library(option)).
 
 %% gemini_generate(+Prompt, -Response)
 %% Uses GOOGLE_API_KEY environment variable
@@ -34,23 +35,25 @@ gemini_generate(Prompt, Response) :-
     gemini_generate(Prompt, Response, []).
 
 %% gemini_generate(+Prompt, -Response, +Options)
-%% Options: model(Model), temperature(T), max_output_tokens(N)
+%% Options:
+%%   model(Model)            default gemini-2.5-flash
+%%   temperature(T)          sampling temperature
+%%   max_output_tokens(N)    output length limit
+%%   system(Text)            system instruction (persona, rules)
+%%   json(true)              ask for a JSON reply (responseMimeType)
 gemini_generate(Prompt, Response, Options) :-
     require_env('GOOGLE_API_KEY', ApiKey),
-    option_value(model, Options, Model, 'gemini-2.5-flash'),
+    option(model(Model), Options, 'gemini-2.5-flash'),
     format(atom(URL),
            'https://generativelanguage.googleapis.com/v1beta/models/~w:generateContent',
            [Model]),
-    option_value(temperature, Options, Temperature, none),
-    option_value(max_output_tokens, Options, MaxTokens, none),
-    Payload = _{
-        contents: [_{parts: [_{text: Prompt}]}],
-        generationConfig: Config
-    },
-    generation_config(Temperature, MaxTokens, ConfigPairs),
-    (   ConfigPairs = []
-    ->  Config = json([])
-    ;   Config = json(ConfigPairs)
+    generation_config(Options, Config),
+    Payload0 = _{ contents: [_{parts: [_{text: Prompt}]}],
+                  generationConfig: Config },
+    (   option(system(System), Options)
+    ->  Payload = Payload0.put(systemInstruction,
+                               _{parts: [_{text: System}]})
+    ;   Payload = Payload0
     ),
     catch(
         http_post(URL, json(Payload), Result,
@@ -62,13 +65,23 @@ gemini_generate(Prompt, Response, Options) :-
         )),
     extract_text_response(Result, Response).
 
-%% generation_config(+Temperature, +MaxTokens, -ConfigPairs)
-%% Build the generationConfig pairs for the payload body.
-generation_config(none, none, []).
-generation_config(T, none, [temperature=T]) :- T \= none.
-generation_config(none, Max, [maxOutputTokens=Max]) :- Max \= none.
-generation_config(T, Max, [temperature=T, maxOutputTokens=Max]) :-
-    T \= none, Max \= none.
+%% generation_config(+Options, -Config)
+%% Build the generationConfig dict from the options that are present.
+generation_config(Options, Config) :-
+    foldl(config_entry(Options),
+          [temperature-temperature, max_output_tokens-maxOutputTokens],
+          _{}, Config0),
+    (   option(json(true), Options)
+    ->  Config = Config0.put(responseMimeType, "application/json")
+    ;   Config = Config0
+    ).
+
+config_entry(Options, Opt-Key, C0, C) :-
+    Term =.. [Opt, Value],
+    (   option(Term, Options)
+    ->  C = C0.put(Key, Value)
+    ;   C = C0
+    ).
 
 %% require_env(+Name, -Value)
 %% Get an environment variable or throw a clear existence_error.
@@ -76,15 +89,6 @@ require_env(Name, Value) :-
     (   getenv(Name, Value)
     ->  true
     ;   existence_error(env, Name)
-    ).
-
-%% option_value(+Key, +Options, -Value, +Default)
-%% Simple member-based option lookup (library(option) not required).
-option_value(Key, Options, Value, Default) :-
-    Opt =.. [Key, Value],
-    (   member(Opt, Options)
-    ->  true
-    ;   Value = Default
     ).
 
 %% extract_text_response(+Result, -Text)
@@ -100,11 +104,21 @@ extract_text_response(Result, Text) :-
     Parts = [Part|_],
     is_dict(Part),
     get_dict(text, Part, Text).
+
+log_llm_error(Backend, Error) :-
+    print_message(warning, llm_error(Backend, Error)).
+
+:- multifile prolog:message//1.
+
+prolog:message(llm_error(Backend, Error)) -->
+    ['llm_client/~w: request failed: ~w'-[Backend, Error]].
 ```
 
-The `gemini_generate/2` predicate reads the `GOOGLE_API_KEY` environment variable, constructs the Gemini API URL, builds the nested JSON payload, and posts it. The request sends the API key in the `x-goog-api-key` header, not in the URL. The options list accepts `model/1` (default `gemini-2.5-flash`), `temperature/1`, and `max_output_tokens/1`; `generation_config/3` turns those into the `generationConfig` body. `require_env/2` throws `existence_error(env, Name)` if the variable is unset. `extract_text_response/2` is total. It walks the response's `candidates[0].content.parts[0].text` path with `is_dict/1` and `get_dict/3` and fails cleanly on error-shaped JSON instead of throwing.
+`gemini_generate/3` reads `GOOGLE_API_KEY`, builds the URL for the model, and posts the request with the key in the `x-goog-api-key` header (a key in the URL can end up in server logs). `option/3` from `library(option)` reads the options with defaults. `generation_config/2` adds `temperature` and `maxOutputTokens` to the `generationConfig` dict only when the caller gives them, and `json(true)` sets `responseMimeType` to `application/json`, which makes Gemini reply with JSON only. `system(Text)` adds a system instruction, which sets the model's role and rules for the whole request. `Dict.put(Key, Value)` returns a new dict with one more key; Prolog dicts never change in place.
 
-And a client for local Ollama models. Here is the file **llm_client/prolog/ollama.pl**:
+`require_env/2` throws `existence_error(env, Name)` if the key is not set. `extract_text_response/2` follows the reply's `candidates[0].content.parts[0].text` path with `get_dict/3`, so an error reply makes it fail instead of throwing.
+
+For models that run on your own machine, here is the main part of **llm_client/prolog/ollama.pl**:
 
 ```prolog
 %% ollama.pl - Ollama local LLM API client
@@ -145,21 +159,30 @@ ollama_generate(Prompt, Response, Options) :-
     ).
 ```
 
-The Ollama client follows the same pattern but targets the local Ollama REST API on port 11434. The `stream= @(false)` option tells Ollama to return the complete response in a single JSON object rather than streaming tokens. The `http_post/4` call is wrapped in `catch/3`, and a connection-refused error prints a warning hinting "is the Ollama server running?" Response extraction is guarded by `is_dict/1` and `get_dict/3` so an unexpected reply fails with a warning instead of throwing. The model name defaults to `qwen3:1.7b` but can be overridden via the options list.
+The Ollama client calls the local Ollama server on port 11434. `stream= @(false)` asks for the whole reply in one JSON object; in the `json/1` notation, `@(false)` writes the JSON constant `false`. If the server is not running, the error message suggests `ollama serve`. The model defaults to `qwen3:1.7b`, a small model that runs on most laptops (install it with `ollama pull qwen3:1.7b`).
 
-Both clients can be tested in the REPL:
+`make run` asks both models the same question. Your answers will differ, since LLM output varies from run to run:
+
+```text
+Gemini: Prolog is a declarative logic programming language where programs
+consist of facts and rules, from which it infers answers to queries.
+Ollama: Prolog is a logic programming language that uses rule-based
+reasoning to solve problems and perform computations by manipulating
+knowledge and constraints.
+```
+
+The options let you ask for structured replies:
 
 ```prolog
-?- gemini_generate("What is Prolog?", Response).
-Response = "Prolog is a logic programming language...".
-
-?- ollama_generate("Explain backtracking", Response).
-Response = "Backtracking is a systematic method...".
+?- gemini_generate('Name one prime number below 10.', R,
+       [json(true), temperature(0.0),
+        system('Reply only with JSON of the form {"prime": N}.')]).
+R = "{\"prime\": 7}".
 ```
 
 ## Structured Output from LLMs
 
-Raw LLM text is useful for human consumption, but for integration with Prolog's reasoning engine we need **structured data**. The key technique is to craft prompts that instruct the LLM to return its output as JSON with a specific schema. For example:
+Plain text suits people, but Prolog needs **structured data**. The technique is to ask the LLM for JSON with an exact schema. For example:
 
 ```
 Extract all people and organizations from the following text.
@@ -168,12 +191,12 @@ Return your answer as JSON with this schema:
  "relations": [{"subject": "...", "predicate": "...", "object": "..."}]}
 ```
 
-Once the LLM returns JSON, we parse it into a SWI-Prolog dict and assert the extracted entities and relations as dynamic Prolog facts. This bridges the gap between statistical language understanding (the LLM) and symbolic reasoning (Prolog).
+We parse the JSON into a dict and assert the entities and relations as Prolog facts. This connects the LLM's language understanding to Prolog's reasoning.
 
 {width: "80%"}
 ![Architecture diagram for the Structured Output example](FIG_structured_output.jpg)
 
-The **structured_output** project converts JSON LLM output into assertable Prolog facts. Here is the file **structured_output/prolog/json_to_facts.pl**:
+The **structured_output** project has two parts. Here is the first, **structured_output/prolog/json_to_facts.pl**, which turns JSON into facts:
 
 ```prolog
 %% json_to_facts.pl - Convert structured LLM JSON output into Prolog
@@ -225,7 +248,7 @@ json_string_to_facts(JsonString, Counts) :-
 assert_entity(E, N0-W0, N-W) :-
     (   get_dict(name, E, Name), get_dict(type, E, Type)
     ->  (   \+ extracted_entity(Name, Type)
-        ->  assert(extracted_entity(Name, Type))
+        ->  assertz(extracted_entity(Name, Type))
         ;   true
         ),
         N is N0 + 1, W = W0
@@ -239,7 +262,7 @@ assert_relation(R, N0-W0, N-W) :-
         get_dict(predicate, R, P),
         get_dict(object, R, O)
     ->  (   \+ extracted_relation(S, P, O)
-        ->  assert(extracted_relation(S, P, O))
+        ->  assertz(extracted_relation(S, P, O))
         ;   true
         ),
         N is N0 + 1, W = W0
@@ -249,9 +272,9 @@ assert_relation(R, N0-W0, N-W) :-
     ).
 ```
 
-The `json_string_to_facts/1` predicate parses the JSON string into a dict, then uses `get_dict/3` to safely extract the `entities` and `relations` arrays. `json_string_to_facts/2` returns a counts dict. Malformed items are skipped with a warning, never an exception. `clear_extracted/0` removes all asserted entities and relations. The `assert_entity/3` and `assert_relation/3` helpers are `foldl/4` accumulators that count asserted facts and warnings. The duplicate check (`\+ extracted_entity(Name, Type)`) prevents the same fact from being asserted twice if the LLM returns redundant extractions.
+`json_string_to_facts/2` parses the JSON into a dict and uses `get_dict/3` to find the `entities` and `relations` arrays, either of which may be missing. LLMs sometimes leave out a field, so an item with a missing key is skipped with a warning, not an exception, and counted in the returned dict. `assert_entity/3` and `assert_relation/3` work with `foldl/4`, carrying a `Count-Warnings` pair. The duplicate check (`\+ extracted_entity(Name, Type)`) stops the same fact from being added twice when the LLM repeats itself.
 
-After calling `json_string_to_facts/1`, the extracted knowledge is immediately available for Prolog queries:
+After the call, the facts are ready to query:
 
 ```prolog
 ?- json_string_to_facts('{"entities":[{"name":"Paris","type":"city"}]}').
@@ -262,45 +285,98 @@ Name = "Paris",
 Type = "city".
 ```
 
+JSON strings arrive as Prolog strings, so query them with double quotes: `extracted_entity("Paris", T)`.
+
+The second part, **structured_output/prolog/llm_extract.pl**, asks Gemini to do the extraction:
+
+```prolog
+%% llm_extract.pl - Ask an LLM to extract entities and relations from
+%% text, then load its JSON reply as Prolog facts.
+:- module(llm_extract, [
+    extract_facts/2,
+    extraction_prompt/2
+]).
+
+:- use_module(json_to_facts).
+:- use_module('../../llm_client/prolog/gemini').
+
+%% extract_facts(+Text, -Counts)
+%% Send Text to Gemini with an extraction prompt, asking for a JSON
+%% reply, and assert the result with json_string_to_facts/2. Counts
+%% is the dict that json_string_to_facts/2 returns. Fails if the call
+%% fails; throws if the reply is not valid JSON.
+extract_facts(Text, Counts) :-
+    extraction_prompt(Text, Prompt),
+    gemini_generate(Prompt, Json, [json(true), temperature(0.0)]),
+    json_string_to_facts(Json, Counts).
+
+%% extraction_prompt(+Text, -Prompt)
+%% The prompt names the exact JSON schema and asks for lowercase,
+%% underscore-separated predicates, so the facts are easy to query.
+extraction_prompt(Text, Prompt) :-
+    format(string(Prompt),
+"Extract the people, organizations, and places in the text below, and the
+relations between them. Reply with JSON only, using this schema:
+{\"entities\": [{\"name\": \"...\", \"type\": \"person|organization|place\"}],
+ \"relations\": [{\"subject\": \"...\", \"predicate\": \"...\", \"object\": \"...\"}]}
+Use the entity names exactly as written in the text. Write each predicate
+in lowercase with underscores, such as works_for or located_in.
+
+Text: ~w", [Text]).
+```
+
+The prompt gives the exact schema and asks for predicates in one style, which makes the facts easier to query. `json(true)` makes Gemini reply with JSON only, and `temperature(0.0)` makes the reply as repeatable as the model allows. `make llm` runs it on one sentence:
+
+```text
+Extracted 3 entities and 3 relations
+entity: Ada Lovelace (person)
+entity: Charles Babbage (person)
+entity: London (place)
+relation: Ada Lovelace worked_with Charles Babbage
+relation: Ada Lovelace worked_in London
+relation: Charles Babbage worked_in London
+```
+
+Note `worked_in London`: the sentence says Ada Lovelace worked *with* Babbage *in* London, and the model turned that into two separate facts. This is a fair reading, but a model can also add facts the text does not support. The LLM Logic Guardrails chapter shows how Prolog rules can check LLM output before you trust it.
+
 ## Combining LLMs with Prolog Reasoning
 
-The most powerful pattern in this book is the **hybrid AI pipeline**: use an LLM for tasks it excels at (natural language understanding, summarisation, information extraction) and use Prolog for tasks where it excels (structured reasoning, constraint satisfaction, explainable inference). Each system handles what it does best.
+A pattern that recurs in this book is the **hybrid AI pipeline**: a statistical model handles language (understanding, summarizing, extracting), and Prolog handles reasoning (rules, constraints, explanations).
 
-A typical hybrid pipeline has four stages:
-1. **LLM Extraction**: The LLM processes unstructured text and returns structured JSON (entities, relations, classifications).
-2. **Fact Assertion**: The JSON is parsed and asserted into Prolog's dynamic database as facts.
-3. **Symbolic Reasoning**: Prolog rules fire over the asserted facts, producing conclusions, classifications, or recommendations.
-4. **Explanation**: Prolog's proof-tree facilities (covered in the Reasoning chapter) explain *why* each conclusion was reached, something LLMs cannot reliably do.
+A hybrid pipeline has four stages:
+1. **Extraction**: An LLM or NLP model reads unstructured text and returns structured data (entities, relations, labels).
+2. **Fact assertion**: The data becomes Prolog facts.
+3. **Reasoning**: Prolog rules derive conclusions, classifications, or recommendations from the facts.
+4. **Explanation**: Proof trees (see the Reasoning chapter) show *why* each conclusion holds, which an LLM cannot reliably do.
 
 {width: "80%"}
 ![Architecture diagram for the Hybrid Pipeline example](FIG_hybrid_pipeline.jpg)
 
-The **hybrid_pipeline** project demonstrates this architecture using Python/spaCy for NER and Prolog for reasoning, connected via the Janus bridge. Here is the file **hybrid_pipeline/prolog/pipeline.pl**:
+The **hybrid_pipeline** project builds this with spaCy, a Python NLP library, for entity extraction and Prolog for the rules, connected by the Janus bridge (covered in detail in the Janus chapter). Here is the file **hybrid_pipeline/prolog/pipeline.pl**:
 
 ```prolog
 %% pipeline.pl - Hybrid AI pipeline: Python preprocessing + Prolog
 %% reasoning
 :- module(pipeline, [
-    run_pipeline/2
+    run_pipeline/2,
+    ner_backend/1
 ]).
 
 :- use_module(library(janus)).
 
 :- dynamic extracted/2.
 
-% Resolve the companion python/ directory relative to this source file
-% so the module works from any current working directory.
-:- initialization(setup_python_path, main).
+% Add the companion python/ directory to Python's module search path.
+% prolog_load_context/2 gives this file's directory while it loads, so
+% the module works from any current working directory.
+:- prolog_load_context(directory, PrologDir),
+   directory_file_path(PrologDir, '../python', PyDir),
+   py_add_lib_dir(PyDir).
 
-setup_python_path :-
-    (   current_prolog_flag(windows, true)
-    ->  Sep = '\\'
-    ;   Sep = '/'
-    ),
-    once(source_file(pipeline:_, ThisFile)),
-    file_directory_name(ThisFile, PrologDir),
-    atomic_list_concat([PrologDir, '..', Sep, 'python'], PyDir),
-    py_add_lib_dir(PyDir).
+%% ner_backend(-Name)
+%% Name is spacy when spaCy and its model loaded, else rules.
+ner_backend(Name) :-
+    py_call(nlp_bridge:backend(), Name).
 
 %% run_pipeline(+InputText, -Result)
 %% 1. Use Python/spaCy for NER extraction
@@ -326,7 +402,7 @@ run_pipeline(InputText, Result) :-
 assert_entity(Entity) :-
     Text = Entity.text,
     Type = Entity.label,
-    assert(extracted(Text, Type)).
+    assertz(extracted(Text, Type)).
 
 %% Only PERSON and GPE labels are mapped to conclusions; every other
 %% spaCy entity label is deliberately dropped by these two clauses.
@@ -336,14 +412,29 @@ entity_conclusion(E, location) :-
     extracted(E, 'GPE').
 ```
 
-The `run_pipeline/2` predicate orchestrates the full workflow. The `py_call/2` predicate (from `library(janus)`) calls Python's spaCy NER model to extract entities from the input text. Each entity comes back as a plain dict, and `assert_entity/1` reads its `text` and `label` fields in one pass before asserting it as an `extracted/2` fact. Prolog's `entity_conclusion/2` rules then classify them. The companion `python/` directory is resolved relative to this source file, so the module works from any current directory. The whole run is wrapped in `setup_call_cleanup/3` so `extracted/2` facts are retracted even on failure. The project ships a `pyproject.toml` pinning `spacy==3.8.11` and a `uv.lock`, so `uv` reproduces the exact Python environment.
+`py_call/2` from `library(janus)` calls the Python function `extract_entities` in **python/nlp_bridge.py**, which runs spaCy and returns a list of Python dicts. Janus turns each into a Prolog dict, which prints as `py{...}`. `assert_entity/1` stores each as an `extracted/2` fact, and the `entity_conclusion/2` rules classify them. `setup_call_cleanup/3` removes the `extracted/2` facts afterward, even if a step fails.
 
-This pattern generalises easily: replace spaCy with an LLM call (using our `gemini_generate/2` or `ollama_generate/2` clients), replace the simple classification rules with domain-specific expert system rules, and you have a production-grade hybrid AI system.
+The directive near the top adds the `python/` directory to Python's module search path. `prolog_load_context(directory, Dir)` gives the directory of the file being loaded, so the module works from any working directory.
 
-{width: "80%"}
-![Architecture diagram for the Research Assistant example](FIG_research_assistant.jpg)
+`make run` sets up a Python environment with `uv` (it pins `spacy==3.8.11` and the `en_core_web_sm` model) and runs:
+
+```text
+NER backend: spacy
+pipeline_result([py{label:'PERSON',text:'John Smith'},
+                 py{label:'GPE',text:'London'},
+                 py{label:'GPE',text:'Paris'},
+                 py{label:'DATE',text:'last week'}],
+                [conclusion('John Smith',important_person),
+                 conclusion('London',location),
+                 conclusion('Paris',location)])
+```
+
+spaCy found a date too, but no rule mentions `DATE`, so it yields no conclusion. If spaCy or its model is missing, `nlp_bridge.py` falls back to a few hard-coded names and `ner_backend/1` returns `rules`. The Janus chapter explains how the Makefile makes Janus and `uv` work together.
+
+The pattern carries over to other parts: swap spaCy for an LLM call through `extract_facts/2`, and swap the two classification rules for an expert system's rules.
 
 ## Optional Practice Problems
 
-1. **Fact Extraction Prompt**: Write a structured JSON prompt in the `structured_output` project that asks the LLM to output details about historical events. Parse this JSON into Prolog facts of the form `event(Name, Year, Location)`.
-2. **System Instruction Support**: Extend the wrapper in `llm_client` to support system instructions, allowing you to configure the persona of the LLM before running queries.
+1. **Historical Events**: Write a prompt for `structured_output` that asks for historical events in a text as JSON, and load the reply as `event(Name, Year, Location)` facts. Check that each `Year` is an integer before asserting it.
+2. **Ollama Extraction**: Add a `backend(ollama)` option to `extract_facts/2`. Ollama's `/api/generate` accepts `"format": "json"`; compare the quality of `qwen3:1.7b` with Gemini on five sentences.
+3. **Rules over Extracted Facts**: Write a rule `colleagues(A, B)` over `extracted_relation/3` that holds when the LLM reported `worked_with` in either direction, and test it on the output of `make llm`.

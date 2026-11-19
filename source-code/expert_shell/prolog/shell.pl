@@ -6,8 +6,15 @@
     ask_question/1,
     provide_answer/2,
     reset_known/0,
-    load_kb/1
+    load_kb/1,
+    op(1100, fx, if),
+    op(1050, xfx, then),
+    op(1000, xfy, and)
 ]).
+
+%% Operators for knowledge bases written as readable rules:
+%%   if meal is dessert and sweet_preference is yes then serve_port.
+%% is/2 is already a standard operator (priority 700).
 
 :- dynamic known/2.  % known(Attribute, Value) - user-provided facts
 
@@ -34,7 +41,10 @@ consult_expert(Conclusion) :-
 consult_kb_hypothesis(Conclusion) :-
     kb_file(_),
     !,
-    user:hypothesis(Conclusion).
+    (   user:hypothesis(Conclusion)
+    ;   kb_rule(Conclusion, Conditions),
+        maplist(check, Conditions)
+    ).
 consult_kb_hypothesis(Conclusion) :-
     hypothesis(Conclusion).
 
@@ -49,7 +59,22 @@ explanation_text(C, E) :-
     user:hypothesis_explanation(C, E),
     !.
 explanation_text(C, E) :-
+    kb_rule(C, Conditions),
+    maplist(known_condition, Conditions),
+    !,
+    maplist(condition_text, Conditions, Texts),
+    atomic_list_concat(Texts, ' and ', Because),
+    format(atom(E), '~w because ~w.', [C, Because]).
+
+explanation_text(C, E) :-
     hypothesis_explanation(C, E).
+
+%% known_condition/1 and condition_text/2 build the text of an
+%% explanation from the conditions of the rule that fired.
+known_condition(A == V) :- known(A, V).
+
+condition_text(A == V, Text) :-
+    format(atom(Text), '~w is ~w', [A, V]).
 
 %% ask_question(+Attribute) - Ask user for information
 %% Reuse a known answer; otherwise read a line, strip a trailing '.',
@@ -86,25 +111,52 @@ strip_trailing_dot(Codes, Rest) :-
     !.
 strip_trailing_dot(Codes, Codes).
 
-%% load_kb(+File) - Consult a knowledge-base file defining hypothesis/1
-%% and hypothesis_explanation/2 rules (if_/then_ style conditions read
-%% known/2 answers via check/1).  Clears previously loaded KB rules.
-:- dynamic kb_file/1.
+%% load_kb(+File) - Load a knowledge-base file and clear any KB
+%% loaded before. The file may hold two kinds of terms:
+%%   - Prolog clauses for hypothesis/1 and hypothesis_explanation/2,
+%%     whose conditions call shell:check/1. These go into module user.
+%%   - Readable rules such as
+%%       if meal is dessert and sweet_preference is yes then serve_port.
+%%     These become kb_rule(Conclusion, Conditions) facts.
+%% Terms are read with this module's operators, so the file needs no
+%% op/3 directives.
+:- dynamic kb_file/1, kb_rule/2.
 
 load_kb(File) :-
     retractall(kb_file(_)),
     unload_old_kb,
     assertz(kb_file(File)),
-    open(File, read, In),
-    repeat,
-      read(In, Term),
-      (   Term == end_of_file
-      ->  close(In), !
-      ;   assertz(user:Term),
-          fail
-      ).
+    setup_call_cleanup(
+        open(File, read, In),
+        load_terms(In),
+        close(In)).
+
+load_terms(In) :-
+    read_term(In, Term, [module(shell)]),
+    (   Term == end_of_file
+    ->  true
+    ;   add_kb_term(Term),
+        load_terms(In)
+    ).
+
+add_kb_term(if Conds then Conclusion) :- !,
+    and_list(Conds, Conditions),
+    assertz(kb_rule(Conclusion, Conditions)).
+add_kb_term(Term) :-
+    assertz(user:Term).
+
+%% and_list(+AndTerm, -Conditions): a is b and c is d gives
+%% [a == b, c == d], the form check/1 expects.
+and_list(A and B, [C|Cs]) :- !,
+    is_condition(A, C),
+    and_list(B, Cs).
+and_list(A, [C]) :-
+    is_condition(A, C).
+
+is_condition(Attr is Value, Attr == Value).
 
 unload_old_kb :-
+    retractall(kb_rule(_, _)),
     forall(clause(user:hypothesis(_), _, Ref), erase(Ref)),
     forall(clause(user:hypothesis_explanation(_, _), _, Ref),
            erase(Ref)),

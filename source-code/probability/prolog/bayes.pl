@@ -1,4 +1,4 @@
-%% bayes.pl — Bayesian inference core
+%% bayes.pl - Bayesian inference core
 %%
 %% A Bayes model is a normalised list of Hypothesis-Probability pairs.
 %% update/4 applies Bayes' Theorem:
@@ -24,7 +24,7 @@ make_bayes_model(PriorPairs, Model) :-
     sumlist(Priors, Total),
     (   Total =:= 0
     ->  throw(error(all_priors_zero,
-        'All priors are zero — cannot normalise.'))
+        'All priors are zero, so they cannot be normalised.'))
     ;   maplist(normalise_pair(Total), PriorPairs, Model)
     ).
 
@@ -49,7 +49,7 @@ update(Model, _Evidence, LikelihoodPred, Updated) :-
     sumlist(UnnormProbs, Marginal),
     (   Marginal =:= 0.0
     ->  throw(error(zero_marginal,
-                    'Marginal likelihood is zero — evidence impossible under all hypotheses.'))
+                    'Marginal likelihood is zero: the evidence is impossible under all hypotheses.'))
     ;   maplist(normalise_pair(Marginal), Unnormalised, Updated)
     ).
 

@@ -1,32 +1,54 @@
 %% blocks.pl - Blocks World planner
 :- module(blocks, [
     blocks_plan/3,
+    blocks_plan_dfs/3,
     print_state/1
 ]).
 
 :- use_module(library(lists), [subset/2]).
 
-:- dynamic blocks_plan_visited/1.
-
 %% blocks_plan(+InitState, +GoalState, -Moves)
-%% State is a list of on(X,Y) and on_table(X) atoms; clear/2 is a
-%% derived relation (not stored in the state).  The visited set is
-%% cleared on entry and exit (and on failure) via
-%% setup_call_cleanup/3, so successive calls behave identically.
+%% Breadth-first search, so Moves is a shortest plan. State is a list
+%% of on(X,Y) and on_table(X) atoms; clear/2 is derived, not stored.
+%% The queue holds Moves-State pairs with the moves in reverse order.
+%% Seen holds every state already queued, sorted so that the same
+%% state in a different order is recognized.
 blocks_plan(State, Goal, Moves) :-
-    setup_call_cleanup(
-        retractall(blocks_plan_visited(_)),
-        blocks_plan_dfs(State, Goal, Moves),
-        retractall(blocks_plan_visited(_))
-    ).
+    sort(State, Key),
+    bfs([[]-State], Goal, [Key], RevMoves),
+    reverse(RevMoves, Moves).
 
-blocks_plan_dfs(State, Goal, []) :-
+bfs([RevMoves-State|_], Goal, _, RevMoves) :-
     subset(Goal, State), !.
-blocks_plan_dfs(State, Goal, [Move|Moves]) :-
-    blocks_move(State, Move, NewState),
-    \+ blocks_plan_visited(NewState),
-    assert(blocks_plan_visited(NewState)),
-    blocks_plan_dfs(NewState, Goal, Moves).
+bfs([RevMoves-State|Queue], Goal, Seen, Plan) :-
+    findall([Move|RevMoves]-New, blocks_move(State, Move, New), Children),
+    new_states(Children, Seen, Fresh, Seen1),
+    append(Queue, Fresh, Queue1),
+    bfs(Queue1, Goal, Seen1, Plan).
+
+new_states([], Seen, [], Seen).
+new_states([Ms-S|Rest], Seen, Fresh, Seen1) :-
+    sort(S, Key),
+    (   memberchk(Key, Seen)
+    ->  Fresh = Fresh1, Seen2 = Seen
+    ;   Fresh = [Ms-S|Fresh1], Seen2 = [Key|Seen]
+    ),
+    new_states(Rest, Seen2, Fresh1, Seen1).
+
+%% blocks_plan_dfs(+InitState, +GoalState, -Moves)
+%% Depth-first search with a list of visited states. It finds a plan
+%% quickly but often a long one; compare it with blocks_plan/3.
+blocks_plan_dfs(State, Goal, Moves) :-
+    sort(State, Key),
+    dfs(State, Goal, [Key], Moves).
+
+dfs(State, Goal, _, []) :-
+    subset(Goal, State), !.
+dfs(State, Goal, Visited, [Move|Moves]) :-
+    blocks_move(State, Move, New),
+    sort(New, Key),
+    \+ memberchk(Key, Visited),
+    dfs(New, Goal, [Key|Visited], Moves).
 
 %% blocks_move(+State, -Move, -NewState)
 %% Moving a block X onto block To is the same whether X starts on

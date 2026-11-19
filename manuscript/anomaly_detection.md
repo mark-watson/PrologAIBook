@@ -2,37 +2,37 @@
 
 Anomaly detection is a machine learning technique for finding data points that differ significantly from the majority of observations. Unlike classification, where we train on balanced examples of each class, anomaly detection works well when we have many normal examples and only a few (or zero) anomalous ones. The algorithm learns what "normal" looks like, then flags anything that deviates from that profile.
 
-This chapter implements a Gaussian anomaly detector in SWI-Prolog, ported from a Java implementation. We apply it to the Wisconsin Diagnostic Breast Cancer dataset, where benign samples define the normal distribution and malignant samples appear as statistical outliers.
+This chapter implements a Gaussian anomaly detector in SWI-Prolog, ported from one of my Java programs. We apply it to the Wisconsin breast cancer dataset, where benign samples define the normal distribution and malignant samples show up as outliers.
 
 ## The Gaussian Approach
 
-The core idea is straightforward. For each feature in the training data, we fit a Gaussian (bell curve) distribution by computing its mean `\mu`$ and variance `\sigma^2`$. At prediction time, we evaluate the Gaussian probability density function (PDF) for each feature of an unseen data point:
+The core idea is simple. For each feature in the training data, we fit a Gaussian (bell curve) distribution by computing its mean `\mu`$ and variance `\sigma^2`$. At prediction time, we evaluate the Gaussian probability density function (PDF) for each feature of an unseen data point:
 
-{$$}
+```$
 p(x_i) = \frac{1}{\sqrt{2\pi}\sigma_i} \exp\left(-\frac{(x_i - \mu_i)^2}{2\sigma_i^2}\right)
-{/$$}
+```
 
-If the average per-feature probability falls below a learned threshold `\epsilon`$ (epsilon), the data point is flagged as anomalous, it lies too far from the centre of the normal distribution.
+If the average of these per-feature densities falls below a learned threshold `\epsilon`$ (epsilon), we flag the data point as an anomaly: it lies too far from the center of the normal distribution. (A density is not a probability and can exceed 1, as it does on this data.)
 
 This approach has two appealing properties:
 
-1. **One-class training.** We only need normal examples to build the model. Anomalies are defined implicitly as "not normal."
-2. **Interpretability.** Each feature contributes an independent probability, so we can see which features drove the anomaly classification.
+1. **One-class training.** We need mostly normal examples to build the model. An anomaly is anything "not normal". (We still need a few labeled anomalies to choose epsilon.)
+2. **Interpretability.** Each feature contributes its own density, so we can see which features made a point look anomalous.
 
 ## The Training Pipeline
 
-The complete pipeline has six stages. Here is an overview before we walk through each one:
+The pipeline has six stages:
 
-1. Load and subsample the Wisconsin cancer CSV
+1. Load the Wisconsin cancer CSV
 2. Preprocess: scale, log-transform, normalise, remap target
 3. Split into training, cross-validation, and test sets
 4. Compute per-feature mean and variance from training data
-5. Search for the best epsilon threshold via cross-validation
+5. Choose the epsilon threshold with the fewest errors on the cross-validation set
 6. Evaluate precision, recall, and F1 on held-out test data
 
 ## Module Structure
 
-The module exports the full API:
+Here is the module header:
 
 ```prolog
 :- module(anomaly_detection, [
@@ -47,7 +47,9 @@ The module exports the full API:
     is_anomaly/2,               % +Model, +Row
     evaluate_model/2,           % +Model, +TestRows
     print_histogram/4,          % +Title, +Rows, +Index, +NumBins
+    search_epsilon/2,           % +PTPs, -Eps
     search_epsilon/5,           % +Start, +Step, +Steps, +PTPs, -Eps
+    load_wisconsin_data/2,      % +MaxN, -Rows
     subsample_rows/3            % +Rows, +MaxN, -Sampled
 ]).
 
@@ -57,11 +59,11 @@ The module exports the full API:
 :- use_module(library(random)).
 ```
 
-We rely on four standard SWI-Prolog libraries: `csv` for reading the dataset, `lists` and `apply` for list operations and higher-order predicates like `maplist/3` and `foldl/4`, and `random` for data splitting.
+We use four standard libraries: `csv` to read the data, `lists` and `apply` for list operations and higher-order predicates like `maplist/3` and `foldl/4`, and `random` to split the data.
 
-## Loading and Subsampling
+## Loading the Data
 
-The Wisconsin cancer dataset has 648 rows with 10 columns: 9 integer features (cell measurements) and 1 target class (2 = benign, 4 = malignant). The data file ships as a headerless CSV.
+The Wisconsin cancer dataset has 648 rows with 10 columns: 9 integer features (cell measurements from 1 to 10) and the class (2 = benign, 4 = malignant). The file is a CSV with no header.
 
 ```prolog
 load_wisconsin_data(Rows) :-
@@ -71,13 +73,19 @@ load_wisconsin_data(Rows) :-
         '/../data/cleaned_wisconsin_cancer_data.csv'], Path),
     csv_read_file(Path, CsvRows,
                   [separator(0',), convert(true), arity(10)]),
-    maplist(row_to_list, CsvRows, AllRows),
-    once(subsample_rows(AllRows, 200, Rows)).
+    maplist(row_to_list, CsvRows, Rows).
+
+%% load_wisconsin_data(+MaxN, -Rows) is det.
+%  Load at most MaxN rows, keeping the class ratio (see
+%  subsample_rows/3). Useful for quick experiments.
+load_wisconsin_data(MaxN, Rows) :-
+    load_wisconsin_data(AllRows),
+    once(subsample_rows(AllRows, MaxN, Rows)).
 ```
 
-The `source_file/2` call locates the module's own source directory, making the data path relative and portable. We wrap it in `once/1` because `source_file/2` returns one solution per exported predicate, without the cut, Prolog would backtrack through all of them.
+`source_file/2` finds the module's own file, so the data path works from any directory. We wrap it in `once/1` because `source_file/2` gives one answer per predicate in the module, and we need only one.
 
-We subsample to approximately 200 rows to keep runtime fast in an interpreted language. The `subsample_rows/3` predicate takes a stratified subsample:
+The full pipeline on all 648 rows runs in well under a second, so we use all the data. For quick experiments, `load_wisconsin_data/2` loads a smaller stratified sample with `subsample_rows/3`:
 
 ```prolog
 subsample_rows(Rows, MaxN, Sampled) :-
@@ -86,10 +94,8 @@ subsample_rows(Rows, MaxN, Sampled) :-
     ->  Sampled = Rows
     ;   partition(is_malignant_row, Rows, Malignant, Benign),
         length(Malignant, LM), length(Benign, LB),
-        % Preserve the class ratio as closely as integer rounding
-        % allows (LM is kept as the explicitly-named total for the
-        % minority class; referenced via min/3 below so the split can
-        % never ask for more anomalies than exist).
+        % Keep the class ratio as closely as rounding allows; min/2
+        % stops us asking for more malignant rows than exist.
         MaxB is round(MaxN * LB / Len),
         MaxM is min(LM, MaxN - MaxB),
         stratified_pick(Benign, MaxB, PickedB),
@@ -99,14 +105,15 @@ subsample_rows(Rows, MaxN, Sampled) :-
 
 is_malignant_row(Row) :- last(Row, 4).
 
-% stratified_pick(+Rows, +N, -Picked), pick N rows, evenly spaced by
-% index so the pick is deterministic given a seeded RNG.
+% stratified_pick(+Rows, +N, -Picked): pick N rows, evenly spaced by
+% index, so the pick is deterministic.
 stratified_pick(Rows, N, Picked) :-
     length(Rows, Len),
     (   N >= Len
     ->  Picked = Rows
     ;   Stride is Len / N,
-        numlist(0, N, Offsets0),
+        Last is N - 1,
+        numlist(0, Last, Offsets0),
         maplist(strides_index(Stride, Len), Offsets0, Indices0),
         maplist(nth0_pick(Rows), Indices0, Picked)
     ).
@@ -117,11 +124,11 @@ strides_index(Stride, Len, I, Idx) :-
 nth0_pick(List, Idx, Elem) :- nth0(Idx, List, Elem).
 ```
 
-Rows are split by class label (2 = benign, 4 = malignant) and each class is sampled proportionally via evenly-spaced index picks, so the subsample preserves the class ratio by construction. When `MaxN` is at least the row count, the input is returned unchanged, which keeps every malignant row.
+The rows are split by class and each class is sampled in proportion, by picking evenly spaced rows, so the sample keeps the class ratio. `numlist(0, Last, ...)` with `Last = N - 1` gives exactly `N` offsets. When `MaxN` is at least the number of rows, the input comes back unchanged.
 
 ## Preprocessing
 
-The raw integer features (ranging 1–10) need to be transformed before Gaussian modelling. The preprocessing pipeline matches the Java original:
+The raw features (integers from 1 to 10) need transforming before we fit Gaussians. The preprocessing matches the Java original:
 
 ```prolog
 preprocess_row([F1, F2, F3, F4, F5, F6, F7, F8, F9, Target], Out) :-
@@ -147,14 +154,14 @@ Four transformations happen in sequence:
 
 1. **Scale by 0.1**: Maps integer features from [1, 10] to [0.1, 1.0].
 2. **Log-transform**: `log(x + 1.2)` compresses the right tail, making the distribution more bell-shaped. The offset 1.2 prevents `log(0)`.
-3. **Min-max normalise**: Rescales each row's features to [0, 1]. This per-row normalisation removes scale differences between samples.
+3. **Min-max normalise**: Rescales each row's features to [0, 1]. Note that this works *within* a row, not within a column: it keeps the shape of each sample's profile but discards its overall level. That choice comes from the Java original, and practice problem 2 asks you to test it.
 4. **Target remapping**: The original target encodes benign as 2 and malignant as 4. The formula `(x - 2) * 0.5` maps these to 0.0 (normal) and 1.0 (anomaly).
 
-Notice how `maplist/3` applies each transform in a declarative, functional style. The `normalise/4` predicate takes `Min` and `Span` as its first two arguments, a partial application pattern that works naturally with `maplist`.
+`maplist/3` applies each transform to every feature. `normalise/4` takes `Min` and `Span` first, so `normalise(Min, Span)` can be passed to `maplist/3` as a partial application.
 
 ## Data Splitting
 
-The split assigns each row to one of four buckets: `train`, `cv` (cross-validation), `test`, or `skip`. We use a tag-then-filter strategy for full determinism:
+The split puts each row in one of four buckets: `train`, `cv` (cross-validation), `test`, or `skip`. We tag every row first and then filter by tag:
 
 ```prolog
 split_data(Rows, Train, CV, Test) :-
@@ -193,15 +200,14 @@ untag(_-Row, Row).
 
 The assignment logic mirrors the Java original:
 
-- **60% chance** of going to training, but only if the row is normal (target < 0.5). Anomalous rows are mostly skipped, with ~10% leaking through. This ensures the training set is dominated by normal examples, which is the key requirement for anomaly detection.
-- **28% to cross-validation**, **12% to test**.
-- Skipped anomalies are simply dropped.
+- **60% chance** of going to training. A normal row (target < 0.5) goes there; an anomaly goes there only 10% of the time and is otherwise dropped. So the training set is mostly normal, which anomaly detection needs.
+- **28% to cross-validation** and **12% to test**.
 
-The tag-then-filter pattern deserves comment. An earlier version used direct recursive splitting with Prolog disjunctions (`;`), but this left choicepoints that caused backtracking across the entire pipeline. The `maplist/assign_row` approach is fully deterministic, each row gets exactly one tag, and `include/3` partitions without any choicepoints.
+Tagging first keeps the code deterministic: `assign_row/2` gives each row exactly one tag, and `include/3` filters without leaving choice points. A recursive split written with `;` would leave a choice point for every row.
 
 ## Computing Statistics
 
-With the training set isolated, we compute per-feature mean (`\mu`$) and variance (`\sigma^2`$):
+From the training set we compute each feature's mean (`\mu`$) and variance (`\sigma^2`$):
 
 ```prolog
 compute_mu(Rows, NF, Mu) :-
@@ -218,7 +224,7 @@ feature_mean(Rows, N, FIdx, Mean) :-
     Mean is Sum / N.
 ```
 
-For each feature index, `feature_mean/4` extracts all values via `maplist(nth1(FIdx), Rows, Vals)`, sums them, and divides by the number of training examples. The variance computation follows the same pattern, using squared differences from the mean:
+For each feature index, `feature_mean/4` collects the column with `maplist(nth1(FIdx), Rows, Vals)`, sums it, and divides by the number of rows. The variance follows the same pattern with squared differences from the mean:
 
 ```prolog
 feature_var(Rows, N, Mu, FIdx, Var) :-
@@ -234,7 +240,7 @@ sq_diff(FIdx, M, Row, D) :-
 
 ## The Gaussian PDF
 
-The Gaussian Probability Density Function (PDF) is the heart of the algorithm. For each feature in a data point, we compute how likely that value is under the learned normal distribution. The implementation walks three lists in parallel, the row's features, the means, and the variances, accumulating the sum of per-feature PDF values:
+The Gaussian probability density function (PDF) is the heart of the algorithm. For each feature of a data point, it measures how typical the value is under the learned distribution. The code walks three lists together (the row's features, the means, and the variances) and sums the per-feature densities:
 
 ```prolog
 gaussian_prob(Row, Mu, SigmaSq, NF, P) :-
@@ -257,15 +263,15 @@ gaussian_sum([X|Xs], [M|Ms], [S2|Ss], S2P, I, Acc, Sum) :-
     gaussian_sum(Xs, Ms, Ss, S2P, I1, Acc1, Sum).
 ```
 
-The parallel list walk (`[X|Xs], [M|Ms], [S2|Ss]`) is a deliberate performance choice. An earlier version used `nth1/3` to extract each feature by index, but `nth1` is O(n) on linked lists, and calling it 3 times per feature × 9 features × every row added up badly. Walking the lists in parallel is O(1) per element.
+Walking the lists together (`[X|Xs], [M|Ms], [S2|Ss]`) costs O(1) per feature. Looking each value up with `nth1/3` would cost O(n) per lookup, since Prolog lists are linked lists.
 
-The base case `gaussian_sum(_, _, _, _, 9, Acc, Acc)` stops after 9 features, skipping the target column at position 10. The cut prevents backtracking into the recursive clause.
+The base case `gaussian_sum(_, _, _, _, 9, Acc, Acc)` stops after 9 features, skipping the target in position 10. The cut stops Prolog from trying the recursive clause as well.
 
 Note: the Java original divides the summed PDF by the number of columns (10, including the class label) although only the 9 input features are summed. This implementation divides by `num_input_features` (9), which shifts the reported epsilon values slightly.
 
 ## Epsilon Search
 
-Epsilon is the threshold that separates normal from anomalous. We find the best value by grid search over the cross-validation set. The key optimisation is to precompute the Gaussian probability for each CV row once, then sweep epsilon across the precomputed values:
+Epsilon is the threshold between normal and anomalous. We choose it on the cross-validation set. First we compute the density for each CV row once:
 
 ```prolog
 precompute_probs([], _, _, _, []).
@@ -275,7 +281,14 @@ precompute_probs([Row|Rows], Mu, SigmaSq, NF, [P-T|Rest]) :-
     precompute_probs(Rows, Mu, SigmaSq, NF, Rest).
 ```
 
-This creates a list of `Probability-Target` pairs. The epsilon sweep then counts errors without recomputing any PDFs:
+This gives a list of `Density-Target` pairs. For each candidate epsilon, `count_errors/3` counts the mistakes:
+
+- An **anomaly** (target > 0.5) with density **above** epsilon is a false negative (a missed anomaly).
+- A **normal** point with density **below** epsilon is a false positive (a false alarm).
+
+Which candidates should we try? A fixed grid is the obvious choice, and the module keeps one in `search_epsilon/5`. But a grid can stop too soon. The Java original swept 20 values from 0.001 to 0.951, and on this data that grid picked its largest value, 0.951: the best threshold was beyond the end of the grid, because densities here range up to about 1.4.
+
+The default `search_epsilon/2` avoids the problem. The error count only changes when epsilon crosses one of the CV densities, so the midpoints between neighbouring densities are the only candidates worth trying:
 
 ```prolog
 %% search_epsilon(+Start, +Step, +Steps, +PTPs, -BestEps) is det.
@@ -293,18 +306,21 @@ grid_epsilon(Start, Step, I, Eps) :-
     Eps is Start + Step * I.
 
 %% search_epsilon(+PTPs, -BestEps) is det.
-%  Backwards-compatible default grid: 20 steps starting at 0.001 in
-%  steps of 0.05 (the original hard-coded sweep).
+%  Data-driven search: the only thresholds that change the error
+%  count lie between two neighbouring CV probabilities, so we try
+%  the midpoint of each neighbouring pair. Unlike a fixed grid, this
+%  cannot miss the best threshold by stopping too early.
 search_epsilon(PTPs, BestEps) :-
-    search_epsilon(0.001, 0.05, 20, PTPs, BestEps).
+    pairs_keys(PTPs, Probs),
+    msort(Probs, Sorted),
+    findall(E, (nextto(A, B, Sorted), E is (A + B) / 2), Candidates),
+    maplist(count_errors(PTPs), Candidates, ErrorCounts),
+    min_list(ErrorCounts, MinErr),
+    nth0(BestIdx, ErrorCounts, MinErr), !,
+    nth0(BestIdx, Candidates, BestEps).
 ```
 
-We test 20 epsilon values from 0.001 to 0.951, spaced at 0.05 intervals. For each epsilon, an error occurs when:
-
-- An **anomaly** (target > 0.5) has probability **above** epsilon, a false negative (missed anomaly)
-- A **normal** point (target <= 0.5) has probability **below** epsilon, a false positive (false alarm)
-
-The epsilon with the fewest total cross-validation errors wins.
+`nextto(A, B, Sorted)` enumerates each pair of neighbouring densities. The epsilon with the fewest CV errors wins. On the full dataset this search makes 15 CV errors where the old grid made 19.
 
 ## Putting It Together
 
@@ -359,9 +375,9 @@ train_model(Rows, Model) :-
     Model = Result.model, !.
 ```
 
-`compute_model/2` is pure: it returns a result dict and prints nothing. `report_model/1` prints the report. `train_model/2` composes the two for backward compatibility.
+`compute_model/2` returns a dict of results and prints nothing. `report_model/1` prints the report. `train_model/2` does both.
 
-The model is a compound term `model(Mu, SigmaSq, NF, BestEps)` that bundles everything needed for prediction. After training, you can classify new data points with:
+The model is the term `model(Mu, SigmaSq, NF, BestEps)`, which holds everything needed to classify a new point:
 
 ```prolog
 is_anomaly(model(Mu, SigmaSq, NF, Eps), Row) :-
@@ -369,11 +385,11 @@ is_anomaly(model(Mu, SigmaSq, NF, Eps), Row) :-
     P < Eps.
 ```
 
-This succeeds (returns `true`) if the row is an anomaly, and fails otherwise, a natural fit for Prolog's success/failure semantics.
+This succeeds if the row is an anomaly and fails otherwise, which fits Prolog's success and failure semantics.
 
 ## Evaluation
 
-The `evaluate_model/2` predicate computes standard binary classification metrics on the test set:
+`evaluate_model/2` computes the usual classification metrics on the test set:
 
 ```prolog
 evaluate_model(Model, TestRows) :-
@@ -382,11 +398,11 @@ evaluate_model(Model, TestRows) :-
     ...
 ```
 
-The accumulator is a `counts(TP, FP, FN, TN)` term that threads through the fold, updating one counter per test row. The final counts yield:
+The accumulator is a `counts(TP, FP, FN, TN)` term that `foldl/4` passes from row to row. From the final counts:
 
-- **Precision** = TP / (TP + FP), of the points we called anomalies, how many actually were?
-- **Recall** = TP / (TP + FN), of the actual anomalies, how many did we catch?
-- **F1** = 2 * Precision * Recall / (Precision + Recall), harmonic mean of precision and recall.
+- **Precision** = TP / (TP + FP): of the points we called anomalies, how many were?
+- **Recall** = TP / (TP + FN): of the real anomalies, how many did we catch?
+- **F1** = 2 * Precision * Recall / (Precision + Recall): the harmonic mean of the two.
 
 ## Running the Example
 
@@ -395,51 +411,52 @@ The accumulator is a `counts(TP, FP, FN, TN)` term that threads through the fold
 $ cd source-code/anomaly_detection
 $ make run
 === Running anomaly detection on Wisconsin cancer data ===
-Split: 88 train, 56 cv, 22 test
+Split: 263 train, 190 cv, 71 test
 
-**** Best epsilon value = 0.951000
+**** Best epsilon value = 1.045599
 
- -- number of test examples = 22
- -- true positives  = 5
- -- false positives = 0
- -- false negatives = 3
- -- true negatives  = 14
- -- precision = 1.000000
- -- recall    = 0.625000
- -- F1        = 0.769231
+ -- number of test examples = 71
+ -- true positives  = 21
+ -- false positives = 1
+ -- false negatives = 6
+ -- true negatives  = 43
+ -- precision = 0.954545
+ -- recall    = 0.777778
+ -- F1        = 0.857143
 ~~~~~~~~
 
-The pipeline is seeded via `set_random(seed(42))` and the subsample is a deterministic evenly-spaced stratified pick, so the output above is reproducible run-to-run. Precision is high (the model rarely cries wolf), while recall is lower, so some anomalies slip through.
+`compute_model/2` seeds the random number generator with `set_random(seed(42))`, so every run gives the output above. Precision is high (one false alarm in 22 alerts), while recall is lower: 6 of the 27 malignant samples slip through. For cancer screening, a missed case costs far more than a false alarm, so in practice you would choose a higher epsilon and accept more false alarms. Practice problem 1 explores this.
 
 Run the tests with:
 
 {linenos=off}
 ~~~~~~~~
 $ make test
-% All 9 tests passed in 0.025 seconds (0.022 cpu)
+% All 13 tests passed in 0.051 seconds (0.044 cpu)
 ~~~~~~~~
 
 ## Prolog-Specific Design Decisions
 
-**Determinism.** The most challenging aspect of this port was controlling Prolog's backtracking. Several predicates naturally produce choicepoints:
+**Determinism.** The hardest part of the port was controlling backtracking. Several predicates leave choice points:
 
-- `source_file/2` returns one solution per exported predicate
+- `source_file/2` gives one answer per predicate in the module
 - Disjunction (`;`) inside recursive predicates leaves choicepoints at every branch
 - `nth0/3` with an unbound index generates solutions lazily
 
-We addressed these with `once/1` wrappers and a tag-then-filter strategy for `split_data`. The final `!` in `train_model` commits to the first successful training run.
+We handle these with `once/1`, cuts after `nth0/3`, and tagging then filtering in `split_data/4`.
 
-**Lists vs. arrays.** Prolog lists are linked lists, `nth1/3` is O(n) per access. The Gaussian PDF needs to access three parallel lists (row, means, variances) for each of 9 features. Using `nth1` would mean 27 * O(n) lookups per row. Instead, we walk the three lists in parallel via pattern matching (`[X|Xs], [M|Ms], [S2|Ss]`), giving O(1) per element. This alone gave us a large speedup.
+**Lists vs. arrays.** Prolog lists are linked lists, so `nth1/3` costs O(n) per access. Walking the row, means, and variances together by pattern matching costs O(1) per feature.
 
-**Precomputed probabilities.** The Java version recomputes the Gaussian PDF for every epsilon candidate. In Prolog, where arithmetic is slower than in the JVM, we precompute all PDF values before the epsilon sweep. The 20-step grid search then just compares precomputed floats to the epsilon threshold, pure arithmetic with no list traversal.
+**Precomputed densities.** The Java version recomputes the PDF for every epsilon candidate. We compute each CV density once, so trying a candidate only compares numbers.
 
-**Subsampling.** The full 648-row dataset with 200 epsilon steps would be impractical in interpreted Prolog. We subsample to ~200 rows and use 20 epsilon steps, reducing the workload by roughly 65x. The model quality remains strong thanks to the class-balanced sampling and the dataset's clear separation between benign and malignant clusters.
+**Data-driven thresholds.** Trying the midpoints between sorted CV densities finds the best threshold on the CV set, with no grid range or step size to tune. With about 190 CV rows, that is about 190 candidates, which takes milliseconds.
 
 ## Wrap Up
 
-This example demonstrates that statistical machine learning algorithms can be implemented naturally in Prolog. The Gaussian anomaly detector uses only standard SWI-Prolog libraries, no external packs, and fits comfortably into Prolog's declarative style. The key techniques, `maplist` for transforms, `foldl` for accumulators, parallel list walking for performance, and tag-then-filter for deterministic splitting, are broadly useful patterns for any numerical computation in Prolog.
+This example shows that statistical machine learning fits well in Prolog. The detector uses only standard SWI-Prolog libraries and runs on the full dataset in well under a second. Its techniques (`maplist` for transforms, `foldl` for accumulators, walking lists together, and tag-then-filter splitting) carry over to other numerical code in Prolog.
 
 ## Optional Practice Problems
 
-1. **Sensitivity Threshold**: In the `anomaly_detection` project, modify the thresholding logic to accept a dynamic sensitivity parameter that increases or decreases the strictness of the anomaly classification.
-2. **Out-of-Order Sequence Check**: Write a predicate in `anomaly.pl` that flags sequences of log events that violate a predefined transaction state transitions order.
+1. **Weighting Missed Cases**: Change `count_errors/3` to take a cost for false negatives and a cost for false positives, and choose epsilon by minimum total cost. How do precision and recall change when a missed malignant case costs ten times a false alarm?
+2. **Normalise by Column**: Change `preprocess/2` to min-max normalise each feature *column* across the training set instead of each row. Does F1 improve?
+3. **Which Feature?**: Write `explain_anomaly(+Model, +Row, -Ranked)` that lists the features sorted by their density, lowest first, so a user can see why a row was flagged.

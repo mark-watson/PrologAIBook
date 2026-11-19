@@ -6,7 +6,8 @@
     org_name/1
 ]).
 
-%% Gazetteer — ~108 entries across person, place, and organization names
+%% Gazetteer: 112 names of people, places, and organizations.
+%% Names of two words join them with an underscore, as in 'New_York'.
 person_name('John').
 person_name('Mary').
 person_name('Smith').
@@ -40,7 +41,6 @@ person_name('Columbus').
 person_name('Gates').
 person_name('Musk').
 person_name('Turing').
-person_name('President').
 
 place_name('London').
 place_name('Paris').
@@ -119,22 +119,22 @@ org_name('Nike').
 org_name('Samsung').        org_name('Toyota').
 
 %% find_entities(+WordList, -Entities)
-%% Returns entities as entity(Type, Name) terms
-find_entities(Words, Entities) :-
-    findall(
-        entity(person, W),
-        (member(W, Words), person_name(W)),
-        People
-    ),
-    findall(
-        entity(place, W),
-        (member(W, Words), place_name(W)),
-        Places
-    ),
-    findall(
-        entity(org, W),
-        (member(W, Words), org_name(W)),
-        Orgs
-    ),
-    append(People, Places, Tmp),
-    append(Tmp, Orgs, Entities).
+%% Returns entity(Type, Name) terms in the order the names appear.
+%% Words must keep their capital letters. A two-word name such as
+%% ['New', 'York'] matches the gazetteer entry 'New_York'.
+find_entities([], []).
+find_entities([W1, W2|Ws], [entity(Type, Name)|Es]) :-
+    atomic_list_concat([W1, W2], '_', Name),
+    entity_type(Name, Type),
+    !,
+    find_entities(Ws, Es).
+find_entities([W|Ws], [entity(Type, W)|Es]) :-
+    entity_type(W, Type),
+    !,
+    find_entities(Ws, Es).
+find_entities([_|Ws], Es) :-
+    find_entities(Ws, Es).
+
+entity_type(Name, person) :- person_name(Name).
+entity_type(Name, place)  :- place_name(Name).
+entity_type(Name, org)    :- org_name(Name).

@@ -1,13 +1,13 @@
 # LLM Logic Guardrails Using a Neuro-Symbolic Pattern
 
-Large Language Models (LLMs) are incredibly capable when it comes to open-ended generation, creative writing, and basic translation. However, they suffer from deep structural limitations that make them risky for high-stakes business logic:
-- **Hallucinations**: They generate plausible-sounding but entirely fabricated facts.
-- **Inability to guarantee constraints**: An LLM cannot be mathematically guaranteed to follow instructions or comply with safety bounds.
-- **Arithmetic errors**: They often struggle with exact math or calculating cumulative percentages.
+Large language models (LLMs) are good at open-ended writing and translation, but three limits make them risky for business rules:
+- **Hallucinations**: They can state invented facts with confidence.
+- **No guarantees**: Nothing ensures that an LLM follows its instructions or stays within limits.
+- **Arithmetic errors**: They can get sums and percentages wrong.
 
-In critical domains like financial planning, computational law, or medical diagnosis, we cannot display raw LLM output to end users. We need a way to filter, validate, and verify the model's outputs.
+In fields such as financial planning, law, or medicine, we should not show raw LLM output to users. We need to check it first.
 
-This chapter presents a **neuro-symbolic pattern** that uses a symbolic logic engine (Prolog) as a strict compliance guardrail on top of a neural model (the LLM). 
+This chapter presents a **neuro-symbolic pattern**: a symbolic rule engine (Prolog) checks the output of a neural model (the LLM) against explicit rules.
 
 
 {width: "80%"}
@@ -16,29 +16,29 @@ This chapter presents a **neuro-symbolic pattern** that uses a symbolic logic en
 
 ## The Neuro-Symbolic Guardrail Pattern
 
-The architecture operates as a pipeline:
-1. **Prompt & Structure**: The user inputs a prompt. The LLM is instructed to return its recommendation in a structured format, such as JSON.
-2. **Parsing & Bridge**: The application parses the LLM's JSON output and passes it across a bidirectional bridge (Janus) into a SWI-Prolog environment.
-3. **Prolog Constraints**: A predefined Prolog policy database contains strict rules (such as arithmetic checks, age-based risk limits, and exclusions).
-4. **Validation Query**: Prolog evaluates the recommendation. It returns an empty list if the recommendation is valid, or a list of specific error explanations if any constraints are violated.
-5. **Action**: If valid, the recommendation is shown to the user. If invalid, the system rejects it or feeds the error descriptions back to the LLM to request a corrected response (self-repair loop).
+The pattern is a pipeline:
+1. **Structured output**: The LLM must return its recommendation as JSON.
+2. **Handoff to Prolog**: The application passes the JSON to SWI-Prolog, either directly or from Python through the Janus bridge.
+3. **Policy rules**: A Prolog module holds the rules: arithmetic checks, age-based risk limits, and exclusions.
+4. **Validation**: Prolog returns an empty list if the recommendation is valid, or a list of messages naming each broken rule.
+5. **Action**: A valid recommendation goes to the user. An invalid one is rejected, or its violations go back to the LLM with a request for a corrected answer (a *self-repair loop*).
 
-This design ensures that even if the LLM attempts to recommend high-risk assets to a senior citizen or creates a portfolio that doesn't sum to 100%, the symbolic engine mathematically prevents it from reaching the user.
+If the LLM recommends high-risk assets for a retiree, or a portfolio that does not sum to 100%, the rules catch it before it reaches the user. The guarantee is only as good as the rules, though: Prolog enforces what the rules say, and nothing else.
 
 ---
 
 ## Prolog Guardrail Rules
 
-We define the constraints using a Prolog module that parses the JSON string into a dict and evaluates it against multiple rules using `findall/3`. Parsing is guarded: invalid JSON yields a policy error string describing the parse failure, and missing keys yield a missing-keys error string. Only well-formed input with all required keys reaches the policy rules.
+The rules live in a module that parses the JSON into a dict and checks it against every rule with `findall/3`. Bad input never reaches the rules: invalid JSON, missing keys, and non-numeric values each produce one error message instead of an exception. LLMs do produce all three.
 
-Here is the implementation in **source-code/llm_logic_guardrails/prolog/guardrails.pl**:
+Here is the file **llm_logic_guardrails/prolog/guardrails.pl**:
 
 ```prolog
 :- module(guardrails, [
     validate_portfolio_json/2
 ]).
 
-:- use_module(library(http/json)).
+:- use_module(library(json)).
 
 /** <module> Financial Guardrails Module
  *
@@ -58,7 +58,7 @@ Here is the implementation in **source-code/llm_logic_guardrails/prolog/guardrai
  */
 
 % Main entry point. Parses JSON and checks all policy rules.
-% Returns a list of error atoms. If empty, the portfolio is valid.
+% Returns a list of error strings. If empty, the portfolio is valid.
 validate_portfolio_json(JsonString, Errors) :-
     setup_call_cleanup(
         open_string(JsonString, Stream),
@@ -73,10 +73,15 @@ validate_portfolio_json(JsonString, Errors) :-
     ->  message_to_string(JsonError, Msg),
         format(string(ErrStr), "Invalid JSON input: ~w", [Msg]),
         Errors = [ErrStr]
-;   missing_required_keys(Dict, Missing), Missing \= []
-->  atomic_list_concat(Missing, ', ', MissingStr),
+    ;   missing_required_keys(Dict, Missing), Missing \= []
+    ->  atomic_list_concat(Missing, ', ', MissingStr),
         format(string(ErrStr),
             "Missing required keys in recommendation: ~w", [MissingStr]),
+        Errors = [ErrStr]
+    ;   non_numeric_fields(Dict, Bad), Bad \= []
+    ->  atomic_list_concat(Bad, ', ', BadStr),
+        format(string(ErrStr),
+            "These fields must be numbers: ~w", [BadStr]),
         Errors = [ErrStr]
     ;   findall(Error, check_policy(Dict, Error), Errors)
     ).
@@ -97,10 +102,31 @@ has_value(Dict, Key) :-
     catch(get_dict(Key, Dict, Value), _, fail),
     nonvar(Value).
 
+% non_numeric_fields(+Dict, -Bad)
+% Bad lists client_age and each allocation whose value is not a
+% number. The policy rules do arithmetic, so a string such as "40"
+% must be reported here instead of raising a type error later.
+non_numeric_fields(Dict, Bad) :-
+    get_dict(allocations, Dict, Allocs),
+    (   is_dict(Allocs)
+    ->  dict_pairs(Allocs, _, Pairs)
+    ;   Pairs = []
+    ),
+    get_dict(client_age, Dict, Age),
+    findall(Field,
+            (   member(Field-V, [client_age-Age|Pairs]),
+                \+ number(V)
+            ),
+            Bad).
+
 % risk_value(+Dict, -RiskAtom)
-% Extract risk_tolerance and canonicalise to a downcased atom, so the
-% policy rules work whether the value arrived as a Prolog atom
-% (json_read_dict default) or as a string (Janus / value_string_as).
+% Extract risk_tolerance and turn it into a lowercase atom, so the
+% policy rules can match atoms such as low. json_read_dict/2 returns
+% JSON strings as Prolog strings; other callers may pass atoms.
+% risk_value(+Dict, -RiskAtom)
+% Extract risk_tolerance and turn it into a lowercase atom, so the
+% policy rules can match atoms such as low. json_read_dict/2 returns
+% JSON strings as Prolog strings; other callers may pass atoms.
 risk_value(Dict, RiskAtom) :-
     has_value(Dict, risk_tolerance),
     Risk0 = Dict.get(risk_tolerance, ""),
@@ -119,10 +145,11 @@ downcase_atom_(String, Atom) :-
 % --- Policy Rules ---
 
 % 1. Total sum must be exactly 100%
+% =\= compares numbers, so a float total of 100.0 passes.
 check_policy(Dict, "Total allocation must sum to exactly 100%") :-
     get_allocations(Dict, Stocks, Bonds, Crypto, Cash),
     Total is Stocks + Bonds + Crypto + Cash,
-    Total \= 100.
+    Total =\= 100.
 
 % 2. If client is senior (> 65), high-risk assets (stocks + crypto) must
 % be <= 30%
@@ -155,9 +182,10 @@ check_policy(Dict, Error) :-
         "Low risk tolerance requires at least 50% in conservative assets (currently ~w%)", [Conservative]).
 
 % 5. No asset allocation can be negative
+% once/1 reports the error once, however many allocations are negative.
 check_policy(Dict, "Asset allocations cannot be negative") :-
     get_allocations(Dict, Stocks, Bonds, Crypto, Cash),
-    (Stocks < 0 ; Bonds < 0 ; Crypto < 0 ; Cash < 0).
+    once(( Stocks < 0 ; Bonds < 0 ; Crypto < 0 ; Cash < 0 )).
 
 % --- Helper to extract allocations safely with default 0 if missing ---
 get_allocations(Dict, Stocks, Bonds, Crypto, Cash) :-
@@ -175,9 +203,9 @@ get_allocations(Dict, Stocks, Bonds, Crypto, Cash) :-
 
 ## Python Verification Harness
 
-We use the Janus Python-Prolog bridge to load the Prolog rules and run our validations programmatically.
+Many LLM applications are written in Python. The `janus-swi` Python package lets Python call Prolog, so a Python program can use the same rules. This harness checks two hand-written recommendations, one valid and one that breaks four rules.
 
-Here is the code in **source-code/llm_logic_guardrails/verify_llm.py**:
+Here is the file **llm_logic_guardrails/verify_llm.py**:
 
 {lang="python",linenos=off}
 ~~~~~~~~
@@ -277,14 +305,9 @@ if __name__ == '__main__':
 
 ## Running the Verification Script
 
-You can execute the verification harness using `uv`. Navigate to `source-code/llm_logic_guardrails` and run:
+From `source-code/llm_logic_guardrails`, run the harness with `make run`, which calls `uv run verify_llm.py`. `uv` installs `janus-swi`, which needs Python 3.11 or later and a SWI-Prolog installation it can find.
 
-{linenos=off}
-~~~~~~~~
-$ uv run verify_llm.py
-~~~~~~~~
-
-The console output demonstrates how the valid portfolio passes silently, whereas the invalid portfolio produces a clear list of the exact constraints violated:
+The valid portfolio passes, and the invalid one gets a list of exactly the rules it breaks:
 
 {linenos=off}
 ~~~~~~~~
@@ -331,17 +354,107 @@ Guardrail Check Failed! Violations found:
 All assertions passed.
 ~~~~~~~~
 
-The script asserts the expected behavior programmatically and exits with code 1 if any `[FAIL]` line fires, so it doubles as a test harness. A pure-Prolog plunit suite covers the same rules offline; run it with `make test`.
+The script exits with code 1 if any `[FAIL]` line appears, so it also works as a test. A plunit suite in **tests/test_guardrails.pl** tests the rules from Prolog; run it with `make test`. Three of its tests guard against easy mistakes:
+
+- **Float totals.** Rule 1 compares the total with `=\=`, not `\=`. With `\=`, a total of `100.0` (from allocations such as `60.0` and `40.0`) fails to unify with the integer `100` and is wrongly reported as a violation.
+- **Duplicate messages.** Rule 5 wraps its disjunction in `once/1`. Without it, `findall/3` collects the same message once for every negative allocation.
+- **Strings for numbers.** An LLM may write `"40"` instead of `40`. `non_numeric_fields/2` reports this as an error message; otherwise `is/2` would throw a type error.
+
+## A Self-Repair Loop
+
+So far the LLM output was written by hand. Here is the loop in step 5: ask Gemini for a portfolio, check it, and if it breaks rules, send the violations back and ask again. Here is the file **llm_logic_guardrails/prolog/repair_loop.pl**, which uses the Gemini client from the LLM Integration chapter:
+
+```prolog
+%% repair_loop.pl - Ask an LLM for a portfolio, check it with the
+%% guardrails, and send any violations back for a corrected answer.
+:- module(repair_loop, [
+    safe_portfolio/4,
+    safe_portfolio/5
+]).
+
+:- use_module(guardrails).
+:- use_module('../../llm_client/prolog/gemini').
+
+%% safe_portfolio(+Age, +Risk, +MaxTries, -Json)
+%% Json is an LLM recommendation for a client of the given Age and
+%% risk tolerance (low, medium, or high) that passes every guardrail.
+%% Each failed attempt is printed, and its violations go into the next
+%% prompt. Fails if no attempt passes within MaxTries.
+safe_portfolio(Age, Risk, MaxTries, Json) :-
+    safe_portfolio(Age, Risk, "", MaxTries, Json).
+
+%% safe_portfolio(+Age, +Risk, +Request, +MaxTries, -Json)
+%% As safe_portfolio/4, with an extra client request (text) added to
+%% the prompt. A request can conflict with the rules, for example
+%% "The client wants 25% in crypto."; the guardrails still decide.
+safe_portfolio(Age, Risk, Request, MaxTries, Json) :-
+    first_prompt(Age, Risk, Request, Prompt),
+    attempt(Prompt, 1, MaxTries, Json).
+
+attempt(Prompt, N, Max, Json) :-
+    N =< Max,
+    gemini_generate(Prompt, Reply, [json(true), temperature(0.7)]),
+    validate_portfolio_json(Reply, Errors),
+    (   Errors == []
+    ->  format("Attempt ~w passed the guardrails.~n", [N]),
+        Json = Reply
+    ;   format("Attempt ~w rejected:~n", [N]),
+        forall(member(E, Errors), format("  - ~w~n", [E])),
+        repair_prompt(Prompt, Reply, Errors, Prompt1),
+        N1 is N + 1,
+        attempt(Prompt1, N1, Max, Json)
+    ).
+
+first_prompt(Age, Risk, Request, Prompt) :-
+    format(string(Prompt),
+"Recommend an investment portfolio for a client aged ~w with ~w risk
+tolerance. ~w
+Reply with JSON only, in this form:
+{\"client_age\": ~w, \"risk_tolerance\": \"~w\",
+ \"allocations\": {\"stocks\": N, \"bonds\": N, \"crypto\": N, \"cash\": N}}
+where each N is a whole-number percentage.",
+           [Age, Risk, Request, Age, Risk]).
+
+%% The repair prompt repeats the request, shows the rejected answer,
+%% and lists the rules it broke, word for word.
+repair_prompt(Prompt, Reply, Errors, Prompt1) :-
+    atomic_list_concat(Errors, '\n- ', ErrorText),
+    format(string(Prompt1),
+"~w
+
+Your previous answer was:
+~w
+It broke these rules:
+- ~w
+Reply with a corrected JSON portfolio that follows every rule.",
+           [Prompt, Reply, ErrorText]).
+```
+
+The repair prompt quotes the rejected answer and the broken rules word for word, which gives the model exactly what it needs to fix. `MaxTries` bounds the loop, since a model may never comply. To make the demo interesting, `make repair` adds a client request that conflicts with the rules:
+
+```text
+Attempt 1 rejected:
+  - Low risk tolerance portfolio cannot contain speculative crypto assets
+Attempt 2 passed the guardrails.
+Accepted:
+{"client_age": 72, "risk_tolerance": "low", "allocations":
+ {"stocks": 0, "bonds": 70, "crypto": 0, "cash": 30}}
+```
+
+The model first followed the client's wish, the rules rejected it, and the second answer complied. Your run may differ, because the model's output varies.
 
 ---
 
 ## Key Design Decisions
 
-**Why use Janus and Python instead of writing everything in Prolog?** While SWI-Prolog can handle network requests, parsing, and LLM integrations directly, Python has a much wider ecosystem of libraries for building production-grade LLM applications (such as LangChain, LlamaIndex, and the official Google GenAI SDK). Janus offers an ideal compromise: we can write our API plumbing and LLM pipelines in Python, but delegate the critical verification steps to Prolog, keeping our policy logic clean and declarative.
+**Python or Prolog for the plumbing?** The repair loop shows that SWI-Prolog can call an LLM itself. Python has more LLM libraries (LangChain, LlamaIndex, the Google GenAI SDK), so many teams write the application in Python. With Janus, the policy rules stay in Prolog either way.
 
-**Using findall/3 for complete error lists.** In typical Prolog programs, we rely on backtracking to find a solution. If a validation failed, Prolog would normally return `false` on the first rule violation and halt. However, when returning errors to a user or feeding them back to an LLM for correction, we want *all* violations reported at once. Using `findall(Error, check_policy(Dict, Error), Errors)` forces the engine to evaluate every safety check and collect all generated error strings into a single list. The code first classifies risk with `risk_value/2`, which canonicalises an atom-or-string value to a downcased atom, so the low-risk rules actually fire. Rules 3 and 4 once compared `risk_tolerance` with `Risk == "low"`, which never matched because JSON parsing yields strings, not atoms; this was the bug fix.
+**Collecting every violation.** A single failing rule would normally make a Prolog check fail at once. But a user, or an LLM asked for a correction, needs *all* the problems at once. `findall(Error, check_policy(Dict, Error), Errors)` runs every rule and collects every message.
+
+**Atoms or strings.** `json_read_dict/2` returns JSON strings as Prolog strings, so `risk_tolerance` arrives as the string `"low"`, while code that builds a dict by hand may use the atom `low`. `risk_value/2` turns either into a lowercase atom (and accepts `"Low"` too), so a rule can simply test `risk_value(Dict, low)`. A test such as `Risk == low` alone would silently never match the string.
 
 ## Optional Practice Problems
 
-1. **Blacklist Guardrail**: In the `llm_logic_guardrails` project, write a logic guardrail that scans the LLM output for forbidden names or sensitive words and flags the output if any are found.
-2. **Contradiction Detection**: Implement a rule in `guardrails.pl` that checks if the LLM output asserts a fact that contradicts any of the safe facts stored in the Prolog knowledge base.
+1. **Allowed Asset Classes**: Add a rule that rejects any allocation key other than `stocks`, `bonds`, `crypto`, and `cash`, naming the unknown key in the message. Add a test.
+2. **Rule Explanations**: Change `check_policy/2` to return `violation(RuleId, Message)` terms, and add `explain_rule(RuleId, Text)` facts that state each rule in plain English for the repair prompt.
+3. **Repair Statistics**: Run `safe_portfolio/5` twenty times with a conflicting request and count how many attempts each run needed. Compare `temperature(0.0)` with `temperature(1.0)`.

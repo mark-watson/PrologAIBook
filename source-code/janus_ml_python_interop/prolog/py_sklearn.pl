@@ -6,15 +6,12 @@
 
 :- use_module(library(janus)).
 
-% Resolve the companion python/ directory relative to this source file
-% so the module works from any current working directory.
-:- initialization(setup_python_path, main).
-
-setup_python_path :-
-    once(source_file(py_sklearn:_, ThisFile)),
-    file_directory_name(ThisFile, PrologDir),
-    atom_concat(PrologDir, '/../python', PyDir),
-    py_add_lib_dir(PyDir).
+% Add the companion python/ directory to Python's module search path.
+% prolog_load_context/2 gives this file's directory while it loads, so
+% the module works from any current working directory.
+:- prolog_load_context(directory, PrologDir),
+   directory_file_path(PrologDir, '../python', PyDir),
+   py_add_lib_dir(PyDir).
 
 %% py_classify(+TrainData, +TestData, -Predictions)
 %% Uses scikit-learn's DecisionTreeClassifier via Janus.
@@ -24,7 +21,10 @@ setup_python_path :-
 %% appended internally before calling Python, which keeps backwards
 %% compatibility with the old calling convention.
 py_classify(TrainData, TestData, Predictions) :-
-    TrainData = [TrainRow|_],
+    (   TrainData = [TrainRow|_]
+    ->  true
+    ;   domain_error(non_empty_list, TrainData)
+    ),
     length(TrainRow, TrainWidth),
     maplist(normalise_test_row(TrainWidth), TestData, Normalised),
     py_call(sklearn_bridge:classify(TrainData, Normalised),

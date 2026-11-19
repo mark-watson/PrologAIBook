@@ -17,7 +17,7 @@ swipl -s load.pl
 ## Running Tests
 
 ```shell
-swipl -g "['tests/test_grammar.pl'], run_tests, halt" -s load.pl
+make test
 ```
 
 
@@ -27,4 +27,4 @@ swipl -g "['tests/test_grammar.pl'], run_tests, halt" -s load.pl
 
 ## Description
 
-Demonstrates Prolog's DCG notation — one of the language's most elegant features — for parsing simple English sentences. The `english_grammar.pl` module defines a grammar with noun phrases, verb phrases, prepositional phrases, and a small lexicon. Each rule builds a parse tree term as it matches, producing structured output like `s(np(det(the), n(dog)), vp(v(chases), np(det(the), n(cat))))`. The `tokenizer.pl` module provides a simple string-to-word-list converter for preparing raw text input.
+Demonstrates Prolog's DCG notation for parsing simple English sentences. The `english_grammar.pl` module defines a grammar with noun phrases, verb phrases, prepositional phrases, and a small lexicon. Each rule builds a parse tree term as it matches, producing structured output like `s(np(det(the), n(dog)), vp(v(chases), np(det(the), n(cat))))`. The `tokenizer.pl` module is itself a DCG over character codes that turns raw text into lowercase word atoms and drops punctuation. The `semantics.pl` module translates sentences such as "every dog chases a cat" into logic formulas and checks them against a small world model.

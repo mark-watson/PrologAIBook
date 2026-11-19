@@ -1,4 +1,4 @@
-%% medical_example.pl — Bayesian medical-screening worked example
+%% medical_example.pl - Bayesian medical-screening worked example
 %%
 %% A rare disease affects 0.1% of the population.
 %% Sensitivity = 99%, false-positive rate = 5%.
@@ -64,7 +64,7 @@ run_correlation_analysis :-
     pearson_r(Tests, Diagnoses, R),
     format('~n=== Correlation Analysis (N = ~d) ===~n', [N]),
     format('Pearson r(test-result, disease) = ~4f~n', [R]),
-    format('~nCorrelation is real but modest — individual prediction~n'),
+    format('~nCorrelation is real but modest. Individual prediction~n'),
     format('requires Bayesian reasoning with the base rate.~n').
 
 run_medical_example :-

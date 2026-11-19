@@ -2,6 +2,7 @@
 :- use_module(library(plunit)).
 :- use_module(library(clpfd)).
 :- use_module('../prolog/sudoku').
+:- use_module('../prolog/send_more').
 
 :- begin_tests(sudoku).
 
@@ -25,6 +26,15 @@ test(prints_dots_for_unsolved) :-
     sub_atom(Output, _, _, _, '.'),
     sub_atom(Output, _, _, _, '1'),
     !.
+
+test(contradictory_puzzle, [fail]) :-
+    % Two 5s in the first row.
+    Puzzle = [[5,5,_,_,_,_,_,_,_]|Rest],
+    length(Rest, 8),
+    sudoku(Puzzle).
+
+test(send_more_money, all(D == [[9,5,6,7,1,0,8,2]])) :-
+    send_more(D).
 
 :- end_tests(sudoku).
 

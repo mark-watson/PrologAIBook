@@ -1,8 +1,8 @@
-%% anomaly_detection.pl — Gaussian anomaly detection
+%% anomaly_detection.pl - Gaussian anomaly detection
 %%
 %% Ports the Java AnomalyDetection class to SWI-Prolog.
 %% Uses per-feature Gaussian PDF with mean/variance statistics
-%% and an epsilon threshold optimised via cross-validation.
+%% and an epsilon threshold chosen on a cross-validation set.
 %%
 %% Copyright 2022-2026 Mark Watson. All rights reserved.
 %% Apache 2 license.
@@ -19,7 +19,9 @@
     is_anomaly/2,               % +Model, +Row
     evaluate_model/2,           % +Model, +TestRows
     print_histogram/4,          % +Title, +Rows, +Index, +NumBins
+    search_epsilon/2,           % +PTPs, -Eps
     search_epsilon/5,           % +Start, +Step, +Steps, +PTPs, -Eps
+    load_wisconsin_data/2,      % +MaxN, -Rows
     subsample_rows/3            % +Rows, +MaxN, -Sampled
 ]).
 
@@ -42,8 +44,8 @@ num_input_features(9).
 %% ---------- Data Loading ----------
 
 %% load_wisconsin_data(-Rows) is det.
-%  Load the Wisconsin cancer CSV.  Each row is a list of 10 floats.
-%  Subsampled to ~200 rows for Prolog performance.
+%  Load all rows of the Wisconsin cancer CSV. Each row is a list of
+%  10 numbers: 9 features and the class (2 benign, 4 malignant).
 load_wisconsin_data(Rows) :-
     once(source_file(anomaly_detection:_, ThisFile)),
     file_directory_name(ThisFile, Dir),
@@ -51,27 +53,28 @@ load_wisconsin_data(Rows) :-
         '/../data/cleaned_wisconsin_cancer_data.csv'], Path),
     csv_read_file(Path, CsvRows,
                   [separator(0',), convert(true), arity(10)]),
-    maplist(row_to_list, CsvRows, AllRows),
-    once(subsample_rows(AllRows, 200, Rows)).
+    maplist(row_to_list, CsvRows, Rows).
+
+%% load_wisconsin_data(+MaxN, -Rows) is det.
+%  Load at most MaxN rows, keeping the class ratio (see
+%  subsample_rows/3). Useful for quick experiments.
+load_wisconsin_data(MaxN, Rows) :-
+    load_wisconsin_data(AllRows),
+    once(subsample_rows(AllRows, MaxN, Rows)).
 
 %% subsample_rows(+Rows, +MaxN, -Sampled) is det.
 %  Stratified subsample: split by class label (Wisconsin coding
 %  2=benign, 4=malignant in the last column), sample each class
-%  proportionally to MaxN, then recombine.  This is a genuine
-%  class-balance-preserving scheme (the original Java and a previous
-%  comment here only *claimed* that property).  When MaxN >= length
-%  the input is returned unchanged — an important property the
-%  pipeline relies on to keep every malignant row.
+%  in proportion, then recombine, so the class ratio is kept. When
+%  MaxN >= length the input is returned unchanged.
 subsample_rows(Rows, MaxN, Sampled) :-
     length(Rows, Len),
     (   Len =< MaxN
     ->  Sampled = Rows
     ;   partition(is_malignant_row, Rows, Malignant, Benign),
         length(Malignant, LM), length(Benign, LB),
-        % Preserve the class ratio as closely as integer rounding
-        % allows (LM is kept as the explicitly-named total for the
-        % minority class; referenced via min/3 below so the split can
-        % never ask for more anomalies than exist).
+        % Keep the class ratio as closely as rounding allows; min/2
+        % stops us asking for more malignant rows than exist.
         MaxB is round(MaxN * LB / Len),
         MaxM is min(LM, MaxN - MaxB),
         stratified_pick(Benign, MaxB, PickedB),
@@ -81,14 +84,15 @@ subsample_rows(Rows, MaxN, Sampled) :-
 
 is_malignant_row(Row) :- last(Row, 4).
 
-% stratified_pick(+Rows, +N, -Picked) — pick N rows, evenly spaced by
-% index so the pick is deterministic given a seeded RNG.
+% stratified_pick(+Rows, +N, -Picked): pick N rows, evenly spaced by
+% index, so the pick is deterministic.
 stratified_pick(Rows, N, Picked) :-
     length(Rows, Len),
     (   N >= Len
     ->  Picked = Rows
     ;   Stride is Len / N,
-        numlist(0, N, Offsets0),
+        Last is N - 1,
+        numlist(0, Last, Offsets0),
         maplist(strides_index(Stride, Len), Offsets0, Indices0),
         maplist(nth0_pick(Rows), Indices0, Picked)
     ).
@@ -108,7 +112,7 @@ row_to_list(Row, List) :-
 %    1. Scale features 0-8 by 0.1
 %    2. Log-transform:  x_i := log(x_i + 1.2)
 %    3. Min-max normalise features 0-8 within each row
-%    4. Remap target (column 9): (x - 2) * 0.5  →  {0, 1}
+%    4. Remap target (column 10): (x - 2) * 0.5 maps {2, 4} to {0, 1}
 preprocess(Raw, Processed) :-
     maplist(preprocess_row, Raw, Processed), !.
 
@@ -136,7 +140,7 @@ normalise(Min, Span, X, Y) :- Y is (X - Min) / Span.
 %  Mimics the Java split: 60% training (mostly normal, ~10% anomalies
 %  leak),
 %  ~28% cross-validation, ~12% test.
-%  Fully deterministic — no choicepoints.
+%  Fully deterministic, with no choicepoints.
 split_data(Rows, Train, CV, Test) :-
     maplist(assign_row, Rows, Tagged),
     include(is_train, Tagged, TrainTagged),
@@ -214,8 +218,8 @@ sq_diff(FIdx, M, Row, D) :-
 %  NOTE: the Java original divides by the number of *columns* (10,
 %  including the target); the number actually summed is the 9 input
 %  features, so we deliberately correct the divisor to NF here.  This
-%  makes the reported epsilon values change slightly vs the Java
-%  version — the correction is intentional.
+%  makes the reported epsilon values differ slightly from the Java
+%  version. The correction is intentional.
 %  Walks three lists in parallel to avoid nth1 lookups.
 gaussian_prob(Row, Mu, SigmaSq, NF, P) :-
     sqrt_2_pi(S2P),
@@ -273,10 +277,18 @@ grid_epsilon(Start, Step, I, Eps) :-
     Eps is Start + Step * I.
 
 %% search_epsilon(+PTPs, -BestEps) is det.
-%  Backwards-compatible default grid: 20 steps starting at 0.001 in
-%  steps of 0.05 (the original hard-coded sweep).
+%  Data-driven search: the only thresholds that change the error
+%  count lie between two neighbouring CV probabilities, so we try
+%  the midpoint of each neighbouring pair. Unlike a fixed grid, this
+%  cannot miss the best threshold by stopping too early.
 search_epsilon(PTPs, BestEps) :-
-    search_epsilon(0.001, 0.05, 20, PTPs, BestEps).
+    pairs_keys(PTPs, Probs),
+    msort(Probs, Sorted),
+    findall(E, (nextto(A, B, Sorted), E is (A + B) / 2), Candidates),
+    maplist(count_errors(PTPs), Candidates, ErrorCounts),
+    min_list(ErrorCounts, MinErr),
+    nth0(BestIdx, ErrorCounts, MinErr), !,
+    nth0(BestIdx, Candidates, BestEps).
 
 %% ---------- Model ----------
 

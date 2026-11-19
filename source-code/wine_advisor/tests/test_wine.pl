@@ -16,6 +16,15 @@ test(fish_light, [nondet]) :-
 test(dessert_sweet, [nondet]) :-
     findall(W, recommend_wine(dessert, sweet, W), Wines),
     sort(Wines, Sorted),
-    Sorted == [riesling].
+    Sorted == [port, riesling].
+
+test(any_preference_lists_all_pairings) :-
+    findall(W, recommend_wine(fish, any, W), Wines),
+    sort(Wines, Sorted),
+    assertion(Sorted == [champagne, chardonnay, riesling,
+                         sauvignon_blanc]).
+
+test(unknown_meal, [fail]) :-
+    recommend_wine(cereal, any, _).
 
 :- end_tests(wine).

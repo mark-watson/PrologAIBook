@@ -7,10 +7,12 @@
 
 :- use_module(read_graph, [edge/2]).
 
-%% A* search with a closed set holding best-known g values.
-%% When a popped node's recorded g is worse than the closed g for
-%% that node, it is skipped (lazy re-opening); otherwise it is
-%% closed and expanded.  Heuristic may be a callable term.
+%% A* search with a closed list of best-known g values.
+%% A popped entry whose g is no better than the closed g for its
+%% node is stale and skipped. Any other entry is expanded, which
+%% re-opens a closed node when a cheaper path reaches it (needed
+%% when the heuristic is admissible but not consistent).
+%% Heuristic may be any callable term.
 astar(Start, Goal, Heuristic, Path) :-
     safe_call(Heuristic, Start, H0),
     astar_loop([node(H0, 0, [Start])], Goal, Heuristic, [], Path).
@@ -24,7 +26,6 @@ astar_loop([node(_, G, [Current|_])|Open], Goal, Heuristic, Closed, Path) :-
     !,                               % stale entry: skip it
     astar_loop(Open, Goal, Heuristic, Closed, Path).
 astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Closed, Path) :-
-    \+ best_g(Current, Closed, _),
     findall(
         node(F1, G1, [Next, Current|Rest]),
         (   edge(Current, Next),
@@ -39,7 +40,8 @@ astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Closed, Path) :-
     sort(1, @=<, Unsorted, Sorted),
     astar_loop(Sorted, Goal, Heuristic, [best_g(Current, G)|Closed], Path).
 
-%% best_g(+Node, +Closed, -G) — G is the best g recorded for Node.
+%% best_g(+Node, +Closed, -G): G is the best g recorded for Node.
+%% The newest entry comes first, so it is the cheapest one.
 best_g(Node, [best_g(Node, G)|_], G) :- !.
 best_g(Node, [_|Closed], G) :- best_g(Node, Closed, G).
 
@@ -56,9 +58,9 @@ safe_call(Callable, Node, Value) :-
 %% Useful as a baseline for testing A* correctness.
 zero_heuristic(_, 0).
 
-%% Example heuristic: estimated remaining distance to goal (reno).
-%% Rough estimates for the sample_graph cities — admissible for
-%% uniform-weight graph.
+%% Example heuristic: estimated number of edges left to reach reno.
+%% Each value is at most the true shortest distance, so the
+%% heuristic is admissible and A* returns a shortest path.
 distance_heuristic(reno,      0).
 distance_heuristic(portland,  1).
 distance_heuristic(quincy,    1).
@@ -72,8 +74,8 @@ distance_heuristic(irving,    4).
 distance_heuristic(houston,   4).
 distance_heuristic(gary,      5).
 distance_heuristic(fresno,    5).
-distance_heuristic(eton,      5).
+distance_heuristic(eton,      4).
 distance_heuristic(detroit,   5).
 distance_heuristic(chicago,   6).
-distance_heuristic(boston,     6).
-distance_heuristic(albany,    7).
+distance_heuristic(boston,    5).
+distance_heuristic(albany,    6).

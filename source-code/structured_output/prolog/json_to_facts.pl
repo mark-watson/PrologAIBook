@@ -47,7 +47,7 @@ json_string_to_facts(JsonString, Counts) :-
 assert_entity(E, N0-W0, N-W) :-
     (   get_dict(name, E, Name), get_dict(type, E, Type)
     ->  (   \+ extracted_entity(Name, Type)
-        ->  assert(extracted_entity(Name, Type))
+        ->  assertz(extracted_entity(Name, Type))
         ;   true
         ),
         N is N0 + 1, W = W0
@@ -61,7 +61,7 @@ assert_relation(R, N0-W0, N-W) :-
         get_dict(predicate, R, P),
         get_dict(object, R, O)
     ->  (   \+ extracted_relation(S, P, O)
-        ->  assert(extracted_relation(S, P, O))
+        ->  assertz(extracted_relation(S, P, O))
         ;   true
         ),
         N is N0 + 1, W = W0

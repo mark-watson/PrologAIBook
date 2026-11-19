@@ -1,26 +1,25 @@
 %% pipeline.pl - Hybrid AI pipeline: Python preprocessing + Prolog
 %% reasoning
 :- module(pipeline, [
-    run_pipeline/2
+    run_pipeline/2,
+    ner_backend/1
 ]).
 
 :- use_module(library(janus)).
 
 :- dynamic extracted/2.
 
-% Resolve the companion python/ directory relative to this source file
-% so the module works from any current working directory.
-:- initialization(setup_python_path, main).
+% Add the companion python/ directory to Python's module search path.
+% prolog_load_context/2 gives this file's directory while it loads, so
+% the module works from any current working directory.
+:- prolog_load_context(directory, PrologDir),
+   directory_file_path(PrologDir, '../python', PyDir),
+   py_add_lib_dir(PyDir).
 
-setup_python_path :-
-    (   current_prolog_flag(windows, true)
-    ->  Sep = '\\'
-    ;   Sep = '/'
-    ),
-    once(source_file(pipeline:_, ThisFile)),
-    file_directory_name(ThisFile, PrologDir),
-    atomic_list_concat([PrologDir, '..', Sep, 'python'], PyDir),
-    py_add_lib_dir(PyDir).
+%% ner_backend(-Name)
+%% Name is spacy when spaCy and its model loaded, else rules.
+ner_backend(Name) :-
+    py_call(nlp_bridge:backend(), Name).
 
 %% run_pipeline(+InputText, -Result)
 %% 1. Use Python/spaCy for NER extraction
@@ -46,7 +45,7 @@ run_pipeline(InputText, Result) :-
 assert_entity(Entity) :-
     Text = Entity.text,
     Type = Entity.label,
-    assert(extracted(Text, Type)).
+    assertz(extracted(Text, Type)).
 
 %% Only PERSON and GPE labels are mapped to conclusions; every other
 %% spaCy entity label is deliberately dropped by these two clauses.

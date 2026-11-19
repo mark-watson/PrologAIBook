@@ -10,10 +10,6 @@ hypothesis(serve_port) :-
     shell:check(meal == dessert),
     shell:check(sweet_preference == yes).
 
-hypothesis(serve_riesling) :-
-    shell:check(sweet_preference == yes),
-    \+ shell:known(meal, dessert).
-
 hypothesis(serve_cabernet) :-
     shell:check(meal == red_meat),
     shell:check(bold_preference == yes).
@@ -21,6 +17,12 @@ hypothesis(serve_cabernet) :-
 hypothesis(serve_sauvignon_blanc) :-
     shell:check(meal == fish),
     shell:check(light_preference == yes).
+
+%% Riesling comes last: its first condition asks about sweetness,
+%% which the rules above settle by asking about the meal first.
+hypothesis(serve_riesling) :-
+    shell:check(sweet_preference == yes),
+    \+ shell:known(meal, dessert).
 
 hypothesis_explanation(serve_port,
     'A dessert meal plus a sweet preference points to port.').

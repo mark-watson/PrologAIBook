@@ -11,7 +11,7 @@ all: run test
 run:
 	@echo "=== Running web_scraper examples ==="
 	@echo "Note: Requires network access"
-	$(SWIPL) -g "format('web_scraper: module loaded successfully~n'), halt" -s load.pl
+	@$(SWIPL) -g "fetch_page('https://www.swi-prolog.org', DOM), extract_links(DOM, Links), length(Links, N), format('Found ~w links on swi-prolog.org~n', [N]), extract_text(DOM, Text), sub_atom(Text, 0, 200, _, Start), format('Text starts: ~w...~n', [Start]), halt" -s load.pl
 
 test:
 	@echo "=== Running web_scraper tests ==="

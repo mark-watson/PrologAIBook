@@ -73,3 +73,24 @@ test(clear_extracted_empties_store) :-
     \+ extracted_relation(_, _, _).
 
 :- end_tests(json_to_facts).
+
+:- use_module('../prolog/llm_extract').
+
+has_api_key :- getenv('GOOGLE_API_KEY', K), K \== ''.
+
+:- begin_tests(llm_extract).
+
+test(prompt_contains_text_and_schema) :-
+    extraction_prompt("Alan Turing lived in Manchester.", P),
+    assertion(sub_string(P, _, _, _, "Alan Turing lived in Manchester.")),
+    assertion(sub_string(P, _, _, _, "\"relations\"")).
+
+% Calls the Gemini API; skipped when GOOGLE_API_KEY is not set.
+test(live_extraction, [condition(has_api_key),
+                       setup(clear_extracted),
+                       cleanup(clear_extracted)]) :-
+    extract_facts("Grace Hopper worked for the US Navy.", Counts),
+    assertion(Counts.entities >= 2),
+    assertion(extracted_entity("Grace Hopper", _)).
+
+:- end_tests(llm_extract).

@@ -12,7 +12,7 @@ run:
 	@echo "--- Direct relations ---"
 	@$(SWIPL) -g "relation(mark, uses, prolog), format('mark uses prolog: yes~n'), halt" -s load.pl
 	@echo "--- Multi-hop path ---"
-	@$(SWIPL) -g "path(mark, swi, Path), format('Path from mark to swi: ~w~n', [Path]), halt" -s load.pl
+	@$(SWIPL) -g "path(mark, swi, Path), format('First path from mark to swi: ~w~n', [Path]), shortest_path(mark, swi, SP), format('Shortest path: ~w~n', [SP]), halt" -s load.pl
 	@echo "--- Reachable entities from mark ---"
 	@$(SWIPL) -g "reachable(mark, Reachable), format('Reachable from mark: ~w~n', [Reachable]), halt" -s load.pl
 	@echo "--- All paths from sarah to bert ---"

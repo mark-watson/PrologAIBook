@@ -1,10 +1,10 @@
 # Search Algorithms in Prolog
 
-Prolog's backtracking mechanism is, at its core, a search engine. In this chapter we build on that foundation to implement classic AI search algorithms, taking advantage of Prolog's natural representation of graphs, states, and goals.
+Prolog's backtracking is a built-in search engine. In this chapter we use it to write classic AI search algorithms over graphs and state spaces.
 
 ## Loading Graph Data from a File
 
-Rather than hard-coding edges inside the search modules, we keep the graph in a separate data file, **graph_search/sample_graph.txt**, using standard Prolog term syntax:
+We keep the graph out of the search modules, in the data file **graph_search/sample_graph.txt**, written as Prolog terms:
 
 ```prolog
 edge(albany,  boston).
@@ -14,12 +14,12 @@ edge(boston,   chicago).
 edge(boston,   eton).
 edge(chicago,  detroit).
 edge(chicago,  fresno).
-%% ... 30 more edges spanning 20 cities ...
-edge(portland, reno).
+%% ... 28 more edges, 37 in all, linking 18 cities ...
 edge(quincy,   reno).
+edge(portland, reno).
 ```
 
-The utility module **graph_search/prolog/read_graph.pl** reads this file and asserts each edge as a dynamic fact:
+The module **graph_search/prolog/read_graph.pl** reads this file and asserts each edge as a dynamic fact:
 
 ```prolog
 :- module(read_graph, [
@@ -73,17 +73,17 @@ read_edges(Stream, Skip0, Skip) :-
     ).
 ```
 
-`clear_graph/0` removes all loaded `edge/2` facts. `load_graph/1` calls it first, then reports a warning if any malformed terms were skipped.
+`clear_graph/0` removes all loaded `edge/2` facts. `load_graph/1` calls it first, then warns if it skipped any terms that are not `edge/2` facts. `load_graph/0` finds **sample_graph.txt** relative to the source file, so it works from any directory.
 
 
 {width: "80%"}
 ![Architecture diagram for the Graph Search example](FIG_graph_search.jpg)
 
-This design makes it easy to swap in different graphs without touching the search algorithms.
+You can load a different graph without changing the search code.
 
 ## Depth-First and Breadth-First Search
 
-With the graph loaded dynamically, the search modules simply import `edge/2` from `read_graph`. Depth-first search explores as deep as possible along each branch before backtracking, using a visited list for cycle detection. Here is **graph_search/prolog/dfs.pl**:
+The search modules import `edge/2` from `read_graph`. Depth-first search follows each branch as deep as it can before backtracking, and keeps a visited list to avoid cycles. Here is **graph_search/prolog/dfs.pl**:
 
 ```prolog
 :- use_module(read_graph, [edge/2]).
@@ -100,7 +100,7 @@ dfs(Current, Goal, Visited, Path) :-
     dfs(Next, Goal, [Next|Visited], Path).
 ```
 
-Breadth-first search instead explores all neighbors at the current depth before moving deeper, using an explicit queue of partial paths. Here is **graph_search/prolog/bfs.pl**:
+Breadth-first search visits every node at the current depth before going deeper. It keeps a queue of partial paths, each stored in reverse with the newest node first. Here is **graph_search/prolog/bfs.pl**:
 
 ```prolog
 :- use_module(read_graph, [edge/2]).
@@ -123,39 +123,42 @@ bfs_queue([[Current|Visited]|Rest], Goal, Path) :-
 
 
 {width: "80%"}
-![Sample directed graph used in search examples, 20 city nodes from Albany (start) to Reno (goal)](graph_search_sample.jpg)
+![Sample directed graph used in search examples, 18 city nodes from Albany (start) to Reno (goal)](graph_search_sample.jpg)
 
 
-Running these on our 20-node city graph:
+Running these on our 18-node city graph (from the `graph_search` directory, start `swipl load.pl`):
 
 ```prolog
 ?- dfs(albany, reno, Path).
-Path = [albany, boston, chicago, detroit, gary, houston, irving, ...]
+Path = [albany, boston, chicago, detroit, gary, houston, irving,
+        jackson, kent, memphis, naples, omaha, portland, quincy, reno]
 
 ?- bfs(albany, reno, Path).
 Path = [albany, boston, eton, kent, naples, portland, reno]
 ```
 
-Notice that BFS finds the shortest path (7 nodes), while DFS may explore a longer route through the interior of the graph.
+BFS finds a shortest path (7 nodes, 6 edges). DFS returns the first path it finds, which here visits 15 of the 18 cities.
 
 ## Iterative Deepening
 
-Depth-First Search (DFS) has a major space advantage: it only needs to store the path it is currently exploring, meaning its memory consumption is linear with the maximum depth of the search tree, `O(d)`$. However, DFS is not complete on infinite graphs and is not guaranteed to find the shortest path (as we saw on our city graph). Breadth-First Search (BFS) is complete and guarantees the shortest path, but its memory consumption is exponential, `O(b^d)`$ (where `b`$ is the branching factor), because it must store all active paths in its queue.
+DFS needs little memory: it stores only the current path, so its memory use grows with the search depth, `O(d)`$. But DFS is not complete on infinite graphs and need not find a shortest path, as we saw above. BFS is complete and finds a shortest path, but it must store every partial path in its queue, so its memory use grows as `O(b^d)`$, where `b`$ is the branching factor.
 
-**Iterative Deepening Search (IDS)** combines the best of both worlds: the space efficiency of DFS with the completeness and optimality of BFS.
+**Iterative Deepening Search (IDS)** combines the low memory use of DFS with the completeness of BFS, and on graphs where every edge costs the same, it also finds a shortest path.
 
-IDS operates by repeatedly running a depth-limited DFS, starting with a depth limit of 1, and incrementing the limit on each iteration. Although it seems wasteful to re-explore the top parts of the search tree multiple times, the number of nodes at depth `d`$ grows exponentially, so the overhead of re-exploring the shallower levels is minimal (usually under 11% for binary trees).
+IDS runs a depth-limited DFS with limit 1, then 2, and so on. Searching the top of the tree again on each pass looks wasteful, but most nodes sit at the deepest level, so the extra work is small. With branching factor `b`$, IDS does about `b/(b-1)`$ times the work of one search to the final depth: about 11% extra for `b = 10`$, and about twice the work for a binary tree.
 
 ### Custom Pure Prolog Implementation
 
-In Prolog, we can implement IDS very elegantly. We use the built-in predicate `between/3` to generate depth limits starting from 1, and then call a custom depth-limited DFS predicate:
+In Prolog, IDS takes a few lines. The built-in `between/3` generates depth limits from 1 upward, and a depth-limited DFS does the search. Here is the first part of **graph_search/prolog/ids.pl**:
 
 ```prolog
 %% ids(+Start, +Goal, -Path)
-%% Iterative Deepening Search: increases depth limit incrementally.
+%% Iterative Deepening Search: raises the depth limit by one on
+%% each pass, so the first path found is a shortest one.
 ids(Start, Goal, Path) :-
     between(1, 100, DepthLimit),
-    depth_limited_dfs(Start, Goal, [Start], DepthLimit, Path).
+    depth_limited_dfs(Start, Goal, [Start], DepthLimit, Path),
+    !.
 
 %% depth_limited_dfs(+Current, +Goal, +Visited, +Limit, -Path)
 depth_limited_dfs(Goal, Goal, Visited, _, Path) :-
@@ -169,27 +172,35 @@ depth_limited_dfs(Current, Goal, Visited, Limit, Path) :-
     depth_limited_dfs(Next, Goal, [Next|Visited], NextLimit, Path).
 ```
 
-Because of Prolog's backtracking, if `depth_limited_dfs/5` fails to find the goal within the current `DepthLimit`, Prolog backtracks to `between/3`, which increments `DepthLimit` to the next integer, and the search starts again with the larger limit. Like BFS, this guarantees that the first path found is the shortest path.
+If `depth_limited_dfs/5` fails to reach the goal within `DepthLimit`, Prolog backtracks into `between/3`, which yields the next limit, and the search starts again. Like BFS, the first path found is a shortest one. The cut after the search stops `ids/3` from returning longer paths on backtracking. If no path exists, `ids/3` fails only after trying all 100 limits.
 
 ### Built-in Support: `call_with_depth_limit/3`
 
-SWI-Prolog also provides a built-in meta-predicate called `call_with_depth_limit(:Goal, +Limit, -Result)`. This limits the depth of execution of any arbitrary Prolog goal (measured by the depth of the call stack).
+SWI-Prolog has a built-in meta-predicate, `call_with_depth_limit(:Goal, +Limit, -Result)`, that limits the recursion depth of any goal.
 
-If the goal succeeds within the limit, `Result` is unified with the number of stack frames used. If the limit is reached, `Result` unifies with the atom `depth_limit_exceeded`. We can use this to build a general-purpose iterative deepening search wrapper over our standard, unbounded `dfs/3` predicate:
+If the goal succeeds within the limit, `Result` is the deepest level reached. If the goal hit the limit, `Result` is the atom `depth_limit_exceeded`. We can wrap our unbounded `dfs/3` with it. This is the rest of **ids.pl**:
 
 ```prolog
 %% ids_builtin(+Start, +Goal, -Path)
+%% The same idea using call_with_depth_limit/3 around dfs/3. The
+%% limit counts Prolog call depth, not graph edges.
 ids_builtin(Start, Goal, Path) :-
     between(1, 100, Limit),
     call_with_depth_limit(dfs(Start, Goal, Path), Limit, Result),
-    Result \= depth_limit_exceeded.
+    Result \== depth_limit_exceeded,
+    !.
 ```
 
-This built-in approach is useful when you want to impose depth limits on complex reasoning rules or when wrapping existing code, though writing a custom `depth_limited_dfs/5` predicate (as shown above) is usually preferred for finer search control.
+The built-in version is handy for putting a depth limit on existing code, such as a set of reasoning rules. Its limit counts Prolog calls, though, not graph edges, so the first path it returns is short but need not be the shortest. When you need exact control, write a depth-limited search such as `depth_limited_dfs/5`.
+
+```prolog
+?- ids(albany, reno, Path).
+Path = [albany, boston, eton, kent, naples, portland, reno].
+```
 
 ## A* Heuristic Search
 
-A* combines the actual path cost with a heuristic estimate of the remaining distance to the goal. By maintaining an open list sorted by f-cost (g + h), it explores the most promising paths first. Here is **graph_search/prolog/astar.pl**:
+A* adds the cost of the path so far, *g*, to a heuristic estimate of the cost to reach the goal, *h*. It keeps an open list sorted by *f = g + h* and always expands the path with the lowest *f*. If the heuristic never overestimates the true cost (it is *admissible*), the first path A* returns is a shortest one. Here is **graph_search/prolog/astar.pl**:
 
 ```prolog
 :- module(astar, [
@@ -200,10 +211,12 @@ A* combines the actual path cost with a heuristic estimate of the remaining dist
 
 :- use_module(read_graph, [edge/2]).
 
-%% A* search with a closed set holding best-known g values.
-%% When a popped node's recorded g is worse than the closed g for
-%% that node, it is skipped (lazy re-opening); otherwise it is
-%% closed and expanded.  Heuristic may be a callable term.
+%% A* search with a closed list of best-known g values.
+%% A popped entry whose g is no better than the closed g for its
+%% node is stale and skipped. Any other entry is expanded, which
+%% re-opens a closed node when a cheaper path reaches it (needed
+%% when the heuristic is admissible but not consistent).
+%% Heuristic may be any callable term.
 astar(Start, Goal, Heuristic, Path) :-
     safe_call(Heuristic, Start, H0),
     astar_loop([node(H0, 0, [Start])], Goal, Heuristic, [], Path).
@@ -217,7 +230,6 @@ astar_loop([node(_, G, [Current|_])|Open], Goal, Heuristic, Closed, Path) :-
     !,                               % stale entry: skip it
     astar_loop(Open, Goal, Heuristic, Closed, Path).
 astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Closed, Path) :-
-    \+ best_g(Current, Closed, _),
     findall(
         node(F1, G1, [Next, Current|Rest]),
         (   edge(Current, Next),
@@ -232,7 +244,8 @@ astar_loop([node(_, G, [Current|Rest])|Open], Goal, Heuristic, Closed, Path) :-
     sort(1, @=<, Unsorted, Sorted),
     astar_loop(Sorted, Goal, Heuristic, [best_g(Current, G)|Closed], Path).
 
-%% best_g(+Node, +Closed, -G), G is the best g recorded for Node.
+%% best_g(+Node, +Closed, -G): G is the best g recorded for Node.
+%% The newest entry comes first, so it is the cheapest one.
 best_g(Node, [best_g(Node, G)|_], G) :- !.
 best_g(Node, [_|Closed], G) :- best_g(Node, Closed, G).
 
@@ -249,9 +262,9 @@ safe_call(Callable, Node, Value) :-
 %% Useful as a baseline for testing A* correctness.
 zero_heuristic(_, 0).
 
-%% Example heuristic: estimated remaining distance to goal (reno).
-%% Rough estimates for the sample_graph cities, admissible for
-%% uniform-weight graph.
+%% Example heuristic: estimated number of edges left to reach reno.
+%% Each value is at most the true shortest distance, so the
+%% heuristic is admissible and A* returns a shortest path.
 distance_heuristic(reno,      0).
 distance_heuristic(portland,  1).
 distance_heuristic(quincy,    1).
@@ -265,41 +278,45 @@ distance_heuristic(irving,    4).
 distance_heuristic(houston,   4).
 distance_heuristic(gary,      5).
 distance_heuristic(fresno,    5).
-distance_heuristic(eton,      5).
+distance_heuristic(eton,      4).
 distance_heuristic(detroit,   5).
 distance_heuristic(chicago,   6).
-distance_heuristic(boston,     6).
-distance_heuristic(albany,    7).
+distance_heuristic(boston,    5).
+distance_heuristic(albany,    6).
 ```
 
 ```prolog
 ?- astar(albany, reno, distance_heuristic, Path).
-Path = [albany, detroit, houston, lansing, omaha, portland, reno]
+Path = [albany, boston, eton, kent, naples, portland, reno].
 ```
 
-The heuristic guides A* directly toward the goal, avoiding the unnecessary exploration of interior nodes that DFS would visit.
+The path has six edges, the same as the BFS path. The heuristic steers A* toward the goal, so it expands fewer nodes than BFS.
+
+The closed list stores the best *g* found for each expanded node. When A* pops an entry for a closed node, it skips the entry unless the new *g* is lower. A lower *g* means A* found a cheaper path to a node it already expanded, which can happen when a heuristic is admissible but not *consistent* (a heuristic is consistent if `h(n)` never exceeds the cost of an edge from `n` to `m` plus `h(m)`). In that case the code expands the node again. The test `astar_reopens_closed_node` in **tests/test_search.pl** builds a small graph that needs this step.
+
+The unit tests also check that `distance_heuristic/2` is admissible: for every city, the estimate must not exceed the BFS distance to `reno`.
 
 ## State-Space Search and Puzzle Solving
 
-Many classic AI problems can be modeled as **State-Space Search**. In this paradigm, we define:
-1. **State representation**: A data structure representing the current configuration of the world (typically a Prolog compound term).
+Many classic AI problems fit **state-space search**. We define:
+1. **State representation**: A term that describes the world at one moment.
 2. **Initial state**: The starting configuration.
 3. **Goal state**: The target configuration we want to reach.
-4. **State transitions (moves)**: Legal actions that transform one state into another.
-5. **Constraints**: Conditions that states must satisfy to be considered valid or safe.
+4. **State transitions (moves)**: Legal actions that change one state into another.
+5. **Constraints**: Conditions a state must meet to be valid or safe.
 
-Prolog is uniquely suited for state-space search because of its built-in backtracking and pattern matching. We can implement search algorithms (like DFS) to traverse the states automatically, and use unification to check if our current state matches the goal state.
+Backtracking and pattern matching make Prolog a good fit. A DFS can walk the states for us, and unification tests whether a state matches the goal.
 
 ### The Farmer, Fox, Chicken, and Grain Puzzle
 
-To illustrate, we solve the classic river crossing puzzle: a farmer must transport a fox, a chicken, and a sack of grain from the left bank of a river to the right bank. The constraints are:
-- The farmer's boat can only carry the farmer and at most one other item.
+As an example we solve the classic river crossing puzzle: a farmer must take a fox, a chicken, and a sack of grain from the left bank of a river to the right bank. The constraints are:
+- The boat holds the farmer and at most one other item.
 - If the farmer leaves the fox and chicken alone on a bank, the fox eats the chicken.
 - If the farmer leaves the chicken and grain alone on a bank, the chicken eats the grain.
 
-We represent the state as a compound term: `state(Farmer, Fox, Chicken, Grain)`, where each argument can be either `left` or `right` to indicate which bank the item is currently on.
+We represent a state as `state(Farmer, Fox, Chicken, Grain)`, where each argument is `left` or `right`, the bank that item is on.
 
-The **puzzle_solver** project implements this solver. Here is the complete file **puzzle_solver/prolog/farmer.pl**:
+Here is the complete file **puzzle_solver/prolog/farmer.pl**:
 
 ```prolog
 %% farmer.pl - Farmer, Fox, Chicken, Grain river crossing puzzle
@@ -315,9 +332,12 @@ The **puzzle_solver** project implements this solver. Here is the complete file 
 solve_farmer(Moves) :-
     InitState = state(left, left, left, left),
     GoalState = state(right, right, right, right),
-    solve(InitState, GoalState, [InitState], RevMoves),
-    reverse(RevMoves, Moves).
+    solve(InitState, GoalState, [InitState], Moves).
 
+%% solve(+State, +Goal, +Visited, -Moves)
+%% Depth-first search. Moves comes back in the order the farmer
+%% makes them, since each move is added in front of the moves
+%% that follow it.
 solve(Goal, Goal, _Visited, []).
 solve(State, Goal, Visited, [Description|Moves]) :-
     move(State, NextState, Description),
@@ -337,13 +357,13 @@ move(state(From,F,From,G), state(To,F,To,G), farmer_chicken) :-
 move(state(From,F,C,From), state(To,F,C,To), farmer_grain) :-
     opposite(From, To).
 
-%% opposite(+Bank, -OtherBank), the two river banks.
+%% opposite(+Bank, -OtherBank): the two river banks.
 opposite(left, right).
 opposite(right, left).
 
 %% Safety: a state is unsafe when the fox and chicken (or chicken
 %% and grain) share a bank while the farmer is on the opposite
-%% bank.  Pure head-pattern matching via opposite/2, no ==/2.
+%% bank. Uses only head pattern matching through opposite/2.
 safe(State) :-
     \+ unsafe(State).
 
@@ -353,17 +373,26 @@ unsafe(state(Farmer, _, Bank, Bank)) :-
     opposite(Farmer, Bank).             % chicken left with grain
 ```
 
+The `move/3` clauses use repeated variables in the head to test where things are. In `move(state(From,From,C,G), ...)`, the farmer and the fox must be on the same bank, `From`, for the farmer to take the fox. `solve/4` adds each move to the front of the list of moves that follow it, so `Moves` comes out in the order the farmer makes them:
+
+```prolog
+?- solve_farmer(Moves).
+Moves = [farmer_chicken, farmer_alone, farmer_fox, farmer_chicken,
+         farmer_grain, farmer_alone, farmer_chicken] .
+```
+
+The farmer takes the chicken across, returns alone, takes the fox, brings the chicken back, takes the grain, returns alone, and finally takes the chicken.
 
 ## Constraint-Based Search: The N-Queens Problem
 
-A third powerful paradigm for search in Prolog is **Constraint Logic Programming**, specifically Constraint Logic Programming over Finite Domains (`CLP(FD)`). Instead of manually coding depth-first search or backtracking state transitions, you define variables, their domains, and the relationships (constraints) that must hold true. Prolog's constraint solver then automatically propagates these constraints to prune the search space and find valid assignments.
+A third way to search in Prolog is **Constraint Logic Programming** over finite domains (`CLP(FD)`). Instead of coding the search yourself, you declare variables, their domains, and the constraints between them. The constraint solver uses the constraints to prune the search space as it assigns values.
 
-To illustrate this, we can look at the classic **N-Queens problem**, which asks how to place `N`$ queens on an `N \times N`$ chessboard such that no two queens can attack each other. This means no two queens can share the same row, column, or diagonal.
+As an example, the **N-Queens problem** asks how to place `N`$ queens on an `N \times N`$ chessboard so that no two queens attack each other: no two may share a row, column, or diagonal.
 
 {width: "80%"}
 ![Architecture diagram for the N-Queens example](FIG_n_queens.jpg)
 
-The companion project **n_queens** implements this solver. Here is the complete file **n_queens/prolog/queens.pl**:
+Here is the complete file **n_queens/prolog/queens.pl**:
 
 ```prolog
 :- module(queens, [
@@ -405,21 +434,21 @@ safe_queen(Q, [Q1|Qs], D) :-
     safe_queen(Q, Qs, D1).
 ```
 
-`n_queens/3` takes an options list. `ff_opt(true)` selects the first-fail labelling heuristic `labeling([ff], Queens)`, which is much faster for large `N`.
+`n_queens/3` takes an options list. `ff_opt(true)` selects the first-fail labeling strategy, `labeling([ff], Queens)`, which assigns the variable with the fewest values left first. It is much faster for large `N`.
 
 ### How the CLP(FD) Search Works
 
-1. **Representation**: We represent the board as a list of length `N`$ called `Queens`. The index of an element in the list represents the row number (1 to `N`$), and the value at that index represents the column number of the queen in that row.
-2. **Domain**: `Queens ins 1..N` establishes that each variable in the `Queens` list must be an integer between `1`$ and `N`$.
-3. **Column Constraints**: Since each row has exactly one queen, we only need to ensure no two queens share a column. By using the list representation, the index ensures row uniqueness. The column constraint `Q #\= Q1` (in `safe_queen/3`) ensures that no two queens share the same column.
-4. **Diagonal Constraints**: Two queens at columns `Q`$ and `Q_1`$ separated by `D`$ rows are on the same diagonal if `|Q - Q_1| = D`$. This is elegantly modeled using two inequality constraints:
+1. **Representation**: The board is a list `Queens` of length `N`$. The position in the list is the row (1 to `N`$), and the value is the column of the queen in that row.
+2. **Domain**: `Queens ins 1..N` makes each variable an integer from `1`$ to `N`$.
+3. **Column constraints**: The list holds one queen per row, so rows never clash. The constraint `Q #\= Q1` in `safe_queen/3` keeps two queens out of the same column.
+4. **Diagonal constraints**: Two queens at columns `Q`$ and `Q_1`$, `D`$ rows apart, share a diagonal if `|Q - Q_1| = D`$. Two constraints rule this out:
    - `Q #\= Q1 + D` (upper-diagonal check)
    - `Q #\= Q1 - D` (lower-diagonal check)
-5. **Labeling**: `label(Queens)` tells the constraint solver to perform the backtracking search to assign concrete values to the variables in the `Queens` list that satisfy all constraints.
+5. **Labeling**: `label(Queens)` starts the backtracking search that assigns a value to each variable while keeping every constraint true.
 
 ### Running the Solver
 
-You can run queries in the REPL to solve for a specific size `N`$:
+To solve for a given `N`$:
 
 ```prolog
 ?- n_queens(8, Queens).
@@ -433,9 +462,10 @@ To count the total number of solutions for an 8x8 board:
 Count = 92.
 ```
 
-CLP(FD) propagation dramatically prunes the search space relative to a naive backtracking search, and the first-fail labelling option keeps larger boards tractable.
+CLP(FD) propagation prunes far more of the search space than plain backtracking, and first-fail labeling keeps larger boards fast. The Constraint Logic Programming chapter covers CLP(FD) in more depth.
 
 ## Optional Practice Problems
 
-1. **Weighted Graph Search**: In the `graph_search` project, modify the graph definition to include edge weights. Then implement a uniform-cost search (or Dijkstra's algorithm) to find the shortest path between two nodes in terms of cumulative edge weights.
-2. **Farmer Puzzle Variation**: In the `puzzle_solver` project, adapt the `farmer.pl` rules to allow the boat to hold the farmer and up to *two* items, but add a new constraint that the wolf and the goat cannot be left alone on either bank, nor can the goat and the cabbage.
+1. **Weighted Graph Search**: In the `graph_search` project, change the graph file to hold weighted edges such as `edge(albany, boston, 3).` Then change `astar/4` to add edge weights to *g* instead of 1. With `zero_heuristic` it becomes uniform-cost search (Dijkstra's algorithm).
+2. **Farmer Puzzle Variation**: In the `puzzle_solver` project, let the boat hold the farmer and up to *two* items, keeping the rules that the fox and chicken, or the chicken and grain, may not be left alone. How many crossings does the shortest solution need? (Use IDS from this chapter to find it.)
+3. **Count Expanded Nodes**: Add a counter to `astar/4` and `bfs/3` that records how many nodes each expands on the albany to reno search. Compare `distance_heuristic` with `zero_heuristic`.

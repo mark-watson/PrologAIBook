@@ -1,28 +1,30 @@
 # Client-Side Prolog with WebAssembly
 
 
-Traditionally, incorporating a Prolog-based reasoning engine into a web application required a backend server running SWI-Prolog or another dialect. The web front-end would communicate with this server via HTTP REST APIs, WebSockets, or a language-specific bridge like Janus in Python. While this is a standard design, it introduces server overhead, hosting costs, network latency, and requires an internet connection to function.
+A web application with a Prolog reasoning engine usually needs a server running Prolog. The browser talks to it over HTTP, WebSockets, or a bridge such as Janus in Python. That design costs server time and hosting fees, adds network delay, and needs a connection.
 
-**WebAssembly (WASM)** changes this paradigm. By compiling the entire SWI-Prolog engine (written in C) into a highly optimized WASM binary, we can download and run Prolog directly in the user's web browser. 
+**WebAssembly (WASM)** offers another way. SWI-Prolog, which is written in C, can be compiled to WASM, so the browser downloads the whole engine and runs Prolog itself.
 
-This architecture offers several key advantages:
-1. **Zero Server Cost**: The logic engine runs entirely on client CPU cycles. The server only needs to host static files (HTML, CSS, JS, WASM).
-2. **Sub-millisecond Latency**: Queries execute locally in microsecond loops, allowing interface elements to update instantly as users toggle options.
-3. **Offline Resilience**: Once the static files are loaded, the expert system works without any network connection, making it suitable for progressive web applications (PWAs).
+This has three advantages:
+1. **No server cost**: Prolog runs on the user's machine. The server only hosts static files (HTML, CSS, JavaScript, WASM).
+2. **Low latency**: Queries run locally in well under a millisecond, so the page can update as the user changes options.
+3. **Offline use**: Once the files are loaded, the expert system works without a network connection, which suits progressive web applications (PWAs).
 
-In this chapter, we explore **SipLogic**, a Wine Advisor expert system dashboard. It loads SWI-Prolog WASM, reads a local Prolog rule-base, and runs recommendations interactively on the client side.
+The cost is the download: the WASM engine and its data file total several megabytes, which the browser fetches before the first query.
+
+In this chapter we look at **SipLogic**, a wine advisor page. It loads SWI-Prolog WASM, reads a Prolog rule file, and runs recommendations in the browser.
 
 {width: "80%"}
 ![Prolog WASM Web App Demo](prolog-wasm.jpg)
 
 ## Architecture of a WASM Prolog Application
 
-The execution model inside the browser is simple. The browser downloads the SWI-Prolog WASM runtime and our expert system rule file. It then uses the Emscripten virtual file system to load the rules inside the compiled runtime, after which JavaScript communicates with the engine via queries:
+The browser downloads the SWI-Prolog WASM runtime and our rule file, puts the rules in Emscripten's virtual file system, and then JavaScript sends queries to the engine:
 
 1. **WASM Initialization**: The browser loads `swipl-web.js` (from a CDN or local assets), which instantiates the SWI-Prolog engine.
 2. **Virtual FS Write**: The application fetches the text of `rules.pl` and writes it to Emscripten's virtual memory filesystem (e.g., at `/rules.pl`).
 3. **Engine Consultation**: JavaScript queries the engine to run `consult('/rules.pl')`.
-4. **Interactive Query Loop**: Whenever the user updates UI filters (food, body preference, sweetness), a JavaScript event listener triggers, constructing and executing a Prolog query. The engine returns bindings as native JavaScript objects.
+4. **Query loop**: When the user changes a selector (food, body, sweetness), an event listener builds and runs a Prolog query. The engine returns the variable bindings as JavaScript values.
 
 {width: "80%"}
 ![Architecture diagram for the WebAssembly Prolog example](FIG_prolog_wasm_web.jpg)
@@ -30,9 +32,7 @@ The execution model inside the browser is simple. The browser downloads the SWI-
 
 ## Recommender System Logic
 
-Our advisor is defined by a Prolog database containing wine facts, food pairing rules, and a recommendation predicate.
-
-Here is the code in **source-code/prolog_wasm_web/rules.pl**:
+The advisor is a set of wine facts, food pairing rules, and a recommendation predicate. Here is the file **prolog_wasm_web/rules.pl**:
 
 ```prolog
 % rules.pl - Wine Recommendation Expert System for WASM
@@ -65,29 +65,46 @@ recommend(Food, PreferredBody, PreferredSweetness, Wine, Color,
     wine(Wine, Color, Body, Sweetness),
     % Check food pairing compatibility
     pair(Color, Food),
-    % Match preferences if specified (or allow any if 'any' is selected)
-    (PreferredBody == any ; Body == PreferredBody),
-    (PreferredSweetness == any ; Sweetness == PreferredSweetness),
+    % Match preferences ('any' matches every value)
+    matches(PreferredBody, Body),
+    matches(PreferredSweetness, Sweetness),
     % Generate a human-readable explanation
     generate_explanation(Wine, Color, Body, Sweetness, Food,
         Explanation).
 
-% Generate a beautiful explanation sentence
+% matches(+Preference, +Value)
+matches(any, _) :- !.
+matches(Value, Value).
+
+% Build an explanation sentence. Atoms such as full_body become
+% words such as full-bodied.
 generate_explanation(Wine, Color, Body, Sweetness, Food, Explanation) :-
-    format(string(Explanation), 
-           "Because you are eating ~w, a ~w wine is a classic pairing. ~w is a ~w, ~w ~w wine that perfectly matches your taste preferences.",
-           [Food, Color, Wine, Body, Sweetness, Color]).
+    words(Wine, WineWords),
+    words(Food, FoodWords),
+    body_words(Body, BodyWords),
+    format(string(Explanation),
+           "A ~w wine is a classic pairing for ~w. ~w is a ~w, ~w ~w wine.",
+           [Color, FoodWords, WineWords, BodyWords, Sweetness, Color]).
+
+body_words(full_body, 'full-bodied').
+body_words(medium_body, 'medium-bodied').
+body_words(light_body, 'light-bodied').
+
+% words(+Atom, -Text): replace underscores with spaces.
+words(Atom, Text) :-
+    atomic_list_concat(Parts, '_', Atom),
+    atomic_list_concat(Parts, ' ', Text).
 ```
 
-The recommendation logic matches the user's food selection with compatible wine colors, verifies matching body and sweetness preferences (using the fallback term `any`), and calls `format/3` to return a customized justification sentence.
+`recommend/6` pairs the food with wine colors, checks the body and sweetness preferences (`any` matches every value), and builds an explanation with `format/3`. `words/2` turns an atom such as `sauvignon_blanc` into the text `sauvignon blanc` by splitting on underscores and joining with spaces.
+
+The rules are plain Prolog, so we can test them with native SWI-Prolog before they reach the browser: `make test` runs **tests/test_rules.pl**.
 
 ---
 
 ## JavaScript Integration
 
-The JavaScript layer manages the lifecycle of the WASM engine: downloading the loader, fetching the rules, initializing the query handler, and responding to DOM input events.
-
-Here is the implementation in **source-code/prolog_wasm_web/app.js**:
+The JavaScript code loads the WASM engine, fetches and consults the rules, and answers changes to the selectors. Here is most of **prolog_wasm_web/app.js**:
 
 ```javascript
 // app.js - SipLogic application to load SWI-Prolog WASM and query recommendations
@@ -255,7 +272,23 @@ function runRecommendation() {
         // ... in this book's GitHub repository.
 ```
 
-The CDN dependency is pinned to a specific version (`8.1.2`) instead of `@latest`. This prevents supply-chain drift and makes the page reproducible. User selections are validated against the `ALLOWED` whitelist and escaped with `pq()` before they enter the Prolog query string, which prevents query injection. All DOM rendering uses `createElement` and `textContent` rather than `innerHTML`, so Prolog-derived strings cannot inject markup. Consult and query failures are surfaced in the UI by checking `result.error` on the consult result and on every query step.
+The CDN URL names an exact version (`8.1.2`) instead of `@latest`, so a new release cannot change the page without warning. User selections must appear in the `ALLOWED` list, and `pq()` quotes them, before they go into a query string, which prevents query injection. The page builds its output with `createElement` and `textContent`, never `innerHTML`, so text from Prolog cannot inject markup. A failed consult or query returns an object with `error: true` and a `message`, which the code shows in the page.
+
+Bindings come back as JavaScript values: an atom as a string, a number as a number, and a list as an array. A Prolog *string* is different. It arrives as a `PrologString` object, `{$t: "s", v: "..."}`, and `JSON.stringify` would wrap it in quote marks. The explanation is a Prolog string, so `formatPrologValue()` checks for this case:
+
+```javascript
+// Convert a Prolog value from swipl-wasm to a display string.
+// Atoms arrive as JS strings and numbers as JS numbers. A Prolog
+// string arrives as a PrologString object ({$t: 's', v: text}), so
+// JSON.stringify would wrap it in quote marks; we take .v instead.
+// Anything else (a compound term) is shown as JSON.
+function formatPrologValue(val) {
+    if (typeof val === 'string') return val;
+    if (typeof val === 'number') return String(val);
+    if (val && val.$t === 's') return val.v;
+    return JSON.stringify(val);
+}
+```
 
 ---
 
@@ -263,29 +296,33 @@ The CDN dependency is pinned to a specific version (`8.1.2`) instead of `@latest
 
 Because modern web browsers block asynchronous network requests (such as `fetch`) when pages are loaded from local file paths (`file://`), you cannot test the project by double-clicking the `index.html` file. Instead, you must run a simple local HTTP server from the project directory.
 
-Open a terminal, navigate to the `source-code/prolog_wasm_web` directory, and run the built-in Python HTTP server module:
+From the `source-code/prolog_wasm_web` directory, start Python's built-in web server with `make serve`, which runs:
 
 {linenos=off}
 ~~~~~~~~
-$ python -m http.server 8000 --directory .
+$ python3 -m http.server 8000 --directory .
 ~~~~~~~~
 
-Then, open [http://localhost:8000](http://localhost:8000) in your web browser. You will see the status badge transition from red (**Prolog Loading...**) to a glowing emerald green (**Prolog WASM Online**). Changing any of the pairing selectors dynamically triggers queries that instantaneously update the recommended list.
+Then open [http://localhost:8000](http://localhost:8000). The status badge changes from red (**Prolog Loading...**) to green (**Prolog WASM Online**) once the engine is ready. Each change to a selector runs a new query and updates the list.
 
 ---
 
 ## Key Design Decisions
 
-**Loading from CDN vs. Self-Hosting WASM.** In this example, the Emscripten JS and WASM assets are loaded via the unpkg CDN, pinned to version `8.1.2` (`https://unpkg.com/swipl-wasm@8.1.2/dist/swipl/`). For production applications, it is usually better to self-host these assets on your own web server or Content Delivery Network to avoid dependencies on external CDN infrastructure and to enforce Strict Content Security Policies (CSP).
+**CDN or self-hosting.** This example loads the Emscripten JavaScript and WASM files from the unpkg CDN, pinned to version `8.1.2` (`https://unpkg.com/swipl-wasm@8.1.2/dist/swipl/`). For production, serve these files yourself, so the page does not depend on a third party and can use a strict Content Security Policy (CSP).
 
-**File System Emulation.** Emscripten maps virtual memory structures to regular file system logic. The call `swipl.FS.writeFile('/rules.pl', rulesText)` creates a virtual file that SWI-Prolog's core `consult` predicate reads as if it were a physical file on disk. This is a powerful feature: it means you can reuse existing complex Prolog databases without modifying the Prolog codebase to load from strings.
+**Virtual file system.** Emscripten gives the WASM program an in-memory file system. `swipl.FS.writeFile('/rules.pl', rulesText)` creates a file there, and `consult/1` reads it like a file on disk. So existing Prolog files work unchanged.
 
-**The Query Lifecycle.** Unlike a traditional long-running command-line loop, querying WASM Prolog in JavaScript uses an iterator pattern:
-- `prologEngine.query(queryStr)` returns an active query handle.
-- Calling `.next()` returns a dictionary of the variable bindings (e.g., `{ Wine: "merlot", Color: "red" }`) or a state object indicating the query is complete.
-- **Always** call `query.close()` once you are done fetching results to free the internal memory structures allocated in the WASM heap.
+**The query life cycle.** A query in JavaScript works like an iterator:
+- `prologEngine.query(queryStr)` returns a query handle.
+- Each `.next()` returns `{value: Bindings, done: false}`, where `Bindings` maps variable names to values (e.g., `{Wine: "merlot", Color: "red", ...}`), and finally `{done: true}`.
+- `.once()` returns the first solution's bindings directly.
+- **Always** call `query.close()` when you stop early, to free the query's memory in the WASM heap.
+
+I checked these details by running `swipl-wasm@8.1.2` under Node.js, which loads the same engine as the browser.
 
 ## Optional Practice Problems
 
-1. **WASM Form Input**: Modify `index.html` in the `prolog_wasm_web` project to include an input form where a user can enter a family member's name and query the WASM Prolog engine to list all their siblings.
-2. **Execution Timing**: Add code to `app.js` that measures the time taken by the WASM Prolog engine to solve queries and renders the timing info in the browser DOM.
+1. **Family Queries**: Copy `family.pl` from the Tutorial chapter's `tutorial_basics` project into this directory. Add a text field to `index.html` where the user enters a name, and list that person's siblings and grandparents. Validate the name before it goes into a query.
+2. **Timing**: Use `performance.now()` in `app.js` to time each query and show the time in the page.
+3. **Self-Hosting**: Copy `swipl-web.js`, `swipl-web.wasm`, and `swipl-web.data` into this directory and change `index.html` and `locateFile` to load them locally. Check in the browser's network panel that nothing comes from unpkg.

@@ -35,4 +35,4 @@ swipl -g "['tests/test_sudoku.pl'], run_tests, halt" -s load.pl
 
 ## Description
 
-A showcase of CLP(FD)'s power — the entire Sudoku solver is under 25 lines. It constrains each cell to 1–9, enforces `all_distinct` on each row, column, and 3×3 block, then calls `label/1` to find the solution. This is one of the most compelling examples of how constraint programming in Prolog can express complex combinatorial problems declaratively, letting the constraint solver do the heavy lifting instead of writing procedural search code.
+A showcase of CLP(FD): the entire Sudoku solver is about 15 lines. It constrains each cell to 1 to 9, enforces `all_distinct` on each row, column, and 3×3 block, then calls `label/1` to find the solution. This is one of the most compelling examples of how constraint programming in Prolog can express complex combinatorial problems declaratively, letting the constraint solver do the heavy lifting instead of writing procedural search code. The `send_more.pl` module solves the SEND + MORE = MONEY cryptarithmetic puzzle with the same approach.

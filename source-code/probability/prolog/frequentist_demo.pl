@@ -1,4 +1,4 @@
-%% frequentist_demo.pl — Frequentist medical-screening example
+%% frequentist_demo.pl - Frequentist medical-screening example
 %%
 %% Re-examines the same screening-test scenario from a purely
 %% frequentist standpoint: chi-squared test, Wilson CI for PPV,
@@ -71,13 +71,8 @@ run_frequentist_demo :-
     format('  False Negatives (FN): ~w~n', [FN]),
     %% 2. Chi-squared
     format('~n--- 2. Chi-Squared Test of Independence ---~n'),
-    R1 is TP + FP, R2 is FN + TN,
-    C1 is TP + FN, C2 is FP + TN,
-    NF is float(Total),
-    ETP is R1*C1/NF, EFP is R1*C2/NF,
-    EFN is R2*C1/NF, ETN is R2*C2/NF,
-    chi_squared_test([TP,FP,FN,TN], [ETP,EFP,EFN,ETN], result(Chi2,
-        DF,PVal)),
+    chi_squared_independence([[TP, FP], [FN, TN]],
+                             result(Chi2, DF, PVal)),
     format('  chi-squared = ~2f   df = ~w   p-value ', [Chi2, DF]),
     format_pval(PVal), nl,
     format('~n  The association exists but says nothing about~n'),
@@ -114,11 +109,7 @@ run_frequentist_demo :-
            [PDisease, PDPct]),
     format('  Frequentist PPV from simulation          = ~4f  (~2f%)~n',
            [PPV, PPVPct]),
-
-                        format('~n  Both frameworks agree: about 2% probability of illness.~n'),
-
-                        format('================================================================~n'),
-
-                        format('  Key lesson: statistical significance /= practical significance.~n'),
-
-                        format('================================================================~n').
+    format('~n  Both frameworks agree: about 2% probability of illness.~n'),
+    format('================================================================~n'),
+    format('  Key lesson: statistical significance /= practical significance.~n'),
+    format('================================================================~n').

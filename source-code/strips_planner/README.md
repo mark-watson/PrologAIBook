@@ -40,8 +40,8 @@ swipl -g "['tests/test_strips.pl'], run_tests, halt" -s load.pl
 
 Implements the STRIPS planning algorithm where actions are defined by preconditions, add lists, and delete lists. Three planner variants are provided:
 
-- **`plan/3`** — Depth-first search. Concise and elegant, but may loop on reversible actions.
-- **`plan_bfs/3`** — Breadth-first search. Guaranteed to find the shortest plan.
-- **`plan_visited/3`** — DFS with cycle detection. Practical compromise for most domains.
+- **`plan/3`**: iterative deepening (depth limits 1 to 50). Always terminates and finds a shortest plan.
+- **`plan_bfs/3`**: breadth-first search with a set of seen states. Finds a shortest plan.
+- **`plan_visited/3`**: depth-first search that never revisits a state on the current path. Fast, but the plan may not be the shortest.
 
 Two domains are included: the classic blocks world (pickup, putdown, stack, unstack) and a logistics domain (trucks, planes, and packages with load/unload/drive/fly operators). The custom `holds/2` predicate uses `member/2` instead of the standard `subset/2` so that action-schema variables can bind to any matching state element.

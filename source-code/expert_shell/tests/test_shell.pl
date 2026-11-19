@@ -34,4 +34,36 @@ test(normalize_number) :-
     shell:normalize_answer("42.", V2),
     V2 =:= 42.
 
+kb_path(Name, Path) :-
+    module_property(test_shell, file(TestFile)),
+    file_directory_name(TestFile, TestDir),
+    atomic_list_concat([TestDir, '/../prolog/', Name], Path0),
+    absolute_file_name(Path0, Path).
+
+test(readable_rules_fire) :-
+    kb_path('rules_kb.pl', Kb),
+    load_kb(Kb),
+    reset_known,
+    provide_answer(meal, fish),
+    provide_answer(light_preference, no),
+    consult_expert(C),
+    assertion(C == serve_chardonnay),
+    reset_known.
+
+test(readable_rules_explain) :-
+    kb_path('rules_kb.pl', Kb),
+    load_kb(Kb),
+    reset_known,
+    provide_answer(meal, dessert),
+    provide_answer(sweet_preference, yes),
+    consult_expert(C),
+    with_output_to(string(S), explain(C)),
+    assertion(sub_string(S, _, _, _,
+        "serve_port because meal is dessert and sweet_preference is yes")),
+    reset_known.
+
+test(rule_parses_to_conditions) :-
+    shell:and_list(a is 1 and b is 2, Cs),
+    assertion(Cs == [a == 1, b == 2]).
+
 :- end_tests(shell).

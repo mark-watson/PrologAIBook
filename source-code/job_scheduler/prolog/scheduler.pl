@@ -2,69 +2,73 @@
 :- module(scheduler, [
     schedule_jobs/2,
     no_overlap/1,
-    schedule_valid/1
+    schedule_valid/1,
+    makespan/2
 ]).
 
 :- use_module(library(clpfd)).
 
 %% schedule_jobs(+Jobs, -Schedule)
-%% Jobs: list of job(Name, Duration, Deadline) terms
-%% Schedule: list of scheduled(Name, Start, End) terms
-%%
-%% The search horizon is derived from the input jobs: it is the
-%% largest deadline in the input (or, if no job gives a deadline,
-%% the sum of all durations, plus one as a safety margin).  Infeasible
-%% inputs simply fail during labelling.
+%% Jobs: list of job(Name, Duration, Deadline) terms. Deadline may
+%% be unbound for a job with no deadline.
+%% Schedule: list of scheduled(Name, Start, End) terms, in the same
+%% order as Jobs, using one machine. The solver chooses the order in
+%% which the jobs run. The first answer has the smallest makespan
+%% (the time the last job ends). Infeasible inputs fail.
 schedule_jobs(Jobs, Schedule) :-
-    compute_horizon(Jobs, Horizon),
+    horizon(Jobs, Horizon),
     maplist(create_task(Horizon), Jobs, Schedule, Starts),
-    chain(Starts, #=<),  % order tasks by start time
     maplist(deadline_constraint, Jobs, Schedule),
     no_overlap(Schedule),
-    maplist(label_task, Schedule).
+    makespan(Schedule, Makespan),
+    labeling([min(Makespan)], Starts).
 
-%% compute_horizon(+Jobs, -Horizon)
-compute_horizon(Jobs, Horizon) :-
-    compute_horizon(Jobs, 0, 0, 0, Horizon).
+%% horizon(+Jobs, -Horizon)
+%% No job needs to start later than the total work: any feasible
+%% schedule can be shifted left until it has no idle time.
+horizon(Jobs, Horizon) :-
+    foldl(add_duration, Jobs, 0, Horizon).
 
-compute_horizon([], MaxDeadline, TotalDuration, SeenDeadline,
-    Horizon) :-
-    (   SeenDeadline > 0
-    ->  Horizon = MaxDeadline
-    ;   Horizon is TotalDuration + 1
-    ).
-compute_horizon([job(_, Duration, Deadline)|Jobs], MaxD0, Total0,
-    Seen0, Horizon) :-
-    Total1 is Total0 + Duration,
-    (   integer(Deadline)
-    ->  MaxD1 is max(MaxD0, Deadline),
-        Seen1 is Seen0 + 1
-    ;   MaxD1 = MaxD0,
-        Seen1 = Seen0
-    ),
-    compute_horizon(Jobs, MaxD1, Total1, Seen1, Horizon).
+add_duration(job(_, Duration, _), Sum0, Sum) :-
+    Sum is Sum0 + Duration.
 
 create_task(Horizon, job(Name, Duration, _Deadline),
-    scheduled(Name, Start, End), Start) :-
+            scheduled(Name, Start, End), Start) :-
     Start in 0..Horizon,
     End #= Start + Duration.
 
-deadline_constraint(job(Name, _Duration, Deadline), scheduled(Name,
-    _Start, End)) :-
-    End #=< Deadline.
+deadline_constraint(job(_, _, Deadline), scheduled(_, _, End)) :-
+    (   integer(Deadline)
+    ->  End #=< Deadline
+    ;   true
+    ).
 
 %% no_overlap(+Schedule)
-%% Posts CLP(FD) constraints chaining adjacent jobs in the schedule
-%% list: the end of each job must be =< the start of the next one.
-%% NOTE: this operates on constraint variables while building the
-%% schedule (it posts `#=<` constraints); it is NOT a check on ground
-%% data.  Use schedule_valid/1 to verify a fully ground schedule.
+%% Posts constraints so that no two jobs overlap: for each pair, one
+%% job ends before the other starts. #\/ is a constraint
+%% disjunction, so the solver decides the order by propagation and
+%% search instead of by Prolog backtracking.
 no_overlap([]).
-no_overlap([_]).
-no_overlap([scheduled(_,_,End1)|Rest]) :-
-    Rest = [scheduled(_,Start2,_)|_],
-    End1 #=< Start2,
-    no_overlap(Rest).
+no_overlap([Task|Tasks]) :-
+    maplist(disjoint(Task), Tasks),
+    no_overlap(Tasks).
+
+disjoint(scheduled(_, S1, E1), scheduled(_, S2, E2)) :-
+    E1 #=< S2 #\/ E2 #=< S1.
+
+%% makespan(+Schedule, -Makespan)
+%% Makespan is the largest end time in Schedule.
+makespan(Schedule, Makespan) :-
+    maplist(end_time, Schedule, Ends),
+    max_list_fd(Ends, Makespan).
+
+end_time(scheduled(_, _, End), End).
+
+max_list_fd([E|Es], Max) :-
+    foldl(fd_max, Es, E, Max).
+
+fd_max(E, M0, M) :-
+    M #= max(M0, E).
 
 %% schedule_valid(+Schedule)
 %% Verifies a fully ground schedule: no two jobs overlap.  Uses plain
@@ -86,5 +90,3 @@ overlaps_one(S, All) :-
     T = scheduled(_, StartT, EndT),
     StartS < EndT,
     StartT < EndS.
-
-label_task(scheduled(_, Start, _)) :- label([Start]).

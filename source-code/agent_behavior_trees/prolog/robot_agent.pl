@@ -11,14 +11,20 @@
 % Dynamic state representing the robot's environment and internals
 :- dynamic battery/1.
 :- dynamic dusty/1.
+:- dynamic charging/0.
 
 % --- Define Conditions ---
 
-% Battery is low if it's strictly below 30%
-behavior_trees:user_condition(battery_low) :-
-    battery(Level),
-    Level < 30,
-    format('[Cond] Battery is low: ~w%~n', [Level]).
+% The robot needs to charge if the battery is below 30%, or if it has
+% started charging and is not finished. Without the second case, the
+% robot would stop charging as soon as the battery passed 30%.
+behavior_trees:user_condition(needs_charge) :-
+    (   charging
+    ->  format('[Cond] Still charging~n')
+    ;   battery(Level),
+        Level < 30,
+        format('[Cond] Battery is low: ~w%~n', [Level])
+    ).
 
 % Dust is present if dusty(true) is asserted
 behavior_trees:user_condition(dust_present) :-
@@ -27,14 +33,21 @@ behavior_trees:user_condition(dust_present) :-
 
 % --- Define Actions ---
 
-% Recharge Action
-behavior_trees:user_action(recharge, success) :-
+% Recharge Action: adds 25% per tick. It returns running until the
+% battery reaches 80%, so it takes several ticks.
+behavior_trees:user_action(recharge, Status) :-
     battery(Level),
-    NewLevel is min(100, Level + 50),
+    NewLevel is min(100, Level + 25),
     retractall(battery(_)),
     assertz(battery(NewLevel)),
-    format('[Action] Charging... Battery increased from ~w% to ~w%~n',
-        [Level, NewLevel]).
+    (   NewLevel >= 80
+    ->  retractall(charging),
+        Status = success
+    ;   ( charging -> true ; assertz(charging) ),
+        Status = running
+    ),
+    format('[Action] Charging... Battery ~w% -> ~w% (~w)~n',
+        [Level, NewLevel, Status]).
 
 % Clean Action
 behavior_trees:user_action(clean, success) :-
@@ -72,7 +85,7 @@ maybe_generate_dust :-
 :- define_tree(cleaning_robot,
     selector([
         sequence([
-            condition(battery_low),
+            condition(needs_charge),
             action(recharge)
         ]),
         sequence([
@@ -87,9 +100,12 @@ maybe_generate_dust :-
 
 % Run the behavior tree for N ticks
 run_simulation(Ticks) :-
-    % Initialize state: full battery, no dust
+    % Initialize state: full battery, no dust. A fixed random seed
+    % makes the dust, and so the whole run, the same every time.
+    set_random(seed(7)),
     retractall(battery(_)),
     retractall(dusty(_)),
+    retractall(charging),
     assertz(battery(100)),
     assertz(dusty(false)),
     format('--- Starting Robot Simulation with BT ---~n'),

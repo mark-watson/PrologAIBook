@@ -2,5 +2,6 @@
 :- use_module(prolog/dfs).
 :- use_module(prolog/bfs).
 :- use_module(prolog/astar).
+:- use_module(prolog/ids).
 
 :- load_graph.

@@ -6,16 +6,15 @@
     sample_data_loaded/0
 ]).
 
-%% Load sample data - try multiple paths for
-%% different working directories
+%% sample_data_loaded
+%% Load sample_data.pl from the directory that holds this file, so
+%% the module works from any working directory. The clauses load
+%% into this module, where clause/2 below can see them.
 sample_data_loaded :-
-    (   exists_file('sample_data.pl')
-    ->  consult('sample_data.pl')
-    ;   exists_file('prolog/sample_data.pl')
-    ->  consult('prolog/sample_data.pl')
-    ;   format(user_error, 'WARNING: sample_data.pl not found~n', []),
-        fail
-    ).
+    source_file(proof_tree:prove_with_tree(_, _), File),
+    file_directory_name(File, Dir),
+    directory_file_path(Dir, 'sample_data.pl', Data),
+    consult(Data).
 
 :- initialization(sample_data_loaded).
 
@@ -24,12 +23,11 @@ prove_with_tree(true, leaf(true)) :- !.
 prove_with_tree((A, B), and(PA, PB)) :- !,
     prove_with_tree(A, PA),
     prove_with_tree(B, PB).
-%% Handle negation-as-failure (meta-builtin)
-prove_with_tree(\+ G, node(\+ G, leaf(\+ G))) :- !,
-    \+ G.
-%% Handle not-unifiable (builtin comparison)
-prove_with_tree(X \= Y, node(X\=Y, leaf(X\=Y))) :- !,
-    X \= Y.
+%% Built-in predicates such as \+, \=, and is/2 have no clauses for
+%% clause/2 to read, so we call them and record a leaf.
+prove_with_tree(Goal, node(Goal, leaf(Goal))) :-
+    predicate_property(Goal, built_in), !,
+    call(Goal).
 %% User-defined goals: look up clauses and recurse
 prove_with_tree(Goal, node(Goal, ChildProofs)) :-
     clause(Goal, Body),

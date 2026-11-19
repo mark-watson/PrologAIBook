@@ -48,6 +48,24 @@ test(blocks_move_to_table_unit, [nondet]) :-
     member(on_table(a), NewState),
     \+ member(on(a, b), NewState).
 
+test(sussman_anomaly_optimal) :-
+    % The classic Sussman anomaly: c is on a, the goal is a on b on c.
+    blocks_plan([on(c, a), on_table(a), on_table(b)],
+                [on(a, b), on(b, c)], Moves),
+    assertion(Moves == [move_to_table(c, a), move(b, table, c),
+                        move(a, table, b)]).
+
+test(tower_two_moves) :-
+    blocks_plan([on_table(a), on_table(b), on_table(c)],
+                [on(a, b), on(b, c)], Moves),
+    assertion(length(Moves, 2)).
+
+test(dfs_finds_a_plan, [nondet]) :-
+    blocks_plan_dfs([on(c, a), on_table(a), on_table(b)],
+                    [on(a, b), on(b, c)], Moves),
+    length(Moves, N),
+    assertion(N >= 3).
+
 :- end_tests(blocks_world).
 
 %% simulate(+State, +Plan, -FinalState)

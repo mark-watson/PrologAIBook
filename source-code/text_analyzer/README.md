@@ -1,18 +1,18 @@
 # Text Analyzer
 
-Named entity recognition and text categorization using gazetteer lookup and bag-of-words scoring. Companion code for the NLP with DCGs chapter.
+Named entity recognition, text categorization, and extractive summarization using gazetteer lookup and bag-of-words scoring. Companion code for the NLP with DCGs chapter.
 
 ## Gazetteer Vocabulary
 
-The NER module (`ner.pl`) recognizes **person**, **place**, and **organization** names from an expanded gazetteer of ~110 entries:
+The NER module (`ner.pl`) recognizes **person**, **place**, and **organization** names from a gazetteer of 112 entries. A two-word name such as `['New', 'York']` matches the entry `'New_York'`:
 
-- **38 person names** — historical figures (Lincoln, Churchill, Mandela), scientists (Einstein, Newton, Turing), authors (Shakespeare, Austen, Hemingway), philosophers (Plato, Aristotle), political leaders (Obama, Thatcher, Gandhi), and modern figures (Musk, Gates).
-- **57 place names** — countries (Japan, Brazil, Kenya), world cities (Tokyo, Cairo, Sydney, Dubai), US states (California, Texas, Florida), and US cities (Chicago, Boston, Seattle).
-- **20 organization names** — international bodies (United_Nations, NATO, WHO), tech companies (Google, Apple, Microsoft, Tesla, Meta), space/defense (NASA, CIA, SpaceX), and brands (Nike, Toyota, Samsung).
+- **35 person names**: historical figures (Lincoln, Churchill, Mandela), scientists (Einstein, Newton, Turing), authors (Dickens, Austen, Hemingway), philosophers (Plato, Aristotle), political leaders (Obama, Thatcher, Gandhi), and modern figures (Musk, Gates).
+- **57 place names**: countries (Japan, Brazil, Kenya), world cities (Tokyo, Cairo, Sydney, Dubai), US states (California, Texas, Florida), and US cities (Chicago, Boston, Seattle).
+- **20 organization names**: international bodies (United_Nations, NATO, WHO), tech companies (Google, Apple, Microsoft, Tesla, Meta), space/defense (NASA, CIA, SpaceX), and brands (Nike, Toyota, Samsung).
 
 ## Categorization Vocabulary
 
-The categorizer module (`categorizer.pl`) scores text against **8 categories** using bag-of-words keyword lists (~40 words each, ~320 total):
+The categorizer module (`categorizer.pl`) scores text against **8 categories** using bag-of-words keyword lists (40 keywords each, 320 in all). Matching ignores case, accepts plurals ending in `s`, and matches two-word keywords such as `interest_rate` against adjacent words:
 
 | Category       | Sample Keywords |
 |----------------|-----------------|
@@ -59,16 +59,24 @@ swipl -s load.pl
 % => Categories = [6-environment]
 
 ?- categorize([president, debate, stock, market], Categories).
-% => Categories = [2-politics, 2-economy]   (ties are sorted alphabetically)
+% => Categories = [2-politics, 2-economy]   (ties keep the order the categories are defined in)
 
 ?- categorize([classroom, teacher, exam, vaccine, pandemic, doctor], Categories).
-% => Categories = [3-education, 3-healthcare]
+% => Categories = [3-healthcare, 3-education]
+```
+
+**Summarization:**
+```prolog
+?- summarize([[the, hospital, installed, a, new, software, database, system],
+              [technology, startups, are, building, quantum, encryption, algorithms]],
+             technology, Summary).
+% => Summary = [[technology, startups, ...], [the, hospital, ...]]
 ```
 
 ## Running Tests
 
 ```shell
-swipl -g "['tests/test_ner.pl'], run_tests, halt" -s load.pl
+make test
 ```
 
 ## Architecture
@@ -77,4 +85,4 @@ swipl -g "['tests/test_ner.pl'], run_tests, halt" -s load.pl
 
 ## Description
 
-Implements two lightweight NLP techniques in pure Prolog. The `ner.pl` module performs named entity recognition by matching input words against expanded gazetteer lists of known person, place, and organization names, returning typed `entity(Type, Name)` terms. The `categorizer.pl` module uses a bag-of-words approach with keyword lists for eight categories (politics, sports, technology, economy, healthcare, education, entertainment, environment), scoring input text against each category and returning ranked results. Both modules are intentionally simple to demonstrate the pattern before scaling up with LLM or Janus-based approaches in later chapters.
+Implements three lightweight NLP techniques in pure Prolog. The `ner.pl` module performs named entity recognition by matching input words against expanded gazetteer lists of known person, place, and organization names, returning typed `entity(Type, Name)` terms. The `categorizer.pl` module uses a bag-of-words approach with keyword lists for eight categories (politics, sports, technology, economy, healthcare, education, entertainment, environment), scoring input text against each category and returning ranked results. The `summarizer.pl` module picks the sentences with the most keywords for a category. All three modules are intentionally simple to demonstrate the pattern before scaling up with LLM or Janus-based approaches in later chapters.

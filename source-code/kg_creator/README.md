@@ -30,4 +30,6 @@ swipl -g "['tests/test_kg.pl'], run_tests, halt" -s load.pl
 
 ## Description
 
-Stores knowledge as subject-predicate-object triples using Prolog's dynamic database — a natural fit since Prolog's fact base *is* essentially a knowledge graph. The `kg_builder.pl` module provides predicates to add triples (with deduplication), query them with pattern matching, and export the graph in two formats: N-Triples RDF for semantic web tools and Cypher CREATE statements for Neo4j. This demonstrates how Prolog can serve as both the knowledge representation language and the query engine for knowledge graphs.
+Stores knowledge as subject-predicate-object triples using Prolog's dynamic database, a natural fit since Prolog's fact base *is* essentially a knowledge graph. The `kg_builder.pl` module provides predicates to add triples (with deduplication), query them with pattern matching, and export the graph in two formats: N-Triples RDF for semantic web tools and Cypher CREATE statements for Neo4j. This demonstrates how Prolog can serve as both the knowledge representation language and the query engine for knowledge graphs.
+
+`export_rdf/1,2` writes valid N-Triples with absolute IRIs (default base `http://example.org/kg/`); objects that are plain atoms become IRIs and other objects become literals. The `kg_enrich.pl` module queries DBpedia's public SPARQL endpoint to add `designed_by` triples, caching the answers in the local graph. Run `make enrich` to try it (needs network access).

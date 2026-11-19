@@ -5,6 +5,7 @@
     query_triples/3,
     clear_all_triples/0,
     export_rdf/1,
+    export_rdf/2,
     export_cypher/1
 ]).
 
@@ -15,7 +16,7 @@
 add_triple(S, P, O) :-
     (   triple(S, P, O)
     ->  true
-    ;   assert(triple(S, P, O))
+    ;   assertz(triple(S, P, O))
     ).
 
 %% query_triples(?S, ?P, ?O)
@@ -25,36 +26,52 @@ query_triples(S, P, O) :- triple(S, P, O).
 clear_all_triples :-
     retractall(triple(_, _, _)).
 
-%% export_rdf(+FileName) - Export triples as N-Triples RDF.
-%% Object literals are escaped (" and \ and newlines); subject and
-%% predicate must be minimal IRIs (non-empty, no spaces) -
-%% otherwise export_rdf/1 fails with a message.
+%% export_rdf(+FileName)
+%% export_rdf(+FileName, +BaseIRI)
+%% Export triples as N-Triples RDF. N-Triples needs absolute IRIs, so
+%% each name becomes BaseIRI followed by the name (the default base is
+%% http://example.org/kg/). An object that is an atom with no spaces
+%% names a resource and becomes an IRI; any other object (a string, a
+%% number, or an atom with spaces) becomes a literal, with \, " and
+%% newlines escaped. A subject or predicate that is not a valid name
+%% makes export_rdf fail with a message.
 export_rdf(FileName) :-
+    export_rdf(FileName, 'http://example.org/kg/').
+
+export_rdf(FileName, Base) :-
     setup_call_cleanup(
         open(FileName, write, Stream),
-        (   forall(
-                triple(S, P, O),
-                (   valid_iri(S), valid_iri(P)
-                ->  escape_literal(O, EscO),
-                    format(Stream, '<~w> <~w> "~w" .~n', [S, P, EscO])
-                ;   format(user_error,
-                        'export_rdf: invalid IRI in triple ~w~n',
-                        [triple(S, P, O)]),
-                    fail
-                )
-            )
-        ),
+        forall(triple(S, P, O),
+               write_ntriple(Stream, Base, S, P, O)),
         close(Stream)
     ).
 
-valid_iri(A) :-
-    (   atom(A) -> true ; string(A) ),
-    A \= '',
+write_ntriple(Stream, Base, S, P, O) :-
+    (   valid_name(S), valid_name(P)
+    ->  rdf_object(Base, O, OText),
+        format(Stream, '<~w~w> <~w~w> ~w .~n', [Base, S, Base, P, OText])
+    ;   format(user_error, 'export_rdf: invalid name in triple ~w~n',
+               [triple(S, P, O)]),
+        fail
+    ).
+
+valid_name(A) :-
+    atom(A),
+    A \== '',
     \+ sub_atom(A, _, _, _, ' ').
+
+rdf_object(Base, O, Text) :-
+    valid_name(O),
+    !,
+    format(atom(Text), '<~w~w>', [Base, O]).
+rdf_object(_, O, Text) :-
+    escape_literal(O, Esc),
+    format(atom(Text), '"~w"', [Esc]).
 
 %% escape_literal(+In, -Out) - escape \ " and newline for N-Triples
 escape_literal(In, Out) :-
-    atom_chars(In, Chars),
+    format(atom(A), '~w', [In]),
+    atom_chars(A, Chars),
     esc_chars(Chars, EscChars),
     atom_chars(Out, EscChars).
 
@@ -85,7 +102,8 @@ export_cypher(FileName) :-
     ).
 
 backtick_quote(A, Quoted) :-
-    atom_chars(A, Chars),
+    format(atom(A1), '~w', [A]),
+    atom_chars(A1, Chars),
     bt_chars(Chars, EscChars),
     atom_chars(Esc, EscChars),
     atom_concat('`', Esc, T),

@@ -8,3 +8,15 @@ ex:prolog a ex:Language ;
 ex:swi_prolog a ex:Implementation ;
     rdfs:label "SWI-Prolog" ;
     ex:implements ex:prolog .
+
+# A small ontology: class hierarchy plus the domain and range of
+# ex:implements.
+ex:Implementation rdfs:subClassOf ex:Software .
+ex:Language rdfs:subClassOf ex:Notation .
+ex:implements rdfs:domain ex:Implementation ;
+    rdfs:range ex:Language .
+
+# Scryer Prolog has no rdf:type triple. RDFS can still infer its type
+# from the domain of ex:implements.
+ex:scryer_prolog rdfs:label "Scryer Prolog" ;
+    ex:implements ex:prolog .

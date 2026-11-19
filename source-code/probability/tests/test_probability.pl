@@ -11,8 +11,8 @@ med_lik(healthy, 0.05).
 
 test(make_model_normalises) :-
     make_bayes_model([a-1, b-3], Model),
-    member(a-PA, Model),
-    member(b-PB, Model),
+    memberchk(a-PA, Model),
+    memberchk(b-PB, Model),
     abs(PA - 0.25) < 0.001,
     abs(PB - 0.75) < 0.001.
 
@@ -125,3 +125,23 @@ test(map_tie_break_deterministic) :-
     Best == a.
 
 :- end_tests(frequentist).
+
+:- begin_tests(chi_squared_independence).
+
+test(two_by_two) :-
+    chi_squared_independence([[10, 20], [30, 40]], result(Chi2, DF, P)),
+    assertion(abs(Chi2 - 0.7937) < 0.001),
+    assertion(DF == 1),
+    assertion(abs(P - 0.373) < 0.002).
+
+test(two_by_three_df) :-
+    chi_squared_independence([[5, 10, 15], [10, 10, 10]],
+                             result(_, DF, _)),
+    assertion(DF == 2).
+
+test(df1_cdf_exact) :-
+    % 3.841 is the 95th percentile of chi-squared with 1 df.
+    frequentist:chi_squared_cdf(3.841, 1, CDF),
+    assertion(abs(CDF - 0.95) < 0.001).
+
+:- end_tests(chi_squared_independence).

@@ -51,7 +51,7 @@ P(tornado_risk) = 0.0018      (0.003 × 0.6)
 P(flash_flood_risk) = 0.0024  (0.003 × 0.8)
 ```
 
-This example illustrates how deeply chained probabilistic inference causes rapid probability attenuation: even with moderate conditional probabilities (0.5–0.8), four levels of chained reasoning reduce the base 0.5 probability to 0.0018 for tornado risk — a factor of ~278× reduction. This property is characteristic of naive probability multiplication and motivates more sophisticated approaches (e.g., Bayesian networks with proper conditional independence) for real-world applications.
+This example illustrates how deeply chained probabilistic inference causes rapid probability attenuation: even with moderate conditional probabilities (0.5 to 0.8), four levels of chained reasoning reduce the base 0.5 probability to 0.0018 for tornado risk, a reduction by a factor of about 278. This property is characteristic of naive probability multiplication and motivates more sophisticated approaches (e.g., Bayesian networks with proper conditional independence) for real-world applications.
 
 
 ## Architecture
@@ -60,4 +60,6 @@ This example illustrates how deeply chained probabilistic inference causes rapid
 
 ## Description
 
-Implements a simple probabilistic reasoning system without external pack dependencies. Facts are annotated with probabilities (`prob_fact/2`), and rules specify conditional probabilities (`prob_rule/3`). The `prob_query/2` predicate computes the probability of a goal by multiplying the probabilities along the inference chain — i.e., noisy-AND propagation, NOT MYCIN certainty factors. The multiplication is performed in log space (a `foldl` over `log/1`, then `exp/1`) so that deep chains do not underflow to 0.0, and a visited-goal list makes cyclic rule bases terminate by failing rather than looping. The module loads with an empty knowledge base; `load.pl` calls `load_example_kb/0` (idempotent, retract-first) to populate the weather examples. This provides an accessible introduction to reasoning under uncertainty before moving to more sophisticated frameworks like ProbLog or cplint.
+Implements a simple probabilistic reasoning system without external pack dependencies. Facts are annotated with probabilities (`prob_fact/2`), and rules specify conditional probabilities (`prob_rule/3`). The `prob_query/2` predicate computes the probability of a goal by multiplying the probabilities along the inference chain, assuming the conditions are independent. These are not MYCIN certainty factors. The multiplication is performed in log space (a `foldl` over `log/1`, then `exp/1`) so that deep chains do not underflow to 0.0, and a visited-goal list makes cyclic rule bases terminate by failing rather than looping. The module loads with an empty knowledge base; `load.pl` calls `load_example_kb/0` (idempotent, retract-first) to populate the weather examples. This provides an accessible introduction to reasoning under uncertainty before moving to more sophisticated frameworks like ProbLog or cplint.
+
+The `bayes_net.pl` module adds exact inference in the classic sprinkler Bayesian network. `prob(Query, Evidence, P)` enumerates all possible worlds, so `prob([rain=true], [wet_grass=true], P)` gives `P = 0.7048`, and adding the evidence `sprinkler=true` lowers it to about 0.32 (explaining away).

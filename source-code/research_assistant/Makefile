@@ -1,6 +1,6 @@
 # Makefile for research_assistant - AI research assistant
 # Usage: make [all|run|test]
-# Note: Full 'run' requires LLM API access
+# Note: 'run' needs network access and GOOGLE_API_KEY
 
 SWIPL = swipl
 
@@ -10,7 +10,7 @@ all: run test
 
 run:
 	@echo "=== Running research_assistant examples ==="
-	$(SWIPL) -g "format('research_assistant: module loaded successfully~n'), halt" -s load.pl
+	@$(SWIPL) -g "research('Who designed the Warren Abstract Machine and when?', A), format('~n~w~n', [A]), halt" -s load.pl
 
 test:
 	@echo "=== Running research_assistant tests ==="

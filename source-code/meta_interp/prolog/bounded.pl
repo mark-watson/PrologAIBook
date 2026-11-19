@@ -1,9 +1,10 @@
 %% bounded.pl - Bounded depth meta-interpreter
 %%
 %% Depth semantics: the depth counter is decremented once per RULE
-%% APPLICATION (each clause/2 expansion), NOT per subgoal.  Conjunction
-%% members share the current depth budget.  A goal that arrives with
-%% depth 0 fails immediately.
+%% APPLICATION (each clause/2 expansion), NOT per subgoal. Conjunction
+%% members share the current depth budget. A goal that arrives with
+%% depth 0 fails immediately. Built-in goals are called directly and
+%% cost nothing.
 :- module(bounded, [
     mi_bounded/2,
     mi_bounded/3
@@ -19,6 +20,9 @@ mi_bounded(_, _, D) :- D =< 0, !, fail.
 mi_bounded(Mod, (A, B), D) :- !,
     mi_bounded(Mod, A, D),
     mi_bounded(Mod, B, D).
+mi_bounded(Mod, Goal, _) :-
+    predicate_property(Mod:Goal, built_in), !,
+    call(Mod:Goal).
 mi_bounded(Mod, Goal, D) :-
     D > 0,
     clause(Mod:Goal, Body),

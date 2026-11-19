@@ -1,15 +1,15 @@
 # Agent Behavior Trees
 
-In artificial intelligence for robotics and video games, controlling agent behavior is a central challenge. Traditionally, developers relied on **Finite State Machines (FSMs)**. While FSMs are simple to implement, they suffer from a major design flaw: as the number of states and transitions grows, the state-transition graph quickly becomes a tangled web (often called "spaghetti code"), making it incredibly difficult to modify or extend.
+Controlling an agent's behavior is a central problem in robotics and game AI. Developers long used **finite state machines (FSMs)**, which are simple to write, but as states and transitions multiply, the transition graph becomes a tangle that is hard to change.
 
-**Behavior Trees (BTs)** emerged as a powerful alternative. Instead of states, BTs organize an agent's decision-making process into a hierarchical tree of nodes. Ticking the root node of the tree evaluates its children recursively, selecting actions based on environmental conditions. 
+**Behavior trees (BTs)** organize decisions as a tree of nodes instead of a graph of states. Each *tick* evaluates the tree from the root and picks actions based on conditions in the environment.
 
-BTs are:
-- **Highly Modular**: Sub-trees can be designed and tested independently.
-- **Composable**: New behaviors can be inserted by adding branches without modifying existing ones.
-- **Readable**: The hierarchical structure mirrors human-like decision pathways (e.g., "if battery is low, charge; otherwise, if dust is detected, clean; otherwise, patrol").
+Behavior trees are:
+- **Modular**: You can design and test each subtree on its own.
+- **Easy to extend**: A new behavior is a new branch; existing branches do not change.
+- **Readable**: The tree reads like a priority list: "if the battery is low, charge; otherwise, if there is dust, clean; otherwise, patrol".
 
-Prolog is exceptionally well-suited for implementing Behavior Trees. Its native pattern matching, recursive evaluation, and dynamic databases make it possible to build a complete behavior tree interpreter in under 100 lines of code.
+Prolog suits behavior trees well. A tree is a Prolog term, and pattern matching and recursion evaluate it, so the whole interpreter takes about 100 lines.
 
 
 {width: "80%"}
@@ -18,19 +18,19 @@ Prolog is exceptionally well-suited for implementing Behavior Trees. Its native 
 
 ## Behavior Tree Node Types
 
-Our interpreter supports four core node types:
-1. **Sequence (`sequence([Children])`)**: Ticks children sequentially. If any child fails, the sequence fails immediately. If all succeed, the sequence succeeds. (Analogous to an logical `AND`).
-2. **Selector (`selector([Children])`)**: Ticks children sequentially. If any child succeeds, the selector succeeds immediately. If all fail, the selector fails. (Analogous to a logical `OR`, used for fallback actions).
-3. **Condition (`condition(Name)`)**: Evaluates a query. Returns `success` if the query is true, and `failure` otherwise.
-4. **Action (`action(Name)`)**: Executes an active task, returning `success`, `failure`, or `running` (if the action requires multiple ticks to complete).
+Every tick of a node returns one of three statuses: `success`, `failure`, or `running` (the node is still working and needs more ticks). Our interpreter has four node types:
+1. **Sequence (`sequence([Children])`)**: Ticks the children in order. It stops and returns the status of the first child that does not succeed, and succeeds if all do. (Like a logical AND.)
+2. **Selector (`selector([Children])`)**: Ticks the children in order. It stops and returns the status of the first child that does not fail, and fails if all do. (Like a logical OR; it gives fallbacks.)
+3. **Condition (`condition(Name)`)**: Tests something. Returns `success` if it holds and `failure` otherwise.
+4. **Action (`action(Name)`)**: Does something and returns `success`, `failure`, or `running`.
 
 ---
 
 ## Implementing the BT Engine in Prolog
 
-The core engine uses recursive pattern matching to traverse the tree nodes. We define multifile hooks `user_condition/1` and `user_action/2` to allow external agent modules to define their specific logic.
+The engine walks the tree by pattern matching on node terms. The conditions and actions come from the agent: the engine declares two *multifile* hook predicates, `user_condition/1` and `user_action/2`, and any module can add clauses to them. (The Prolog Agents chapter used a module argument instead; multifile hooks are the other common way to let one module call code defined in another.)
 
-Here is the implementation in **source-code/agent_behavior_trees/prolog/behavior_trees.pl**:
+Here is the file **agent_behavior_trees/prolog/behavior_trees.pl**:
 
 ```prolog
 :- module(behavior_trees, [
@@ -40,8 +40,7 @@ Here is the implementation in **source-code/agent_behavior_trees/prolog/behavior
 
 /** <module> Behavior Trees Engine
  *
- * A simple, lightweight, and elegant
- * Behavior Tree implementation in Prolog.
+ * A small Behavior Tree interpreter in Prolog.
  * Supports:
  *   - sequence([Children])
  *   - selector([Children]) (fallback)
@@ -114,29 +113,39 @@ tick_selector([Child|Rest], Status) :-
     ;   Status = ChildStatus  % either 'success' or 'running'
     ).
 
-% --- Interface to Hook Action & Condition Predicates ---
-% User-defined actions and conditions are
-% expected to be defined in user modules
-% or hooked into the following dynamic/multifile predicates:
+% --- Hooks for Conditions and Actions ---
+% An agent module adds clauses to these multifile predicates:
+%   behavior_trees:user_condition(Name)        succeeds if true
+%   behavior_trees:user_action(Name, Status)   performs the action
 :- multifile user_condition/1.
 :- multifile user_action/2.
 
 call_condition(CondName) :-
     user_condition(CondName).
 
+% An action that is not defined, or whose clauses all fail, is an
+% error: silently failing would make the whole tick fail with no
+% explanation.
 call_action(ActionName, Status) :-
+    (   user_action(ActionName, Status0)
+    ->  must_be(oneof([success, failure, running]), Status0),
+        Status = Status0
+    ;   existence_error(bt_action, ActionName)
+    ).
 ```
+
+`call_action/2` checks the action's status with `must_be/2` and raises an error for an undefined action. Without that check, a misspelled action name would make the whole tick fail with no message.
 
 ---
 
 ## Defining a Robot Agent
 
-Now, we use our engine to program a cleaning robot. The robot has a battery level and a room dust state. We define its behavior tree as follows:
-- **High Priority Branch**: If the battery is low, recharge.
-- **Medium Priority Branch**: If dust is present, clean the room.
-- **Fallback Branch**: Patrol the rooms, occasionally generating new dust.
+Now we program a cleaning robot with the engine. The robot has a battery and a room that may be dusty. Its tree, in priority order:
+- **First**: If it needs to charge, recharge.
+- **Second**: If there is dust, clean.
+- **Otherwise**: Patrol the rooms, which sometimes lets dust settle.
 
-Here is the implementation in **source-code/agent_behavior_trees/prolog/robot_agent.pl**:
+Here is the file **agent_behavior_trees/prolog/robot_agent.pl**:
 
 ```prolog
 :- module(robot_agent, [
@@ -152,14 +161,20 @@ Here is the implementation in **source-code/agent_behavior_trees/prolog/robot_ag
 % Dynamic state representing the robot's environment and internals
 :- dynamic battery/1.
 :- dynamic dusty/1.
+:- dynamic charging/0.
 
 % --- Define Conditions ---
 
-% Battery is low if it's strictly below 30%
-behavior_trees:user_condition(battery_low) :-
-    battery(Level),
-    Level < 30,
-    format('[Cond] Battery is low: ~w%~n', [Level]).
+% The robot needs to charge if the battery is below 30%, or if it has
+% started charging and is not finished. Without the second case, the
+% robot would stop charging as soon as the battery passed 30%.
+behavior_trees:user_condition(needs_charge) :-
+    (   charging
+    ->  format('[Cond] Still charging~n')
+    ;   battery(Level),
+        Level < 30,
+        format('[Cond] Battery is low: ~w%~n', [Level])
+    ).
 
 % Dust is present if dusty(true) is asserted
 behavior_trees:user_condition(dust_present) :-
@@ -168,14 +183,21 @@ behavior_trees:user_condition(dust_present) :-
 
 % --- Define Actions ---
 
-% Recharge Action
-behavior_trees:user_action(recharge, success) :-
+% Recharge Action: adds 25% per tick. It returns running until the
+% battery reaches 80%, so it takes several ticks.
+behavior_trees:user_action(recharge, Status) :-
     battery(Level),
-    NewLevel is min(100, Level + 50),
+    NewLevel is min(100, Level + 25),
     retractall(battery(_)),
     assertz(battery(NewLevel)),
-    format('[Action] Charging... Battery increased from ~w% to ~w%~n',
-        [Level, NewLevel]).
+    (   NewLevel >= 80
+    ->  retractall(charging),
+        Status = success
+    ;   ( charging -> true ; assertz(charging) ),
+        Status = running
+    ),
+    format('[Action] Charging... Battery ~w% -> ~w% (~w)~n',
+        [Level, NewLevel, Status]).
 
 % Clean Action
 behavior_trees:user_action(clean, success) :-
@@ -213,7 +235,7 @@ maybe_generate_dust :-
 :- define_tree(cleaning_robot,
     selector([
         sequence([
-            condition(battery_low),
+            condition(needs_charge),
             action(recharge)
         ]),
         sequence([
@@ -228,9 +250,12 @@ maybe_generate_dust :-
 
 % Run the behavior tree for N ticks
 run_simulation(Ticks) :-
-    % Initialize state: full battery, no dust
+    % Initialize state: full battery, no dust. A fixed random seed
+    % makes the dust, and so the whole run, the same every time.
+    set_random(seed(7)),
     retractall(battery(_)),
     retractall(dusty(_)),
+    retractall(charging),
     assertz(battery(100)),
     assertz(dusty(false)),
     format('--- Starting Robot Simulation with BT ---~n'),
@@ -255,14 +280,9 @@ run_ticks(Current, Max) :-
 
 ## Simulating the Agent
 
-To run the simulation, execute the script from your terminal using SWI-Prolog:
+Recharging shows how `running` works. Each tick adds 25% to the battery, and `recharge` returns `running` until the battery reaches 80%. A tree has no memory of which node was running, so on the next tick the root starts again from the top. If the first branch tested only "battery below 30%", the robot would stop charging once the battery passed 30% and go back to patrolling. So the robot keeps a `charging` fact while it charges, and `needs_charge` holds while that fact exists. (Some behavior tree libraries add *memory* nodes that resume the running child instead.)
 
-{linenos=off}
-~~~~~~~~
-$ swipl -g "run_simulation(10), halt." -t "halt(1)" prolog/robot_agent.pl
-~~~~~~~~
-
-A sample execution trace shows the agent checking conditions and carrying out appropriate actions depending on battery levels and dynamic dust generation:
+`make run` runs the same simulation for 12 ticks. Because `run_simulation/1` sets a fixed random seed, you will see this exact trace:
 
 {linenos=off}
 ~~~~~~~~
@@ -276,48 +296,77 @@ A sample execution trace shows the agent checking conditions and carrying out ap
 [Tick 2]
 [State] Battery: 85%, Dusty: false
 [Action] Patrolling rooms... Battery at 70%
-[Env] Dust has settled in the room.
 [BT] Root execution status: success
 
 [Tick 3]
-[State] Battery: 70%, Dusty: true
-[Cond] Dust detected in room!
-[Action] Cleaning dust... Battery at 60%
+[State] Battery: 70%, Dusty: false
+[Action] Patrolling rooms... Battery at 55%
 [BT] Root execution status: success
 
 [Tick 4]
-[State] Battery: 60%, Dusty: false
-[Action] Patrolling rooms... Battery at 45%
+[State] Battery: 55%, Dusty: false
+[Action] Patrolling rooms... Battery at 40%
 [BT] Root execution status: success
 
 [Tick 5]
-[State] Battery: 45%, Dusty: false
-[Action] Patrolling rooms... Battery at 30%
+[State] Battery: 40%, Dusty: false
+[Action] Patrolling rooms... Battery at 25%
 [BT] Root execution status: success
 
 [Tick 6]
-[State] Battery: 30%, Dusty: false
-[Action] Patrolling rooms... Battery at 15%
-[BT] Root execution status: success
+[State] Battery: 25%, Dusty: false
+[Cond] Battery is low: 25%
+[Action] Charging... Battery 25% -> 50% (running)
+[BT] Root execution status: running
 
 [Tick 7]
-[State] Battery: 15%, Dusty: false
-[Cond] Battery is low: 15%
-[Action] Charging... Battery increased from 15% to 65%
+[State] Battery: 50%, Dusty: false
+[Cond] Still charging
+[Action] Charging... Battery 50% -> 75% (running)
+[BT] Root execution status: running
+
+[Tick 8]
+[State] Battery: 75%, Dusty: false
+[Cond] Still charging
+[Action] Charging... Battery 75% -> 100% (success)
 [BT] Root execution status: success
+
+[Tick 9]
+[State] Battery: 100%, Dusty: false
+[Action] Patrolling rooms... Battery at 85%
+[BT] Root execution status: success
+
+[Tick 10]
+[State] Battery: 85%, Dusty: false
+[Action] Patrolling rooms... Battery at 70%
+[BT] Root execution status: success
+
+[Tick 11]
+[State] Battery: 70%, Dusty: false
+[Env] Dust has settled in the room.
+[Action] Patrolling rooms... Battery at 55%
+[BT] Root execution status: success
+
+[Tick 12]
+[State] Battery: 55%, Dusty: true
+[Cond] Dust detected in room!
+[Action] Cleaning dust... Battery at 45%
+[BT] Root execution status: success
+--- Simulation Completed ---
 ~~~~~~~~
 
-Notice how at Tick 3, dust is detected, causing the selector to bypass the patrol action and execute the clean action instead. At Tick 7, the low battery triggers the recharge branch, ignoring dust and patrol entirely.
-
----
+Ticks 1 to 5 patrol, since neither condition holds. At tick 6 the battery is low, so the selector's first branch runs `recharge`, which returns `running`: the job takes more than one tick. At tick 7 the battery is 50%, no longer low, but `needs_charge` still holds because the robot remembers it is charging, so the recharge continues. Tick 8 finishes it. At tick 11 dust appears, and at tick 12 the second branch cleans it.
 
 ## Key Design Decisions
 
-**Dynamic database for state.** The robot's variables (like `battery/1` and `dusty/1`) are kept as dynamic facts (`:- dynamic ...`). In Prolog, asserting and retracting facts mimics a global memory store, allowing conditions and actions to read and modify state without having to pass a state dictionary through the tree's recursive helper functions.
+**State in dynamic facts.** The robot's state (`battery/1`, `dusty/1`, `charging/0`) lives in dynamic facts. Conditions and actions read and change it directly, so the engine need not pass a state value through every node.
 
-**Logical structures as DSL.** Behavior trees are traditionally declared using JSON, XML, or specialized editor graphs. In Prolog, we can represent trees directly as structured terms, such as `selector([sequence([condition(A), action(B)]), action(C)])`. This provides an elegant domain-specific language (DSL) with zero parsing overhead, which can be modified directly within the source code.
+**Trees as terms.** Behavior trees are often written in JSON or XML, or drawn in an editor. In Prolog a tree is a term such as `selector([sequence([condition(A), action(B)]), action(C)])`, so it needs no parser, and a program can build or change trees as data.
+
+**Repeatable runs.** The simulation seeds the random number generator, so every run gives the same trace, and the tests in **tests/test_bt.pl** can check it. The tests also check each node type, including how `running` passes up through sequences and selectors.
 
 ## Optional Practice Problems
 
-1. **Sequence and Selector Nodes**: In the `agent_behavior_trees` project, write unit tests to verify the behavior of compound nodes when one or more of their child nodes fail.
-2. **Vacuum Cleaning Agent**: Create a behavior tree in `prolog/behavior_trees.pl` for a robot vacuum cleaner agent. The tree should sequence tasks like `detect_dust`, `clean_area`, and `return_to_charger` based on the status of sensors.
+1. **An Inverter Node**: Add an `inverter(Child)` node that turns `success` into `failure` and the reverse, and passes `running` through. Add tests.
+2. **Memory Sequence**: Add a `memory_sequence(Id, Children)` node that remembers which child was running (in a dynamic fact keyed by `Id`) and resumes there on the next tick. Use it to remove the `charging` fact from the robot.
+3. **Two Rooms**: Give the robot two rooms, each of which can be dusty, and a `move_to(Room)` action. Change the tree so the robot cleans the dusty room nearest to it first.

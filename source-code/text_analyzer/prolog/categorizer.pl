@@ -1,10 +1,13 @@
 %% categorizer.pl - Bag-of-words text categorization with expanded
 %% vocabulary
 :- module(categorizer, [
-    categorize/2
+    categorize/2,
+    category_words/2,
+    keyword_count/3
 ]).
 
-%% Category keyword weights — 8 categories, ~40 words each (~320 total)
+%% Category keywords: 8 categories with 40 keywords each. A keyword
+%% such as machine_learning matches two adjacent words.
 category_words(politics, [
     president, congress, election, vote, senator, law, government,
         political,
@@ -22,7 +25,7 @@ category_words(sports, [
         penalty,
     medal, rivalry, final, semifinal, sprint, marathon, rookie,
         franchise,
-    batting, pitching, goaltender, referee, scrimmage, relegation,
+    batting, pitching, goaltender, umpire, scrimmage, relegation,
     tryout, concussion
 ]).
 category_words(technology, [
@@ -69,8 +72,8 @@ category_words(entertainment, [
     hollywood, series, episode, band, release, box_office, soundtrack,
     choreography, premiere, sequel, reboot, franchise, reality_show,
     documentary, animation, podcast, audition, encore, cameo,
-    box_office_hit, genre, screenplay, red_carpet, nominee, biopic,
-    soundtrack
+    sitcom, genre, blockbuster, red_carpet, nominee, biopic,
+    trailer
 ]).
 category_words(environment, [
     climate, energy, pollution, renewable, carbon, emission, recycling,
@@ -83,22 +86,40 @@ category_words(environment, [
 ]).
 
 %% categorize(+WordList, -Categories)
-%% Returns list of category-score pairs, sorted by score descending
+%% Returns Score-Category pairs for every category with a score
+%% above zero, highest score first.
 categorize(Words, Categories) :-
     findall(
         Score-Category,
         (   category_words(Category, Keywords),
-            score_category(Words, Keywords, Score),
+            keyword_count(Words, Keywords, Score),
             Score > 0
         ),
         Pairs
     ),
     sort(1, @>=, Pairs, Categories).
 
-score_category(Words, Keywords, Score) :-
-    include(word_in_list(Keywords), Words, Matches),
-    length(Matches, Score).
+%% keyword_count(+Words, +Keywords, -Count)
+%% Count the words and adjacent word pairs that match a keyword.
+keyword_count(Words, Keywords, Count) :-
+    maplist(downcase_atom, Words, Lower),
+    bigrams(Lower, Pairs),
+    append(Lower, Pairs, Terms),
+    include(keyword_match(Keywords), Terms, Matches),
+    length(Matches, Count).
 
-word_in_list(Keywords, Word) :-
-    downcase_atom(Word, Lower),
-    member(Lower, Keywords).
+%% bigrams(+Words, -Joined): [interest, rate] gives [interest_rate].
+bigrams([W1, W2|Ws], [B|Bs]) :-
+    !,
+    atomic_list_concat([W1, W2], '_', B),
+    bigrams([W2|Ws], Bs).
+bigrams(_, []).
+
+%% keyword_match(+Keywords, +Term)
+%% Term is a keyword, or a plural ending in s whose singular is.
+keyword_match(Keywords, Term) :-
+    (   memberchk(Term, Keywords)
+    ->  true
+    ;   atom_concat(Singular, s, Term),
+        memberchk(Singular, Keywords)
+    ).

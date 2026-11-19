@@ -1,8 +1,8 @@
 %% prob_facts.pl - Probabilistic reasoning over annotated facts/rules
 %%
-%% NOTE: the probability arithmetic below is noisy-AND style
-%% multiplication along the inference chain; it is NOT MYCIN-style
-%% certainty-factor combination.
+%% NOTE: the code multiplies probabilities along the inference
+%% chain, assuming the conditions of a rule are independent. It is
+%% NOT MYCIN-style certainty-factor combination.
 %%
 %% Product chains are computed in log space (a foldl of the log of each
 %% factor, then exp/1 of the sum) so that deep chains do not underflow

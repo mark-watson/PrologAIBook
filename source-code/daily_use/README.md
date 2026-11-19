@@ -1,4 +1,4 @@
-# Daily Use — Gemini REPL with Search & Cache
+# Daily Use: Gemini REPL with Search and Cache
 
 An interactive command-line tool built with SWI-Prolog that provides a REPL for querying Google's Gemini API, with Google Search grounding and a persistent SQLite cache for building LLM context.
 
@@ -6,8 +6,8 @@ This is a SWI-Prolog port of the Common Lisp `daily-use` tool.
 
 ## Prerequisites
 
-- **SWI-Prolog** (9.x recommended)
-- **prosqlite** pack — `?- pack_install(prosqlite).`
+- **SWI-Prolog** 9 or later
+- **prosqlite** pack: `?- pack_install(prosqlite).`
 - **GOOGLE_API_KEY** environment variable set
 
 ## Quick Start
@@ -22,6 +22,14 @@ Or run directly:
 ```bash
 swipl run.pl
 ```
+
+To ask one question without the REPL:
+
+```bash
+make ask Q="What is unification in Prolog?"
+```
+
+The cache lives in `~/.daily-use-cache.db`.
 
 ## REPL Commands
 
@@ -43,8 +51,11 @@ swipl run.pl
 
 ## Dependencies
 
-- [`cache_engine`](../cache_engine/) — SQLite-backed persistent cache (sibling project)
-- `prosqlite` — SWI-Prolog SQLite bindings (pack)
+The Gemini calls go through `../llm_client/prolog/gemini.pl` (its `search(true)` option turns on Google Search grounding), and the cache through `../cache_engine/prolog/cache_engine.pl`.
+
+
+- [`cache_engine`](../cache_engine/): SQLite-backed persistent cache (sibling project)
+- `prosqlite`: SWI-Prolog SQLite bindings (pack)
 
 ## Running Tests
 

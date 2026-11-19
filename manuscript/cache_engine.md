@@ -1,8 +1,8 @@
 # Cache Engine
 
-Caching LLM responses is a practical optimization that reduces API costs, lowers latency for repeated queries, and makes your applications more resilient to network interruptions. The cache engine presented here stores text responses in a local SQLite database, supports keyword-based retrieval, and automatically cleans up stale entries, a pattern directly applicable to any Prolog system that calls external LLM APIs.
+Caching LLM responses cuts API costs, makes repeated queries faster, and keeps an application working through network outages. The cache engine in this chapter stores text in a local SQLite database, finds entries by keyword, and deletes old entries. Any Prolog program that calls an LLM API can use it; the next chapter does.
 
-This chapter is a SWI-Prolog port of the Common Lisp `cache-engine` library. The Prolog version uses the `prosqlite` pack for native SQLite access and exposes a clean, modular API.
+This is a SWI-Prolog port of my Common Lisp `cache-engine` library. It uses the `prosqlite` pack for SQLite access.
 
 ## Design Overview
 
@@ -17,15 +17,15 @@ The cache engine is built around a single SQLite table:
 The API provides six core operations:
 
 - **cache_open/2**: Create or open a SQLite database file
-- **cache_add/2**: Insert a text string into the cache
-- **cache_lookup/3,4**: Retrieve matching entries by keyword search
+- **cache_add/2**: Insert a text string into the cache, unless it is already there
+- **cache_lookup/3,4**: Retrieve matching entries by keyword search, newest first
 - **cache_count/2**: Count total cached items
 - **cache_clear/1**: Remove all entries
 - **cache_clear_older_one_week/1**: Remove entries older than 7 days
 
 ## Implementation
 
-The cache engine module uses `prosqlite` for SQLite access. Install it with:
+Install `prosqlite` once with the command below. It compiles a small C library, so you need a C compiler and the SQLite headers (on macOS, the Xcode Command Line Tools provide both). The Makefile checks for the pack and prints this command if it is missing.
 
 {linenos=off}
 ~~~~~~~~
@@ -46,11 +46,12 @@ Here is the file **cache_engine/prolog/cache_engine.pl**:
     cache_clear_older_one_week/1
 ]).
 
-%% NOTE on SQL injection safety: this module relies on string-level
-%% SQL because parameterized sqlite_query/4 variable binding is not
-%% available in the installed prosqlite version.  We therefore escape
-%% single quotes, backslashes, NUL characters, and LIKE wildcards
-%% (% and _) before interpolation.
+%% NOTE on SQL injection safety: prosqlite has no parameter binding,
+%% so we build SQL text and escape values ourselves. In an SQLite
+%% string literal the only special character is the single quote,
+%% which is written twice. Backslash has no special meaning there. In
+%% LIKE patterns we also escape % and _ (and the escape character \
+%% itself), using ESCAPE '\'.
 
 :- if(catch(use_module(library(prosqlite)), _, fail)).
 
@@ -94,11 +95,12 @@ cache_close(_) :-
 :- endif.
 
 %% cache_add(+Connection, +Text)
-%% Adds a string to the cache.
+%% Adds a string to the cache unless the same text is already there.
 cache_add(Connection, Text) :-
     escape_sql(Text, Escaped),
-    format(atom(SQL), "INSERT INTO cache (content) VALUES ('~w')",
-        [Escaped]),
+    format(atom(SQL),
+           "INSERT INTO cache (content) SELECT '~w' WHERE NOT EXISTS (SELECT 1 FROM cache WHERE content = '~w')",
+           [Escaped, Escaped]),
     catch(
         sqlite_query(Connection, SQL, _Row),
         E,
@@ -117,10 +119,11 @@ cache_lookup(Connection, SearchTerms, Results) :-
 %% Options: limit(N), match_any(true/false)
 %%   limit(N)         max number of results (default 3)
 %%   match_any(true)  OR matching (default: AND)
+%% Results are newest first.
 cache_lookup(Connection, [], Results, Options) :-
     option_limit(Options, Limit),
     format(atom(SQL),
-        "SELECT content FROM cache ORDER BY created_at DESC LIMIT ~d",
+        "SELECT content FROM cache ORDER BY created_at DESC, id DESC LIMIT ~d",
         [Limit]),
     findall(Content,
         sqlite_query(Connection, SQL, row(Content)),
@@ -132,7 +135,7 @@ cache_lookup(Connection, SearchTerms, Results, Options) :-
     option_match_any(Options, MatchAny),
     build_where_clause(SearchTerms, MatchAny, WhereClause),
     format(atom(SQL),
-        "SELECT content FROM cache WHERE ~w ORDER BY created_at DESC LIMIT ~d",
+        "SELECT content FROM cache WHERE ~w ORDER BY created_at DESC, id DESC LIMIT ~d",
         [WhereClause, Limit]),
     findall(Content,
         sqlite_query(Connection, SQL, row(Content)),
@@ -167,7 +170,9 @@ cache_clear_older_one_week(Connection) :-
         )).
 ```
 
-The helper predicates handle SQL construction and escaping:
+`cache_add/2` uses `INSERT ... SELECT ... WHERE NOT EXISTS` to skip text that is already cached. Lookups sort by `created_at` and then by `id`, since entries added in the same second share a timestamp.
+
+The helper predicates build the SQL and escape values:
 
 ```prolog
 option_limit(Options, Limit) :-
@@ -200,32 +205,37 @@ build_where_clause([Term|Rest], MatchAny, Clause) :-
     format(atom(Clause), "~w~w~w", [TermClause, Connector, RestClause]).
 
 %% escape_sql(+Input, -Escaped)
-%% Escapes single quotes, backslashes, and NUL characters for SQL
-%% string interpolation.  Used for values NOT inside LIKE patterns.
+%% Make Input safe inside an SQLite string literal by doubling single
+%% quotes. A NUL character cannot appear in an SQL literal, so it
+%% raises a domain error. Used for values NOT inside LIKE patterns.
 escape_sql(Input, Escaped) :-
     atom_string(Input, Str),
     string_codes(Str, Codes),
+    (   memberchk(0, Codes)
+    ->  domain_error(text_without_nul, Input)
+    ;   true
+    ),
     escape_sql_codes(Codes, EscapedCodes),
     atom_codes(Escaped, EscapedCodes).
 
 escape_sql_codes([], []).
-escape_sql_codes([0|Cs], [0'\\, 0'0|Es]) :- !, escape_sql_codes(Cs, Es).
-escape_sql_codes([0'\\|Cs], [0'\\, 0'\\|Es]) :- !, escape_sql_codes(Cs, Es).
 escape_sql_codes([0'\'|Cs], [0'\', 0'\'|Es]) :- !, escape_sql_codes(Cs, Es).
 escape_sql_codes([C|Cs], [C|Es]) :- escape_sql_codes(Cs, Es).
 
 %% escape_sql_like(+Input, -Escaped)
-%% As escape_sql/2, but additionally escapes the LIKE wildcard
-%% characters % and _ (with \\ as the LIKE escape character).
+%% As escape_sql/2, but also escapes the LIKE wildcards % and _ and
+%% the LIKE escape character \\ itself, each with a \\ in front.
 escape_sql_like(Input, Escaped) :-
     atom_string(Input, Str),
     string_codes(Str, Codes),
+    (   memberchk(0, Codes)
+    ->  domain_error(text_without_nul, Input)
+    ;   true
+    ),
     escape_sql_like_codes(Codes, EscapedCodes),
     atom_codes(Escaped, EscapedCodes).
 
 escape_sql_like_codes([], []).
-escape_sql_like_codes([0|Cs], [0'\\, 0'0|Es]) :-
-    !, escape_sql_like_codes(Cs, Es).
 escape_sql_like_codes([C|Cs], [0'\\, C|Es]) :-
     memberchk(C, [0'%, 0'_, 0'\\]),
     !,
@@ -237,54 +247,45 @@ escape_sql_like_codes([C|Cs], [C|Es]) :- escape_sql_like_codes(Cs, Es).
 
 ## Usage Examples
 
-Open a cache, add entries, and look them up:
+Open a cache, add entries, and look them up. `cache_open/2` adds the `.db` extension, so this creates **my_cache.db**. A connection is a Prolog atom, so we do everything in one query, between `cache_open/2` and `cache_close/1`:
 
 ```prolog
 ?- cache_open(my_cache, C),
    cache_add(C, 'The quick brown fox jumps over the lazy dog'),
    cache_add(C, 'Common Lisp is powerful'),
-   cache_add(C, 'SQLite is a great database').
-
-?- cache_lookup(C, [fox], Results).
-Results = ['The quick brown fox jumps over the lazy dog'].
-
-?- cache_lookup(C, ['Lisp', powerful], R).
-R = ['Common Lisp is powerful'].
+   cache_add(C, 'SQLite is a great database'),
+   cache_lookup(C, [fox], R1),
+   cache_lookup(C, ['Lisp', powerful], R2),
+   cache_lookup(C, [fox, database], R3, [match_any(true)]),
+   cache_close(C).
+C = cache_db_1,
+R1 = ['The quick brown fox jumps over the lazy dog'],
+R2 = ['Common Lisp is powerful'],
+R3 = ['SQLite is a great database',
+      'The quick brown fox jumps over the lazy dog'].
 ```
 
-Use OR matching to broaden the search:
-
-```prolog
-?- cache_lookup(C, [fox, database], R, [match_any(true)]).
-R = ['SQLite is a great database',
-     'The quick brown fox jumps over the lazy dog'].
-```
-
-Clean up old entries and close:
-
-```prolog
-?- cache_clear_older_one_week(C).
-?- cache_close(C).
-```
+Several terms must all match by default (`R2`). With `match_any(true)`, any one term is enough (`R3`), and the newest entry comes first. To delete entries more than a week old, call `cache_clear_older_one_week(C)` before closing.
 
 ## Key Design Decisions
 
-**Why prosqlite?** SWI-Prolog does not ship with a built-in SQLite interface, but the `prosqlite` pack provides native C bindings to `libsqlite3`. This gives us proper SQL semantics, ACID transactions, and the full power of SQLite's query language, including `LIKE` for fuzzy matching and `datetime()` functions for timestamp arithmetic.
+**Why prosqlite?** SWI-Prolog does not ship with an SQLite interface, but the `prosqlite` pack binds to `libsqlite3` in C. That gives us transactions and SQLite's query language, including `LIKE` for substring search and `datetime()` for date arithmetic.
 
-**SQL construction vs. parameterized queries.** The `prosqlite` pack does not support parameterized queries (prepared statements with `?` placeholders). We construct SQL strings using `format/2` and protect them with two escapers: `escape_sql/2` escapes single quotes, backslashes, and NUL characters for plain values, and `escape_sql_like/2` additionally escapes the LIKE wildcards `%` and `_` for search terms inside `LIKE` patterns. For a cache engine handling LLM responses, this is sufficient and keeps the code straightforward.
+**Building SQL by hand.** `prosqlite` has no parameterized queries (prepared statements with `?` placeholders), so we build SQL text with `format/2` and escape every value. Escaping must follow SQLite's rules exactly. In an SQLite string literal, the only special character is the single quote, written twice: `'it''s'`. A backslash is an ordinary character, so `escape_sql/2` must *not* double it, or `C:\temp` would be stored as `C:\\temp` and later lookups would miss it. (Other databases, such as MySQL, do treat backslash as an escape, which is how such bugs creep in.) Inside a `LIKE` pattern, `%` and `_` are wildcards. `escape_sql_like/2` puts a backslash before each of them and before backslash itself, and the query declares `ESCAPE '\'`. A NUL character cannot appear in an SQL literal at all, so both escapers reject it. The tests in **tests/test_cache_engine.pl** store and find text with quotes, backslashes, and `%`.
 
-**Connection management.** Each call to `cache_open/2` generates a unique connection alias via `gensym/2`. This allows multiple independent caches to be open simultaneously, useful when different subsystems (e.g., an LLM client and a web scraper) maintain separate caches.
+**Connections.** Each call to `cache_open/2` makes a unique connection alias with `gensym/2`, so several caches can be open at once, for example one for an LLM client and one for a web scraper.
 
 ## Practical Applications
 
-This cache engine is designed to sit between your Prolog application and an external LLM API. Common use patterns include:
+The cache sits between your Prolog program and an LLM API:
 
-- **Deduplication**: Before calling an expensive LLM API, look up the cache for similar prior responses.
-- **Session context**: Accumulate LLM responses during a session and use `cache_lookup/4` with `match_any(true)` to retrieve relevant context for follow-up queries.
-- **Cost control**: Cache responses to avoid redundant API calls, especially during development and testing.
-- **Stale data management**: Use `cache_clear_older_one_week/1` in a periodic cleanup to prevent unbounded growth.
+- **Avoiding repeat calls**: Before calling an LLM, look in the cache for a stored answer to a similar request.
+- **Session context**: Store LLM replies during a session and use `cache_lookup/4` with `match_any(true)` to pull related context into follow-up prompts. The Daily Use REPL chapter does this.
+- **Cost control**: Cached replies save API calls, especially while you develop and test.
+- **Cleanup**: Call `cache_clear_older_one_week/1` from time to time so the database does not grow without limit.
 
 ## Optional Practice Problems
 
-1. **Time-To-Live Cache**: In the `cache_engine` project, modify the caching rules to store a timestamp with each cached query, and invalidate any cache entries that are older than a user-specified Time-To-Live (TTL) duration.
-2. **Selective Invalidation**: Implement a predicate `invalidate_cache_pattern/1` that accepts a pattern (e.g. `weather(city, _)`), matching and retracting all cached entries corresponding to that pattern.
+1. **Time to Live**: Write `cache_clear_older_than(+Connection, +Days)`, which generalizes `cache_clear_older_one_week/1`. Check that `Days` is a positive integer before it goes into the SQL.
+2. **Prompt and Response Pairs**: Add a `prompt` column, and write `cache_answer(+Connection, +Prompt, -Response)`, which returns a cached response for an identical prompt or calls `gemini_generate/2` and stores the result.
+3. **Selective Delete**: Write `cache_delete_matching(+Connection, +Terms)`, which deletes the entries that `cache_lookup/3` would find for `Terms`. Reuse `build_where_clause/3`.

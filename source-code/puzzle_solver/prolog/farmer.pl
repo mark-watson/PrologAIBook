@@ -11,9 +11,12 @@
 solve_farmer(Moves) :-
     InitState = state(left, left, left, left),
     GoalState = state(right, right, right, right),
-    solve(InitState, GoalState, [InitState], RevMoves),
-    reverse(RevMoves, Moves).
+    solve(InitState, GoalState, [InitState], Moves).
 
+%% solve(+State, +Goal, +Visited, -Moves)
+%% Depth-first search. Moves comes back in the order the farmer
+%% makes them, since each move is added in front of the moves
+%% that follow it.
 solve(Goal, Goal, _Visited, []).
 solve(State, Goal, Visited, [Description|Moves]) :-
     move(State, NextState, Description),
@@ -33,13 +36,13 @@ move(state(From,F,From,G), state(To,F,To,G), farmer_chicken) :-
 move(state(From,F,C,From), state(To,F,C,To), farmer_grain) :-
     opposite(From, To).
 
-%% opposite(+Bank, -OtherBank) — the two river banks.
+%% opposite(+Bank, -OtherBank): the two river banks.
 opposite(left, right).
 opposite(right, left).
 
 %% Safety: a state is unsafe when the fox and chicken (or chicken
 %% and grain) share a bank while the farmer is on the opposite
-%% bank.  Pure head-pattern matching via opposite/2 — no ==/2.
+%% bank. Uses only head pattern matching through opposite/2.
 safe(State) :-
     \+ unsafe(State).
 

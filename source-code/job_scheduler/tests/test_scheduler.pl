@@ -41,6 +41,21 @@ test(var_deadline_uses_duration_horizon, [nondet]) :-
     schedule_jobs([job(a, 3, _), job(b, 2, _)], Schedule),
     schedule_valid(Schedule).
 
+test(solver_picks_order, [nondet]) :-
+    % Listing order a, b cannot meet b's deadline; b must run first.
+    schedule_jobs([job(a, 5, 10), job(b, 2, 2)], Schedule),
+    assertion(Schedule == [scheduled(a, 2, 7), scheduled(b, 0, 2)]).
+
+test(first_answer_has_min_makespan, [nondet]) :-
+    schedule_jobs([job(a, 3, 10), job(b, 2, 8), job(c, 4, 20)], S),
+    makespan(S, M),
+    assertion(M == 9).
+
+test(mixed_deadlines, [nondet]) :-
+    schedule_jobs([job(a, 5, _), job(b, 5, _), job(c, 1, 1)], S),
+    schedule_valid(S),
+    assertion(memberchk(scheduled(c, 0, 1), S)).
+
 :- end_tests(scheduler).
 
 deadline_ok(job(_, _, Deadline), scheduled(_, _, End)) :- End =<

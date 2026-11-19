@@ -32,3 +32,5 @@ swipl -g "['tests/test_rdf.pl'], run_tests, halt" -s load.pl
 ## Description
 
 Uses SWI-Prolog's built-in `library(semweb/rdf_db)` and `library(semweb/turtle)` to load RDF data from Turtle files and query it using Prolog's pattern matching. The `rdf_loader.pl` module provides convenience predicates for loading files, querying triples, listing all subjects, and describing individual resources. SWI-Prolog's semweb library is one of the most mature RDF implementations in any language, making Prolog a natural choice for semantic web applications that require both data access and logical reasoning.
+
+The `rdfs_reason.pl` module adds RDFS type inference from `rdfs:domain` and `rdfs:range`, which `rdfs_individual_of/2` does not do. `example.ttl` includes a small ontology to try it on: `types_of('http://example.org/scryer_prolog', T)` infers that Scryer Prolog is an implementation and therefore software.

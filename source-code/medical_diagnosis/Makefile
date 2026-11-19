@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running medical_diagnosis examples ==="
-	$(SWIPL) -g "diagnose([fever, cough, fatigue, body_aches], R1), format('Diagnosis 1: ~w~n', [R1]), diagnose([sneezing, runny_nose, sore_throat], R2), format('Diagnosis 2: ~w~n', [R2]), halt" -s load.pl
+	@$(SWIPL) -g "diagnose([fever, cough, fatigue, body_aches], R1), format('Diagnosis 1: ~w~n', [R1]), diagnose([sneezing, runny_nose, sore_throat], R2), format('Diagnosis 2: ~w~n', [R2]), rank_diagnoses([cough, fatigue, fever], R3), format('Ranked for [cough, fatigue, fever]:~n'), forall(member(M, R3), format('  ~w~n', [M])), halt" -s load.pl
 
 test:
 	@echo "=== Running medical_diagnosis tests ==="

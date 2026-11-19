@@ -1,6 +1,5 @@
 # Makefile for rdf_explorer - RDF data exploration
 # Usage: make [all|run|test]
-# Note: 'run' requires RDF/TTL data files
 
 SWIPL = swipl
 
@@ -10,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running rdf_explorer examples ==="
-	$(SWIPL) -g "format('rdf_explorer: module loaded successfully~n'), halt" -s load.pl
+	@$(SWIPL) -g "load_rdf_file('example.ttl'), format('Subjects:~n'), list_subjects, nl, describe_resource('http://example.org/scryer_prolog'), types_of('http://example.org/scryer_prolog', T), format('~nInferred types of scryer_prolog: ~w~n', [T]), halt" -s load.pl
 
 test:
 	@echo "=== Running rdf_explorer tests ==="

@@ -10,8 +10,8 @@ all: run test
 
 run:
 	@echo "=== Running llm_client examples ==="
-	@echo "Note: Requires GOOGLE_API_KEY or local Ollama"
-	$(SWIPL) -g "format('llm_client: modules loaded successfully~n'), halt" -s load.pl
+	@echo "Note: needs GOOGLE_API_KEY and a local Ollama server with qwen3:1.7b"
+	@$(SWIPL) -g "(gemini_generate('In one sentence, what is Prolog?', G) -> format('Gemini: ~w~n', [G]) ; true), (ollama_generate('In one sentence, what is Prolog?', O) -> format('Ollama: ~w~n', [O]) ; true), halt" -s load.pl
 
 test:
 	@echo "=== Running llm_client tests ==="

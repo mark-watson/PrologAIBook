@@ -40,3 +40,50 @@ test(vanilla_proof_builtin) :-
     Proof == (X is 2+3)-builtin.
 
 :- end_tests(meta_interpreters).
+
+:- use_module('../prolog/bfs').
+:- use_module('../prolog/certainty').
+:- use_module('../prolog/tracer').
+:- use_module('../prolog/sample_kb').
+
+:- begin_tests(more_meta_interpreters).
+
+test(bounded_builtin) :-
+    mi_bounded(test_meta, X is 2 + 3, 1),
+    assertion(X == 5).
+
+test(bfs_left_recursion_all_answers) :-
+    findall(X, mi_bfs(sample_kb, path(a, X), 1000), Xs),
+    sort(Xs, S),
+    assertion(S == [a, b, c, d]).
+
+test(bfs_shortest_first) :-
+    once(mi_bfs(sample_kb, path(a, X), 1000)),
+    assertion(X == b).
+
+test(bfs_gives_up, [fail]) :-
+    mi_bfs(sample_kb, path(d, a), 200).
+
+test(cf_all_proofs) :-
+    findall(C, mi_cf(sample_kb, see_doctor, C), Cs),
+    msort(Cs, [Low, High]),
+    assertion(abs(Low - 0.27) < 1.0e-9),
+    assertion(abs(High - 0.336) < 1.0e-9).
+
+test(cf_best) :-
+    best_cf(sample_kb, see_doctor, CF),
+    assertion(abs(CF - 0.336) < 1.0e-9).
+
+test(cf_unprovable, [fail]) :-
+    best_cf(sample_kb, chickenpox, _).
+
+test(trace_output) :-
+    with_output_to(string(S), mi_trace(sample_kb, grandparent(tom, W))),
+    assertion(W == ann),
+    assertion(sub_string(S, _, _, _, "EXIT grandparent(tom,ann)")),
+    !.
+
+test(trace_failure, [fail]) :-
+    with_output_to(string(_), mi_trace(sample_kb, older(bob, tom))).
+
+:- end_tests(more_meta_interpreters).

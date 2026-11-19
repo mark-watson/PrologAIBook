@@ -1,4 +1,4 @@
-%% frequentist.pl — Frequentist hypothesis-testing toolkit
+%% frequentist.pl - Frequentist hypothesis-testing toolkit
 %%
 %% Provides the core tools of null-hypothesis significance testing:
 %% z-tests, chi-squared tests, and confidence intervals.
@@ -15,6 +15,7 @@
     z_test_proportion/4,
     chi_squared_test/3,
     chi_squared_test/4,
+    chi_squared_independence/2,
     confidence_interval_proportion/4,
     phi_approx/2
 ]).
@@ -51,16 +52,24 @@ phi_approx(Z, CDF) :-
     ).
 
 %% =====================================================================
-%%  Chi-squared CDF approximation (Wilson–Hilferty, 1931)
+%%  Chi-squared CDF
 %%
-%%  Transforms chi² to an approximately standard-normal variate:
-%%     z ≈ ((χ²/k)^(1/3) − (1 − 2/(9k))) / sqrt(2/(9k))
-%%  then uses phi_approx.  Good for df ≥ 3; acceptable for df ≥ 1.
+%%  df = 1 and df = 2 have exact closed forms:
+%%     df = 1:  P(chi2 =< x) = 2 Phi(sqrt(x)) - 1
+%%     df = 2:  P(chi2 =< x) = 1 - exp(-x/2)
+%%  For df >= 3 we use the Wilson-Hilferty (1931) approximation, which
+%%  maps chi2 to an approximately standard-normal variate:
+%%     z = ((chi2/k)^(1/3) - (1 - 2/(9k))) / sqrt(2/(9k))
 %% =====================================================================
 
 chi_squared_cdf(X, DF, CDF) :-
     (   X =< 0.0
     ->  CDF = 0.0
+    ;   DF =:= 1
+    ->  phi_approx(sqrt(X), Phi),
+        CDF is 2.0 * Phi - 1.0
+    ;   DF =:= 2
+    ->  CDF is 1.0 - exp(-X / 2.0)
     ;   K is float(DF),
         Term is 2.0 / (9.0 * K),
         ZVal is ((X / K) ** (1.0/3.0) - (1.0 - Term)) / sqrt(Term),
@@ -114,6 +123,34 @@ chi_squared_test(Observed, Expected, result(ChiSq, DF, PVal)) :-
     DF is Len - 1,
     chi_squared_cdf(ChiSq, DF, CCDF),
     PVal is max(1.0 - CCDF, 0.0).
+
+%% chi_squared_independence(+Table, -result(ChiSq, DF, PValue))
+%% Pearson's chi-squared test of independence for a contingency
+%% table given as a list of rows of counts. H0: the row variable and
+%% the column variable are independent. Expected counts come from the
+%% row and column totals, and DF = (rows - 1) * (columns - 1).
+chi_squared_independence(Table, result(ChiSq, DF, PVal)) :-
+    maplist(sum_list, Table, RowTotals),
+    transpose_rows(Table, Columns),
+    maplist(sum_list, Columns, ColTotals),
+    sum_list(RowTotals, Total),
+    findall(T,
+            ( nth1(I, Table, Row), nth1(J, Row, O),
+              nth1(I, RowTotals, RT), nth1(J, ColTotals, CT),
+              E is RT * CT / Total,
+              chi_sq_term(O, E, T) ),
+            Terms),
+    sum_list(Terms, ChiSq),
+    length(RowTotals, NR),
+    length(ColTotals, NC),
+    DF is (NR - 1) * (NC - 1),
+    chi_squared_cdf(ChiSq, DF, CCDF),
+    PVal is max(1.0 - CCDF, 0.0).
+
+transpose_rows([[]|_], []) :- !.
+transpose_rows(Rows, [Col|Cols]) :-
+    maplist([[H|T], H, T]>>true, Rows, Col, Rests),
+    transpose_rows(Rests, Cols).
 
 %% chi_squared_test(+Observed, +Expected, -ChiSq, -result(ChiSq, DF,
 %% PValue))

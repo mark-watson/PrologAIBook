@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running job_scheduler examples ==="
-	$(SWIPL) -g "schedule_jobs([job(a, 3, 10), job(b, 2, 8), job(c, 4, 20)], Schedule), format('Schedule: ~w~n', [Schedule]), halt" -s load.pl
+	@$(SWIPL) -g "schedule_jobs([job(a, 3, 10), job(b, 2, 8), job(c, 4, 20)], S1), format('Schedule: ~w~n', [S1]), schedule_jobs([job(a, 5, 10), job(b, 2, 2)], S2), format('b must run first: ~w~n', [S2]), halt" -s load.pl
 
 test:
 	@echo "=== Running job_scheduler tests ==="

@@ -1,8 +1,7 @@
 %% kg_reason.pl - Multi-hop reasoning over knowledge graphs
 :- module(kg_reason, [
-    entity/2,          % deprecated raw accessor (kept for back-compat;
-                       % prefer entity_of_type/2)
-    relation/3,        % deprecated raw accessor (prefer relates/3)
+    entity/2,          % raw facts from sample_data
+    relation/3,
     entity_of_type/2,
     relates/3,
     path/3,
@@ -10,6 +9,7 @@
     connected/2,
     neighbors/3,
     path_length/3,
+    shortest_path/3,
     all_paths/3,
     reachable/2,
     relation_count/2
@@ -73,20 +73,38 @@ neighbors(Entity, Neighbors, Predicates) :-
         Pairs),
     pairs_keys_values(Pairs, Neighbors, Predicates).
 
-%% path_length(+Start, +End, -Length) - Find length of a path between
-%% entities
+%% shortest_path(+Start, +End, -Path) - A path with the fewest edges,
+%% found by breadth-first search. Fails if End cannot be reached.
+shortest_path(Start, End, Path) :-
+    bfs([[Start]], [Start], End, RevPath),
+    reverse(RevPath, Path).
+
+bfs([[End|Rest]|_], _, End, [End|Rest]) :- !.
+bfs([[Node|Rest]|Queue], Seen, End, Path) :-
+    findall([Next, Node|Rest],
+            ( relation(Node, _, Next), \+ memberchk(Next, Seen) ),
+            Children0),
+    sort(Children0, Children),
+    findall(N, member([N|_], Children), NewNodes),
+    append(Seen, NewNodes, Seen1),
+    append(Queue, Children, Queue1),
+    bfs(Queue1, Seen1, End, Path).
+
+%% path_length(+Start, +End, -Length) - Number of edges on a shortest
+%% path between two entities.
 path_length(Start, End, Length) :-
-    path(Start, End, P),
-    !,
-    length(P, Length).
+    shortest_path(Start, End, Path),
+    length(Path, N),
+    Length is N - 1.
 
 %% all_paths(+Start, +End, -Paths) - Find all cycle-free paths between
 %% entities
 all_paths(Start, End, Paths) :-
     findall(Path, path(Start, End, Path), Paths).
 
-%% reachable(+Entity, -Reachable) - Find all entities reachable from
-%% Entity (BFS, bidirectional)
+%% reachable(+Entity, -Reachable) - Entities linked to Entity by a
+%% chain of edges: those reachable by following edges forward, plus
+%% those that reach Entity. Both searches are breadth-first.
 reachable(Entity, Reachable) :-
     reachable_fwd([Entity], [Entity], Fwd),
     reachable_bwd([Entity], [Entity], Bwd),

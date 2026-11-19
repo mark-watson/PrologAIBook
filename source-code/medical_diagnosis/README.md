@@ -27,7 +27,7 @@ swipl -g "['tests/test_diagnosis.pl'], run_tests, halt" -s load.pl
 
 ## Description
 
-A practical case study applying Prolog reasoning to medical diagnosis. The system maintains a knowledge base of diseases and their required symptoms, then matches a patient's symptom list against disease profiles using `subset/2`. When a match is found, it returns a `diagnosis(Disease, Explanation)` term that includes the matching symptoms. This demonstrates how Prolog's pattern matching and logical inference naturally support diagnostic reasoning — a domain where expert systems have historically excelled.
+A practical case study applying Prolog reasoning to medical diagnosis. The system maintains a knowledge base of diseases and their required symptoms, then matches a patient's symptom list against disease profiles using `subset/2`. When a match is found, it returns a `diagnosis(Disease, Explanation)` term that includes the matching symptoms. This demonstrates how Prolog's pattern matching and logical inference naturally support diagnostic reasoning, a domain where expert systems have historically excelled. `rank_diagnoses/2` adds partial matching: it scores each disease by the fraction of its symptoms the patient has and lists the matched and missing symptoms.
 
 ## Comments on rules-based vs. Bayesian or Frequentist approaches (see chapter "Probability")
 
@@ -51,9 +51,10 @@ This Prolog code is neither Bayesian nor Frequentist. Instead, it is a Symbolic/
    * Deductive Reasoning: It uses a "Knowledge Base" (the disease/2 predicates) to define what constitutes a disease.
    * Strict Matching: The core logic subset(RequiredSymptoms, Symptoms) means that for a diagnosis to be made, all
      "RequiredSymptoms" for that disease must be present in the user's list. 
-   * Non-Probabilistic: It is "exact." If a patient has 3 out of 4 flu symptoms, the system will fail to diagnose the flu
-     entirely rather than saying "75% chance of flu."
-   * Pure, Stateless Matching: diagnose/2 is a pure function of the input symptom list — it performs no
+   * Non-Probabilistic: diagnose/2 is "exact." If a patient has 3 out of 4 flu symptoms, it fails to diagnose the flu.
+     rank_diagnoses/2 instead returns match(0.75, flu, Matched, Missing). The score is a fraction of symptoms, not a
+     probability.
+   * Pure, Stateless Matching: diagnose/2 is a pure function of the input symptom list. It performs no
      assert/retract and leaves no residue in the Prolog dynamic database, so repeated consultations are
      idempotent.
 

@@ -9,7 +9,7 @@ all: run test
 
 run:
 	@echo "=== Running reactive_agent examples ==="
-	$(SWIPL) -g "define_goal(answer_found), register_tool(search, search_web/1), format('Agent configured with goal and tool~n'), halt" -s load.pl
+	@$(SWIPL) -g "setup_world(a, [a, b]), run_agent(vacuum_world, 10), halt" -s load.pl
 
 test:
 	@echo "=== Running reactive_agent tests ==="

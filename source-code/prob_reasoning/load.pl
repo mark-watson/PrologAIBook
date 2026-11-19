@@ -2,3 +2,4 @@
 
 %% Populate the weather example knowledge base (idempotent).
 :- initialization(load_example_kb).
+:- use_module(prolog/bayes_net).

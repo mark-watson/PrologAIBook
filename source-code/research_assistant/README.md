@@ -1,29 +1,34 @@
 # Research Assistant
 
-**Status: experimental skeleton.** The predicates load and the placeholder `research/2` returns a `placeholder_answer(Question)` term, but the real web-search → LLM-summarise → Prolog-knowledge-base pipeline is not yet implemented.
+An agent that answers research questions by combining web search, a Prolog knowledge base, and an LLM. Companion code for the Building AI Agents chapter.
 
-An agent combining web search, LLM summarization, and Prolog reasoning. Companion code for the Building AI Agents chapter.
+## How It Works
+
+1. `search_terms/2` drops question words from the question.
+2. `wiki_search/3` asks the Wikipedia search API for the top pages (no API key needed).
+3. Each page summary is stored as a `knowledge(Title, Summary, URL)` fact. A page already in the knowledge base is not fetched again.
+4. Gemini answers from those facts only and cites them as `[1]`, `[2]`, ... The answer ends with the source URLs.
 
 ## Running Examples
 
-The module loads, but only the placeholder is runnable:
+Needs network access and `GOOGLE_API_KEY`:
 
 ```shell
-swipl -s load.pl
+make run
 ```
 
 ```prolog
-?- research("What is Prolog?", Answer).   % returns placeholder_answer(...) only
+?- research("Who designed the Warren Abstract Machine and when?", Answer).
+?- research("What is unification?", Facts, [llm(false)]).   % no LLM: Title-Summary-URL triples
 ```
 
 ## Running Tests
 
 ```shell
-swipl -g "['tests/test_assistant.pl'], run_tests, halt" -s load.pl
+make test
 ```
 
-The single test is marked `blocked('pipeline not yet implemented')`, so the run reports zero passing tests — this is intentional.
-
+The tests need no network.
 
 ## Architecture
 

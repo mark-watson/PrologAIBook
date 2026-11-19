@@ -44,22 +44,25 @@ extract_links(DOM, Links) :-
     findall(Href, xpath(DOM, //a(@href), Href), Links).
 
 %% extract_text(+DOM, -Text) - Extract visible text content
-%% Text inside <script> and <style> subtrees is filtered out.
-%% (library(xpath) has no //text node test, so we walk the DOM.)
+%% Text inside <script> and <style> subtrees is filtered out, and each
+%% text node has its white space collapsed. (library(xpath) has no
+%% //text node test, so we walk the DOM.)
 extract_text(DOM, Text) :-
     strip_script_style(DOM, CleanDOM),
-    findall(T, dom_text(CleanDOM, T), Texts),
+    findall(T, ( dom_text(CleanDOM, T0),
+                 normalize_space(atom(T), T0),
+                 T \== '' ),
+            Texts),
     atomic_list_concat(Texts, ' ', Text).
 
 %% dom_text(+DOMList, -Text) is nondet
-%% Yield each text-node atom/string in a DOM list.
-dom_text([Node|Rest], Text) :-
-    (   (atom(Node) ; string(Node)),
-        Text = Node
+%% Yield each text node in a DOM list, depth first.
+dom_text(Nodes, Text) :-
+    member(Node, Nodes),
+    (   atomic(Node)
+    ->  Text = Node
     ;   Node = element(_, _, Children),
         dom_text(Children, Text)
-    ;   Rest \= [],
-        dom_text(Rest, Text)
     ).
 
 %% strip_script_style(+DOM, -CleanDOM)

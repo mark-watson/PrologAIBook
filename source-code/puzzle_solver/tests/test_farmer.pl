@@ -16,6 +16,13 @@ test(solution_length_is_7, [nondet]) :-
     length(Moves, Len),
     Len =:= 7.
 
+test(moves_in_forward_order, [nondet]) :-
+    % The first solution takes the chicken over, returns alone, and
+    % then takes the fox. A reversed list would start the same way
+    % but take the grain third.
+    solve_farmer(Moves),
+    Moves = [farmer_chicken, farmer_alone, farmer_fox|_].
+
 test(every_intermediate_state_is_safe, [nondet]) :-
     % Re-simulate the plan; every state along the way must satisfy
     % farmer's safety predicate.
@@ -31,7 +38,7 @@ test(unsafe_state_is_rejected, [fail]) :-
 
 :- end_tests(farmer).
 
-%% farmer_safe(+State) — call the (unexported) safe/1 via module.
+%% farmer_safe(+State): call the (unexported) safe/1 via module.
 farmer_safe(State) :- farmer:safe(State).
 
 %% simulate(+State, +Moves, -States)

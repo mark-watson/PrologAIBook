@@ -1,25 +1,32 @@
 # Meta-Interpreters
 
-Vanilla and bounded-depth meta-interpreters — Prolog interpreting Prolog. Companion code for the Meta-Interpreters chapter.
+Prolog interpreting Prolog: six small meta-interpreters. Companion code for the Meta-Interpreters chapter.
 
 ## Running Examples
+
+```shell
+make run
+```
+
+or in the REPL:
 
 ```shell
 swipl -s load.pl
 ```
 
 ```prolog
-?- assert((likes(john, mary) :- true)).
-?- mi_solve(likes(john, mary)).
-?- mi_bounded(likes(john, mary), 5).
+?- mi_solve_proof(sample_kb, grandparent(tom, W), Proof).
+?- mi_bounded(sample_kb, grandparent(tom, ann), 2).
+?- findall(X, mi_bfs(sample_kb, path(a, X), 1000), Xs).
+?- best_cf(sample_kb, see_doctor, CF).
+?- mi_trace(sample_kb, older(bob, tom)).
 ```
 
 ## Running Tests
 
 ```shell
-swipl -g "['tests/test_meta.pl'], run_tests, halt" -s load.pl
+make test
 ```
-
 
 ## Architecture
 
@@ -27,4 +34,9 @@ swipl -g "['tests/test_meta.pl'], run_tests, halt" -s load.pl
 
 ## Description
 
-Meta-interpreters are uniquely Prolog — a program that interprets Prolog programs within Prolog itself. The `vanilla.pl` module implements the classic three-clause meta-interpreter and a variant that builds proof trees. The `bounded.pl` module adds a depth limit to prevent infinite recursion, which is essential for reasoning over potentially cyclic knowledge bases. These patterns are the foundation for building custom search strategies, explanation facilities, and debugging tools.
+- `vanilla.pl`: the classic four-clause meta-interpreter (`mi_solve/1,2`) and a variant that builds proof terms (`mi_solve_proof/2,3`).
+- `bounded.pl`: a depth limit on rule applications, so every query terminates.
+- `bfs.pl`: breadth-first search. Each queue entry keeps its own copy of the goal, so bindings stay correct. It answers left-recursive queries that plain Prolog loops on.
+- `certainty.pl`: certainty factors, MYCIN style. Conjunctions take the minimum and rules multiply their certainty in.
+- `tracer.pl`: an indented CALL / EXIT / FAIL trace.
+- `sample_kb.pl`: a small knowledge base for all of them, including a cyclic graph with a left-recursive `path/2`.

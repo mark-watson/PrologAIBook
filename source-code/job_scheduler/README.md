@@ -22,13 +22,14 @@ A more complex scheduling problem with tighter deadlines and more tasks:
 ## Running Tests
 
 ```shell
-swipl -g "['tests/test_scheduler.pl'], run_tests, halt" -s load.pl
+make test
 ```
 
 ## Notes
 
-- The solver chains adjacent tasks with `chain(Starts, #=<)`, which fixes the execution order to the order jobs appear in the input list. To let the solver pick the best ordering, permute the job list before calling `schedule_jobs/2`.
-- The search horizon is derived from the input (largest deadline, or sum of durations when no deadlines are given), so arbitrarily large schedules work without code changes.
+- `no_overlap/1` posts a disjunctive constraint `E1 #=< S2 #\/ E2 #=< S1` for every pair of jobs, so the solver chooses the order in which jobs run.
+- The first answer has the smallest makespan (`labeling([min(Makespan)], Starts)`).
+- Start times range from 0 to the total work, since a feasible schedule never needs idle time. A job's deadline may be left unbound.
 - `schedule_valid/1` verifies a fully ground schedule pairwise with plain numeric comparisons; `no_overlap/1` is the constraint-posting predicate used while building a schedule.
 
 
@@ -47,11 +48,11 @@ The example data models a small production floor where six jobs must be schedule
 
 The total work is 17 time units, and the latest deadline is 18. The scheduler must respect three constraints:
 
-1. **No overlap** — only one job runs at a time on the shared machine.
-2. **Deadline respect** — each job must finish by its deadline.
-3. **Ordering** — jobs are ordered by start time (the `chain/2` constraint).
+1. **No overlap**: only one job runs at a time on the shared machine.
+2. **Deadlines**: each job must finish by its deadline.
+3. **Makespan**: among feasible schedules, the first answer finishes earliest.
 
-Because jobs `a` and `b` have tight deadlines and job `d` is very short, the constraint solver must explore different orderings to find a feasible packing. This makes the example a better demonstration of backtracking and constraint propagation than the original three-job version, where the schedule is trivially sequential with no real deadline pressure.
+Because jobs `a` and `b` have tight deadlines and job `d` is very short, the constraint solver must explore different orderings to find a feasible packing. This makes the example a better demonstration of constraint propagation and search than a schedule with loose deadlines.
 
 ## Architecture
 
@@ -59,4 +60,4 @@ Because jobs `a` and `b` have tight deadlines and job `d` is very short, the con
 
 ## Description
 
-Demonstrates a practical application of CLP(FD) for scheduling problems. Each job has a name, duration, and deadline. The scheduler creates constrained start/end time variables, enforces non-overlapping execution, respects deadlines, and uses `label/1` to find feasible schedules. This pattern extends naturally to real-world applications like production scheduling, resource allocation, and project planning — domains where Prolog's constraint-based approach offers significant advantages over imperative solutions.
+Demonstrates a practical application of CLP(FD) for scheduling problems. Each job has a name, duration, and deadline. The scheduler creates constrained start/end time variables, enforces non-overlapping execution, respects deadlines, and searches for the schedule with the smallest makespan. This pattern extends naturally to real-world applications like production scheduling, resource allocation, and project planning, domains where Prolog's constraint-based approach offers significant advantages over imperative solutions.

@@ -37,7 +37,7 @@ plan_dfs(State, Goal, DepthLeft, [Action|Plan]) :-
     plan_dfs(NewState, Goal, DepthLeft1, Plan).
 
 %% plan_bfs(+InitState, +GoalState, -Plan)
-%% Breadth-first search — guaranteed to find the shortest plan.
+%% Breadth-first search, guaranteed to find a shortest plan.
 %% States are normalized with sort/2 and kept in a visited set so
 %% each distinct state is enqueued at most once.
 plan_bfs(State, Goal, Plan) :-
@@ -77,7 +77,7 @@ bfs_enqueue_unseen([bfs_node(S, A)|Nodes], Seen,
     bfs_enqueue_unseen(Nodes, [bfs_key(K)|Seen], Fresh, Seen1).
 
 %% plan_visited(+InitState, +GoalState, -Plan)
-%% DFS with cycle detection — avoids revisiting states.  The
+%% DFS with cycle detection: never revisits a state on the current path.  The
 %% visited set is passed as an explicit argument, so backtracking
 %% automatically unwinds it (no surviving assertz leaks) and every
 %% top-level call starts from a fresh set.

@@ -7,14 +7,14 @@
     sparql_iri/2
 ]).
 
-:- use_module(library(semweb/sparql_client), []).
 :- use_module(library(semweb/sparql_client),
               [sparql_query/3 as sparql_client_query]).
-:- use_module(library(http/http_client)).
+:- use_module(library(http/http_open)).    % https support
 
-%% sparql_query(+Query, -Results, +Options)
-%% Thin wrapper over sparql_client:sparql_query/3 that supplies an
-%% explicit 30-second default timeout (overridable via Options).
+%% sparql_query(+Query, -Row, +Options)
+%% Thin wrapper over sparql_client:sparql_query/3 that adds a
+%% 30-second timeout unless Options gives one. Backtracking yields one
+%% row(...) term per result.
 sparql_query(Query, Results, Options) :-
     (   memberchk(timeout(_), Options)
     ->  AllOptions = Options
@@ -22,16 +22,19 @@ sparql_query(Query, Results, Options) :-
     ),
     sparql_client_query(Query, Results, AllOptions).
 
-%% sparql_query_dbpedia(+Query, -Results)
-sparql_query_dbpedia(Query, Results) :-
-    sparql_query(Query, Results,
-                 [host('dbpedia.org'), path('/sparql')]).
+%% sparql_query_dbpedia(+Query, -Row)
+%% Query DBpedia's public endpoint. Each solution is one result row.
+sparql_query_dbpedia(Query, Row) :-
+    sparql_query(Query, Row,
+                 [endpoint('https://dbpedia.org/sparql')]).
 
-%% wikidata_query(+Query, -Results)
-%% Query the Wikidata SPARQL endpoint (www.wikidata.org).
-wikidata_query(Query, Results) :-
-    sparql_query(Query, Results,
-                 [host('www.wikidata.org'), path('/bigdata/namespace/wdq/sparql')]).
+%% wikidata_query(+Query, -Row)
+%% Query the Wikidata Query Service. Use full IRIs in the query; the
+%% wd: and wdt: prefixes are predefined by the service, so they also
+%% work.
+wikidata_query(Query, Row) :-
+    sparql_query(Query, Row,
+                 [endpoint('https://query.wikidata.org/sparql')]).
 
 %% sparql_literal(+Atom, -Quoted)
 %% Safely quote an atom as a SPARQL string literal: backslashes and

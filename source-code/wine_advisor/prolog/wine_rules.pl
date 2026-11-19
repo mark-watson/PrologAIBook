@@ -31,6 +31,7 @@ meal_pairs_with(fish, white).
 meal_pairs_with(seafood, white).
 meal_pairs_with(pasta, red).
 meal_pairs_with(dessert, white).
+meal_pairs_with(dessert, red).    % port and other red dessert wines
 meal_pairs_with(cheese, red).
 
 %% Preference matching: body dimension.

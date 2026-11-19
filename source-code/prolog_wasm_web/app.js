@@ -218,15 +218,16 @@ function runRecommendation() {
     }
 }
 
-// Convert Prolog terms to clean JS strings.
-// Compound terms (objects with a functor) are JSON.stringified.
+// Convert a Prolog value from swipl-wasm to a display string.
+// Atoms arrive as JS strings and numbers as JS numbers. A Prolog
+// string arrives as a PrologString object ({$t: 's', v: text}), so
+// JSON.stringify would wrap it in quote marks; we take .v instead.
+// Anything else (a compound term) is shown as JSON.
 function formatPrologValue(val) {
     if (typeof val === 'string') return val;
-    if (val && typeof val === 'object') {
-        // Compound term: { $t: 'f', ... } or similar functor object
-        return JSON.stringify(val);
-    }
-    return String(val);
+    if (typeof val === 'number') return String(val);
+    if (val && val.$t === 's') return val.v;
+    return JSON.stringify(val);
 }
 
 // Start on page load

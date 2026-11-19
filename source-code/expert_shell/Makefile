@@ -4,13 +4,17 @@
 
 SWIPL = swipl
 
-.PHONY: all run test tests
+.PHONY: all run test tests consult
 
 all: run test
 
 run:
 	@echo "=== Running expert_shell sample KB demo ==="
-	$(SWIPL) -g "load_kb('prolog/sample_kb.pl'), provide_answer(meal, red_meat), provide_answer(bold_preference, yes), consult_expert(C), explain(C), halt" -s load.pl
+	@$(SWIPL) -g "load_kb('prolog/sample_kb.pl'), provide_answer(meal, red_meat), provide_answer(bold_preference, yes), consult_expert(C), explain(C), reset_known, load_kb('prolog/rules_kb.pl'), provide_answer(meal, dessert), provide_answer(sweet_preference, yes), consult_expert(C2), explain(C2), halt" -s load.pl
+
+# Interactive consultation: the shell asks questions on the terminal.
+consult:
+	$(SWIPL) -g "load_kb('prolog/rules_kb.pl'), consult_expert(C), explain(C), halt" -s load.pl
 
 test:
 	@echo "=== Running expert_shell tests ==="

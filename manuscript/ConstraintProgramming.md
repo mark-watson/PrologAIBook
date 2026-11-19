@@ -1,41 +1,43 @@
 # Constraint Logic Programming
 
-Constraint Logic Programming (CLP) extends Prolog with the ability to reason about constraints over various domains, integers, reals, and finite domains. SWI-Prolog provides excellent CLP libraries that make it possible to solve complex combinatorial and optimization problems declaratively.
+Constraint Logic Programming (CLP) extends Prolog to reason about constraints over integers, reals, rationals, and booleans. SWI-Prolog's CLP libraries let you solve hard combinatorial and optimization problems by stating the constraints and letting a solver search.
 
 ## Introduction to CLP
 
-In traditional logic programming, evaluation relies on unification and backtracking. For complex search problems, this often leads to a **generate-and-test** strategy: the program instantiates variables to concrete values and then checks if they satisfy the problem conditions. If they do not, it backtracks and tries other values. For large combinatorial search spaces, this approach is extremely inefficient.
+Plain Prolog solves search problems with unification and backtracking. This often means **generate and test**: bind the variables to values, then check the conditions, and backtrack on failure. On large search spaces this is far too slow.
 
-**Constraint Logic Programming (CLP)** replaces this with a **constrain-and-generate** paradigm:
-1. **Constraints** are declarative relations that restrict the set of possible values (domains) that variables can take.
-2. The **Constraint Solver** maintains these relations. As soon as a variable's domain is reduced, the solver automatically propagates this restriction to other related variables, narrowing their domains before concrete values are ever assigned. This process is called **constraint propagation**.
-3. By pruning branches of the search tree early, CLP turns NP-complete search problems into highly efficient deterministic operations, separating the description of the constraints from the search logic.
+**Constraint Logic Programming** reverses the order to **constrain, then generate**:
+1. **Constraints** are relations that limit the values (the *domain*) each variable can take.
+2. The **constraint solver** keeps these relations. When one variable's domain shrinks, the solver passes the change on to related variables and shrinks their domains too, before any values are tried. This is **constraint propagation**.
+3. **Labeling** then searches for values, but over much smaller domains.
+
+Propagation does not make NP-complete problems easy, but it prunes so much of the search tree that many practical problems become fast. It also keeps the model (the constraints) apart from the search strategy.
 
 ## CLP(FD): Constraints over Finite Domains
 
-Finite Domain constraint solving, or **CLP(FD)**, deals with variables whose values are restricted to discrete, finite sets of integers. In SWI-Prolog, this is implemented in `library(clpfd)`.
+**CLP(FD)** works with variables whose values are integers from a finite set. SWI-Prolog provides it in `library(clpfd)`.
 
-Unlike ordinary arithmetic operators (like `is/2` or `=:=/2`), which require all variables to be fully bound to values, CLP(FD) relations are bidirectional and can evaluate partially instantiated variables.
+Ordinary arithmetic (`is/2`, `=:=/2`) needs every variable bound. CLP(FD) constraints work in any direction and accept unbound variables.
 
 #### Core CLP(FD) Predicates
 - **`in/2` and `ins/2`**: Define the domain for a single variable or a list of variables (e.g., `X in 1..9`, `Vars ins 1..9`).
-- **`#=`**: Constraint equality.
-- **`#\=`**: Constraint inequality.
-- **`#<`, `#>`, `#=<`, `#>=`**: Constraint arithmetic comparisons.
-- **`all_distinct(+List)`**: A high-performance constraint asserting that all integers in the list must be unique.
-- **`label(+List)`**: Triggers backtracking search to instantiate variables to concrete values from their remaining domains.
-- **`transpose(+Matrix, -Transposed)`**: Transposes a 2D list matrix, crucial for grid-based constraints (such as column checks).
+- **`#=`**, **`#\=`**: Equality and inequality.
+- **`#<`, `#>`, `#=<`, `#>=`**: Comparisons.
+- **`#\/`**, **`#/\`**, **`#\`**: Disjunction, conjunction, and negation of constraints.
+- **`all_distinct(+List)`**, **`all_different(+List)`**: All values in the list differ. `all_distinct/1` propagates more strongly.
+- **`label(+List)`**, **`labeling(+Options, +List)`**: Search for values in the remaining domains.
+- **`transpose(+Matrix, -Transposed)`**: Turns rows into columns, useful for grid puzzles.
 
 ## Solving Sudoku with CLP(FD)
 
-A classic demonstration of constraint propagation is solving Sudoku puzzles. Standard Sudoku requires placing digits 1 to 9 in a `9 \times 9`$ grid such that every row, column, and `3 \times 3`$ sub-grid block contains unique numbers.
+Sudoku shows constraint propagation well. You place the digits 1 to 9 in a `9 \times 9`$ grid so that every row, column, and `3 \times 3`$ box holds each digit once.
 
-Using `library(clpfd)`, we can model this complete constraint system in under 20 lines of logic. The solver propagates constraints so efficiently that most puzzles are solved instantly without any backtracking search at all.
+With `library(clpfd)`, the whole model takes about 15 lines. `all_distinct/1` propagates so strongly that it solves many puzzles with little or no search.
 
 {width: "80%"}
 ![Architecture diagram for the Sudoku Solver example](FIG_sudoku_solver.jpg)
 
-The **sudoku_solver** project provides a complete solver in under 30 lines of logic. Here is the file **sudoku_solver/prolog/sudoku.pl**:
+Here is the file **sudoku_solver/prolog/sudoku.pl**:
 
 ```prolog
 :- module(sudoku, [
@@ -77,140 +79,134 @@ render_cell(Cell, '.') :- var(Cell), !.
 render_cell(Cell, Cell).
 ```
 
-`print_board/1` renders uninstantiated cells as `.` and solved cells as digits, so a partially solved board prints readably.
+`blocks/3` takes three rows at a time and peels off three cells from each, which gives one `3 \times 3`$ box per step. `print_board/1` prints unbound cells as `.` and solved cells as digits.
 
-## The N-Queens Problem
+## Cryptarithmetic: SEND + MORE = MONEY
 
-The N-Queens problem asks how to place `N`$ non-attacking queens on an `N \times N`$ chessboard.
-- **Naive Backtracking**: Places a queen row-by-row, recursively checking for row, column, and diagonal conflicts. If a conflict is found, it backtracks. This checks many invalid states.
-- **CLP(FD) Search**: Declares queen positions as variables, constrains their columns and diagonals, and uses constraint propagation to prune invalid domains before values are labeled. This limits backtracking.
+The Search Algorithms chapter solved the N-Queens problem with CLP(FD). Here is another classic: assign a different digit to each letter so that the sum is correct.
 
-The diagonal constraints are written using arithmetic offsets: two queens at columns `Q`$ and `Q_1`$ separated by `D`$ rows are on the same diagonal if `|Q - Q_1| = D`$, which translates to `Q #\= Q1 + D` and `Q #\= Q1 - D`.
+```text
+    S E N D
+  + M O R E
+  ---------
+  M O N E Y
+```
 
-The **n_queens** project solves the problem using CLP(FD) diagonal constraints. Here is the file **n_queens/prolog/queens.pl**:
+Here is the file **sudoku_solver/prolog/send_more.pl**:
 
 ```prolog
-%% queens.pl - N-Queens solver using CLP(FD)
-:- module(queens, [
-    n_queens/2,
-    n_queens/3
+%% send_more.pl - The SEND + MORE = MONEY puzzle in CLP(FD)
+:- module(send_more, [
+    send_more/1
 ]).
 
 :- use_module(library(clpfd)).
 
-%% n_queens(+N:int, -Queens:list) is nondet
-%% Queens is a list of column positions for queens in each row.
-n_queens(N, Queens) :-
-    n_queens(N, [], Queens).
-
-%% n_queens(+N:int, +Options:list, -Queens:list) is nondet
-%% Options:
-%%   ff_opt(true)  label with labeling([ff], Queens)
-%%                 (first-fail heuristic); otherwise label/1 is used.
-n_queens(N, Options, Queens) :-
-    length(Queens, N),
-    Queens ins 1..N,
-    safe_queens(Queens),
-    (   member(ff_opt(true), Options)
-    ->  labeling([ff], Queens)
-    ;   label(Queens)
-    ).
-
-safe_queens([]).
-safe_queens([Q|Qs]) :-
-    safe_queen(Q, Qs, 1),
-    safe_queens(Qs).
-
-safe_queen(_, [], _).
-safe_queen(Q, [Q1|Qs], D) :-
-    Q #\= Q1,
-    Q #\= Q1 + D,
-    Q #\= Q1 - D,
-    D1 #= D + 1,
-    safe_queen(Q, Qs, D1).
+%% send_more(-Digits)
+%% Digits = [S,E,N,D,M,O,R,Y]: distinct digits, no leading zero,
+%% such that SEND + MORE = MONEY.
+send_more(Digits) :-
+    Digits = [S,E,N,D,M,O,R,Y],
+    Digits ins 0..9,
+    all_different(Digits),
+    S #\= 0,
+    M #\= 0,
+                1000*S + 100*E + 10*N + D
+              + 1000*M + 100*O + 10*R + E
+    #= 10000*M + 1000*O + 100*N + 10*E + Y,
+    label(Digits).
 ```
 
-`n_queens/3` takes an options list. `ff_opt(true)` selects the first-fail labelling heuristic `labeling([ff], Queens)`, which is much faster for large `N`.
+The model has three parts: domains (`ins`), constraints (`all_different/1`, no leading zeros, and the sum), and search (`label/1`). Propagation alone, before any search, fixes three letters: `M = 1` (the carry out of a four-digit sum can only be 1), `S = 9`, and `O = 0`. `label/1` only has to search the other five.
+
+```prolog
+?- send_more([S,E,N,D,M,O,R,Y]).
+S = 9, E = 5, N = 6, D = 7, M = 1, O = 0, R = 8, Y = 2.
+```
+
+`all_different/1` propagates less than `all_distinct/1`, which the Sudoku solver uses, but it is cheaper. On this small puzzle either works.
 
 ## Scheduling and Resource Allocation
 
-Scheduling tasks with deadlines, resource limitations, and ordering constraints is a classic industrial optimization problem.
-- **Precedence constraints**: Task B must start after Task A ends (`StartB #>= EndA`).
-- **Resource constraints**: Two tasks using the same resource cannot overlap in time.
-- **Deadline constraints**: Tasks must complete before a specific time limit.
+Scheduling tasks with deadlines, limited resources, and ordering rules is a classic industrial problem:
+- **Precedence constraints**: Task B starts after task A ends (`StartB #>= EndA`).
+- **Resource constraints**: Two tasks that use the same resource cannot overlap.
+- **Deadline constraints**: A task must finish by a given time.
 
-CLP(FD) lets you express these temporal equations naturally, solving complex scheduling problems by treating start and end times as integer variables.
-
-The **job_scheduler** project models scheduling with temporal constraints. Here is the file **job_scheduler/prolog/scheduler.pl**:
+In CLP(FD), start and end times are integer variables, and each rule is a constraint. The **job_scheduler** project schedules jobs on one machine. Here is the file **job_scheduler/prolog/scheduler.pl**:
 
 ```prolog
 %% scheduler.pl - Job scheduling with temporal constraints using CLP(FD)
 :- module(scheduler, [
     schedule_jobs/2,
     no_overlap/1,
-    schedule_valid/1
+    schedule_valid/1,
+    makespan/2
 ]).
 
 :- use_module(library(clpfd)).
 
 %% schedule_jobs(+Jobs, -Schedule)
-%% Jobs: list of job(Name, Duration, Deadline) terms
-%% Schedule: list of scheduled(Name, Start, End) terms
-%%
-%% The search horizon is derived from the input jobs: it is the
-%% largest deadline in the input (or, if no job gives a deadline,
-%% the sum of all durations, plus one as a safety margin).  Infeasible
-%% inputs simply fail during labelling.
+%% Jobs: list of job(Name, Duration, Deadline) terms. Deadline may
+%% be unbound for a job with no deadline.
+%% Schedule: list of scheduled(Name, Start, End) terms, in the same
+%% order as Jobs, using one machine. The solver chooses the order in
+%% which the jobs run. The first answer has the smallest makespan
+%% (the time the last job ends). Infeasible inputs fail.
 schedule_jobs(Jobs, Schedule) :-
-    compute_horizon(Jobs, Horizon),
+    horizon(Jobs, Horizon),
     maplist(create_task(Horizon), Jobs, Schedule, Starts),
-    chain(Starts, #=<),  % order tasks by start time
     maplist(deadline_constraint, Jobs, Schedule),
     no_overlap(Schedule),
-    maplist(label_task, Schedule).
+    makespan(Schedule, Makespan),
+    labeling([min(Makespan)], Starts).
 
-%% compute_horizon(+Jobs, -Horizon)
-compute_horizon(Jobs, Horizon) :-
-    compute_horizon(Jobs, 0, 0, 0, Horizon).
+%% horizon(+Jobs, -Horizon)
+%% No job needs to start later than the total work: any feasible
+%% schedule can be shifted left until it has no idle time.
+horizon(Jobs, Horizon) :-
+    foldl(add_duration, Jobs, 0, Horizon).
 
-compute_horizon([], MaxDeadline, TotalDuration, SeenDeadline,
-    Horizon) :-
-    (   SeenDeadline > 0
-    ->  Horizon = MaxDeadline
-    ;   Horizon is TotalDuration + 1
-    ).
-compute_horizon([job(_, Duration, Deadline)|Jobs], MaxD0, Total0,
-    Seen0, Horizon) :-
-    Total1 is Total0 + Duration,
-    (   integer(Deadline)
-    ->  MaxD1 is max(MaxD0, Deadline),
-        Seen1 is Seen0 + 1
-    ;   MaxD1 = MaxD0,
-        Seen1 = Seen0
-    ),
-    compute_horizon(Jobs, MaxD1, Total1, Seen1, Horizon).
+add_duration(job(_, Duration, _), Sum0, Sum) :-
+    Sum is Sum0 + Duration.
 
 create_task(Horizon, job(Name, Duration, _Deadline),
-    scheduled(Name, Start, End), Start) :-
+            scheduled(Name, Start, End), Start) :-
     Start in 0..Horizon,
     End #= Start + Duration.
 
-deadline_constraint(job(Name, _Duration, Deadline), scheduled(Name,
-    _Start, End)) :-
-    End #=< Deadline.
+deadline_constraint(job(_, _, Deadline), scheduled(_, _, End)) :-
+    (   integer(Deadline)
+    ->  End #=< Deadline
+    ;   true
+    ).
 
 %% no_overlap(+Schedule)
-%% Posts CLP(FD) constraints chaining adjacent jobs in the schedule
-%% list: the end of each job must be =< the start of the next one.
-%% NOTE: this operates on constraint variables while building the
-%% schedule (it posts `#=<` constraints); it is NOT a check on ground
-%% data.  Use schedule_valid/1 to verify a fully ground schedule.
+%% Posts constraints so that no two jobs overlap: for each pair, one
+%% job ends before the other starts. #\/ is a constraint
+%% disjunction, so the solver decides the order by propagation and
+%% search instead of by Prolog backtracking.
 no_overlap([]).
-no_overlap([_]).
-no_overlap([scheduled(_,_,End1)|Rest]) :-
-    Rest = [scheduled(_,Start2,_)|_],
-    End1 #=< Start2,
-    no_overlap(Rest).
+no_overlap([Task|Tasks]) :-
+    maplist(disjoint(Task), Tasks),
+    no_overlap(Tasks).
+
+disjoint(scheduled(_, S1, E1), scheduled(_, S2, E2)) :-
+    E1 #=< S2 #\/ E2 #=< S1.
+
+%% makespan(+Schedule, -Makespan)
+%% Makespan is the largest end time in Schedule.
+makespan(Schedule, Makespan) :-
+    maplist(end_time, Schedule, Ends),
+    max_list_fd(Ends, Makespan).
+
+end_time(scheduled(_, _, End), End).
+
+max_list_fd([E|Es], Max) :-
+    foldl(fd_max, Es, E, Max).
+
+fd_max(E, M0, M) :-
+    M #= max(M0, E).
 
 %% schedule_valid(+Schedule)
 %% Verifies a fully ground schedule: no two jobs overlap.  Uses plain
@@ -232,22 +228,29 @@ overlaps_one(S, All) :-
     T = scheduled(_, StartT, EndT),
     StartS < EndT,
     StartT < EndS.
-
-label_task(scheduled(_, Start, _)) :- label([Start]).
 ```
 
-The horizon is derived from the input jobs (the largest deadline, or the sum of durations plus one), not hard-coded. As noted in the Planning and Scheduling chapter, `no_overlap/1` posts `#=<` constraints on constraint variables; to verify an already-ground schedule use `schedule_valid/1`, which compares times numerically.
+The key constraint is in `disjoint/2`: `E1 #=< S2 #\/ E2 #=< S1` says one job ends before the other starts, without saying which. The solver picks the order. A Prolog disjunction `(A ; B)` would also work, but it would choose by backtracking, while `#\/` lets propagation rule out an order as soon as the domains show it cannot work. (`library(clpfd)` also has `serialized/2` and `cumulative/2`, which post the same kind of constraint for a whole list of tasks.)
+
+No job need start later than the total work, so that is the horizon for the start times. `labeling([min(Makespan)], Starts)` searches for the schedule with the earliest finish time.
+
+```prolog
+?- schedule_jobs([job(a, 5, 10), job(b, 2, 2)], S).
+S = [scheduled(a, 2, 7), scheduled(b, 0, 2)] .
+```
+
+Job `b` must finish by time 2, so the solver runs it first, though the list names `a` first. `no_overlap/1` posts constraints on unbound variables. To check a schedule that is already ground, use `schedule_valid/1`, which compares the numbers directly.
 
 ## CLP(R) and CLP(Q): Constraints over Reals and Rationals
 
-While CLP(FD) is designed for discrete integers, SWI-Prolog also provides constraint solvers over continuous domains:
+CLP(FD) handles integers. SWI-Prolog also has solvers for continuous values:
 - **`library(clpr)`**: Constraints over Real numbers.
 - **`library(clpq)`**: Constraints over Rational numbers.
 
-These libraries use the **Simplex algorithm** under the hood to solve systems of linear equations and inequalities, propagating constraints across real-valued variables.
+They solve systems of linear equations and inequalities, using the **simplex algorithm** for inequalities and optimization.
 
 #### Example: Simultaneous Equations
-We can express continuous equations using curly brace `{ ... }` syntax:
+Constraints go inside curly braces:
 
 ```prolog
 ?- use_module(library(clpr)).
@@ -257,16 +260,16 @@ X = 7.0,
 Y = 3.0.
 ```
 
-CLP(R) is widely used in engineering (e.g., electrical circuit analysis), financial modeling, and optimization where variables represent continuous values like currency, voltage, or distance.
+CLP(R) suits problems with continuous quantities such as money, voltage, or distance, as in circuit analysis and financial models. CLP(Q) gives exact rational answers, with no floating-point rounding.
 
 ## CLP(B): Boolean Constraints
 
-Boolean constraint solving, or **CLP(B)**, operates on boolean variables (restricted to the values `0` for false and `1` for true). It is implemented in `library(clpb)`.
+**CLP(B)** works with boolean variables, which take the values `0` (false) and `1` (true). It is in `library(clpb)`.
 
-CLP(B) uses **Binary Decision Diagrams (BDDs)** to represent and solve boolean formulas efficiently, making it powerful for Boolean Satisfiability (SAT) solving, combinatorial verification, and digital circuit design.
+CLP(B) represents formulas as **Binary Decision Diagrams (BDDs)**. It can count solutions and check whether two formulas are equivalent, which is useful for verifying digital circuits.
 
 #### Example: Logic Gate Satisfiability
-We can express logical operations (such as AND `*`, OR `+`, NOT `~`, XOR `#`) and verify conditions:
+The operators are AND `*`, OR `+`, NOT `~`, and XOR `#`:
 
 ```prolog
 ?- use_module(library(clpb)).
@@ -279,5 +282,6 @@ Y = 1.
 
 ## Optional Practice Problems
 
-1. **Cryptarithmetic Solver**: In the `sudoku_solver` or `n_queens` project directories, create a new file that solves the classic cryptarithmetic puzzle `SEND + MORE = MONEY` using CLP(FD) constraints.
-2. **Variable Board Size**: Modify the N-Queens solver in `n_queens` to run dynamically for any board size `N` supplied at the query prompt, profiling the performance differences between smaller and larger boards.
+1. **Machines and Precedence**: Extend `job_scheduler` so each job also names a machine, and only jobs on the same machine must not overlap. Add `before(JobA, JobB)` facts for precedence constraints.
+2. **Labeling Strategies**: Time `n_queens(N, Qs)` and `n_queens(N, [ff_opt(true)], Qs)` from the Search Algorithms chapter for N = 8, 20, and 40 with `time/1`. Which strategy wins, and why?
+3. **Counting with CLP(B)**: Use `sat_count/2` to count the assignments of five boolean variables in which exactly two are true.
